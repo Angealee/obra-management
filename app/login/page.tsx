@@ -4,6 +4,8 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 
+console.log('Supabase URL:', process.env.NEXT_PUBLIC_SUPABASE_URL)
+
 export default function LoginPage() {
   const router = useRouter()
   const supabase = createClient()
@@ -17,10 +19,12 @@ export default function LoginPage() {
     setLoading(true)
     setError('')
 
-    const { error } = await supabase.auth.signInWithPassword({
+    const { data, error } = await supabase.auth.signInWithPassword({
       email,
       password,
     })
+
+    console.log('Login result:', { data, error })
 
     if (error) {
       setError(error.message)
@@ -30,14 +34,13 @@ export default function LoginPage() {
 
     // Redirect to dashboard after login
     router.push('/dashboard')
-    router.refresh()
   }
 
   return (
     <main className="min-h-screen flex items-center justify-center bg-gray-50">
       <div className="bg-white p-8 rounded-xl shadow-sm w-full max-w-md">
         <div className="mb-8">
-          <h1 className="text-2xl font-bold text-gray-800">Obra</h1>
+          <h1 className="text-2xl font-bold text-gray-800">Obra Creative Media Productions</h1>
           <p className="text-gray-500 text-sm mt-1">Sign in to your account</p>
         </div>
 
@@ -51,7 +54,7 @@ export default function LoginPage() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               className="w-full border border-gray-300 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-400"
-              placeholder="you@obra.com"
+              placeholder="sample@gmail.com"
             />
           </div>
 
