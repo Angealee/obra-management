@@ -28,3 +28,26 @@ export type AcademicYear = {
   is_active: boolean
   created_at: string
 }
+
+// Add these new types below
+
+export type MemberSkill = {
+  id: string
+  name: string
+  description: string | null
+  created_at: string
+}
+
+export type ProfileSkill = {
+  id: string
+  profile_id: string
+  skill_id: string
+  created_at: string
+}
+
+export type ProfileWithSkills = Profile & {
+  profile_skills: {
+    skill_id: string
+    member_skills: MemberSkill
+  }[]
+}
