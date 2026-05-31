@@ -76,9 +76,10 @@ export default async function DashboardLayout({
             <a href="/dashboard/academic-years" className="block px-4 py-2 rounded-lg text-sm text-gray-300 hover:bg-gray-700 hover:text-white transition">
               Academic Years
             </a>
+            
           )}
           <a href="/dashboard/duties" className="block px-4 py-2 rounded-lg text-sm text-gray-300 hover:bg-gray-700 hover:text-white transition">
-            My Duties
+            Obra Duties
           </a>
         </nav>
 
@@ -86,7 +87,7 @@ export default async function DashboardLayout({
           <p className="text-sm text-white font-medium">{profile.full_name}</p>
           <p className="text-xs text-gray-400 capitalize">{profile.system_role.replace('_', ' ')}</p>
           <form action="/auth/signout" method="post">
-            <button type="submit" className="mt-3 text-xs text-gray-400 hover:text-white transition">
+            <button type="submit" className="mt-3 text-xs text-gray-400 hover:text-red-500 transition">
               Sign out
             </button>
           </form>

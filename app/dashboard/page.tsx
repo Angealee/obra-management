@@ -27,11 +27,11 @@ export default async function DashboardPage() {
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="bg-white rounded-xl p-6 shadow-sm">
-          <p className="text-gray-500 text-sm">My Pending Duties</p>
+          <p className="text-gray-500 text-sm">Pending Duties</p>
           <p className="text-3xl font-bold text-gray-800 mt-1">—</p>
         </div>
         <div className="bg-white rounded-xl p-6 shadow-sm">
-          <p className="text-gray-500 text-sm">My Completed Duties</p>
+          <p className="text-gray-500 text-sm">Completed Duties</p>
           <p className="text-3xl font-bold text-gray-800 mt-1">—</p>
         </div>
         <div className="bg-white rounded-xl p-6 shadow-sm">
@@ -41,7 +41,7 @@ export default async function DashboardPage() {
       </div>
 
       <p className="text-gray-400 text-xs mt-8">
-        Dashboard data will be populated as you build the system.
+        Future dashboard data here.
       </p>
     </div>
   )
