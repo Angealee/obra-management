@@ -72,3 +72,45 @@ export type ObraEventWithDetails = ObraEvent & {
   academic_years: { label: string } | null
   profiles: { full_name: string } | null
 }
+
+export type DutyType =
+  | 'photography' | 'videography' | 'video_editing' | 'photo_editing'
+  | 'graphic_design' | 'animation' | 'writing' | 'event_assistance' | 'other'
+
+export type DutyPriority = 'low' | 'normal' | 'high' | 'urgent'
+
+export type DutyStatus = 'pending' | 'in_progress' | 'completed' | 'reviewed'
+
+export type Duty = {
+  id: string
+  event_id: string | null
+  assigned_to: string | null
+  assigned_by: string | null
+  title: string
+  description: string | null
+  duty_type: DutyType
+  priority: DutyPriority
+  status: DutyStatus
+  due_date: string | null
+  completed_at: string | null
+  reviewed_by: string | null
+  reviewed_at: string | null
+  remarks: string | null
+  created_at: string
+}
+
+export type DutyWithDetails = Duty & {
+  events: { title: string; event_date: string } | null
+  assignee: { full_name: string } | null
+  assigner: { full_name: string } | null
+  reviewer: { full_name: string } | null
+  duty_checklists: ChecklistItem[]
+}
+
+export type ChecklistItem = {
+  id: string
+  duty_id: string
+  item_text: string
+  is_done: boolean
+  created_at: string
+}
