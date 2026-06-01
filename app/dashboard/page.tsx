@@ -21,8 +21,8 @@ export default async function DashboardPage() {
       <h1 className="text-2xl font-bold text-gray-800 mb-1">
         Welcome, {profile.full_name}
       </h1>
-      <p className="text-gray-500 text-sm mb-8 capitalize">
-        Role: {profile.system_role.replace('_', ' ')}
+      <p className="text-gray-600 text-m mb-8 capitalize">
+        {profile.creative_head_role.replace('_', ' ')}
       </p>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">

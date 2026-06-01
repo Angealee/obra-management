@@ -51,3 +51,24 @@ export type ProfileWithSkills = Profile & {
     member_skills: MemberSkill
   }[]
 }
+
+
+export type EventStatus = 'upcoming' | 'ongoing' | 'completed' | 'cancelled'
+
+export type ObraEvent = {
+  id: string
+  academic_year_id: string | null
+  title: string
+  description: string | null
+  event_date: string
+  event_time: string | null
+  location: string | null
+  status: EventStatus
+  created_by: string | null
+  created_at: string
+}
+
+export type ObraEventWithDetails = ObraEvent & {
+  academic_years: { label: string } | null
+  profiles: { full_name: string } | null
+}
