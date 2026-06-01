@@ -1,0 +1,74 @@
+export type SystemRole = 'consultant' | 'creative_head' | 'member'
+
+export type CreativeHeadRole =
+  | 'creative_producer'
+  | 'creative_writer'
+  | 'creative_director'
+  | 'none'
+
+export type Profile = {
+  id: string
+  full_name: string
+  email: string
+  system_role: SystemRole
+  creative_head_role: CreativeHeadRole
+  student_number: string | null
+  course_section: string | null
+  year_level: string | null
+  contact_number: string | null
+  is_active: boolean
+  created_at: string
+}
+
+export type AcademicYear = {
+  id: string
+  label: string
+  start_date: string
+  end_date: string
+  is_active: boolean
+  created_at: string
+}
+
+// Add these new types below
+
+export type MemberSkill = {
+  id: string
+  name: string
+  description: string | null
+  created_at: string
+}
+
+export type ProfileSkill = {
+  id: string
+  profile_id: string
+  skill_id: string
+  created_at: string
+}
+
+export type ProfileWithSkills = Profile & {
+  profile_skills: {
+    skill_id: string
+    member_skills: MemberSkill
+  }[]
+}
+
+
+export type EventStatus = 'upcoming' | 'ongoing' | 'completed' | 'cancelled'
+
+export type ObraEvent = {
+  id: string
+  academic_year_id: string | null
+  title: string
+  description: string | null
+  event_date: string
+  event_time: string | null
+  location: string | null
+  status: EventStatus
+  created_by: string | null
+  created_at: string
+}
+
+export type ObraEventWithDetails = ObraEvent & {
+  academic_years: { label: string } | null
+  profiles: { full_name: string } | null
+}
