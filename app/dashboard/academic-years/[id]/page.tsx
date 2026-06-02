@@ -83,11 +83,11 @@ export default async function AcademicYearDetailPage({
           )}
         </div>
       </div>
-      
-        {/* Edit form — add this here */}
+
+        {/* Edit form */}
         <EditAcademicYearForm academicYear={academicYear} />
 
-      {/* Set Active button — only shown if not already active */}
+      {/* Active button */}
      <div className="mt-6 bg-white rounded-xl shadow-sm p-6">
         <h2 className="text-sm font-medium text-gray-700 mb-1">
           {academicYear.is_active ? 'Deactivate' : 'Set as Active'}
@@ -103,7 +103,7 @@ export default async function AcademicYearDetailPage({
         />
       </div>
 
-      {/* Danger Zone */}
+      {/* warning bago delete */}
       <div className="mt-6 bg-white rounded-xl shadow-sm p-6">
         <h2 className="text-sm font-medium text-gray-700 mb-1">Danger Zone</h2>
         <p className="text-gray-400 text-xs mb-4">
