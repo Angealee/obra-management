@@ -36,6 +36,15 @@ export default async function EventDetailPage({
     .single()
 
   if (!event) redirect('/dashboard/events')
+  
+    const { data: duties } = await supabase
+    .from('duties')
+    .select(`
+      id, title, duty_type, priority, status,
+      assignee:profiles!duties_assigned_to_fkey ( full_name )
+    `)
+    .eq('event_id', id)
+    .order('created_at', { ascending: true })
 
   const canManage = profile.system_role === 'consultant' || profile.system_role === 'creative_head'
 
@@ -89,22 +98,83 @@ export default async function EventDetailPage({
         ))}
       </div>
 
-      {/* Duties section placeholder */}
+      {/* Duties */}
       <div className="bg-white rounded-xl shadow-sm p-6 mb-6">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">Duties</h2>
+          <div>
+            <h2 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">Duties</h2>
+            <p className="text-gray-400 text-xs mt-0.5">
+              {duties && duties.length > 0
+                ? `${duties.length} assigned · ${duties.filter(d => d.status === 'reviewed').length} reviewed`
+                : 'No duties assigned yet'}
+            </p>
+          </div>
           {canManage && (
             <Link
               href={`/dashboard/duties/new?event=${event.id}`}
-              className="text-xs text-gray-500 hover:text-gray-800 underline transition"
+              className="text-xs bg-gray-900 text-white px-3 py-1.5 rounded-lg hover:bg-gray-700 transition"
             >
               + Assign Duty
             </Link>
           )}
         </div>
-        <p className="text-gray-400 text-sm">
-          No duties assigned yet. Duties will appear here once assigned.
-        </p>
+
+        {!duties || duties.length === 0 ? (
+          <p className="text-gray-400 text-sm">
+            No duties assigned yet. Duties will appear here once assigned.
+          </p>
+        ) : (
+          <div className="space-y-2">
+            {duties.map(duty => (
+              <Link
+                key={duty.id}
+                href={`/dashboard/duties/${duty.id}`}
+                className="flex items-center justify-between p-3 rounded-lg border border-gray-100 hover:bg-gray-50 transition group"
+              >
+                <div className="flex items-center gap-3 min-w-0">
+                  {/* Status dot */}
+                  <span className={`w-2 h-2 rounded-full shrink-0 ${
+                    duty.status === 'reviewed'    ? 'bg-green-500'  :
+                    duty.status === 'completed'   ? 'bg-yellow-500' :
+                    duty.status === 'in_progress' ? 'bg-blue-500'   :
+                    'bg-gray-300'
+                  }`} />
+
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-gray-800 truncate">{duty.title}</p>
+                    <p className="text-xs text-gray-400 mt-0.5 capitalize">
+                      {duty.duty_type.replace('_', ' ')} · {(duty as any).assignee?.full_name ?? '—'}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3 shrink-0">
+                  {/* Priority badge */}
+                  <span className={`text-xs font-medium px-2 py-0.5 rounded-full capitalize ${
+                    duty.priority === 'urgent' ? 'bg-red-100 text-red-600'    :
+                    duty.priority === 'high'   ? 'bg-orange-100 text-orange-600' :
+                    'bg-gray-100 text-gray-500'
+                  }`}>
+                    {duty.priority}
+                  </span>
+
+                  {/* Status badge */}
+                  <span className={`text-xs font-medium px-2.5 py-0.5 rounded-full ${
+                    duty.status === 'reviewed'    ? 'bg-green-100 text-green-700'  :
+                    duty.status === 'completed'   ? 'bg-yellow-100 text-yellow-700':
+                    duty.status === 'in_progress' ? 'bg-blue-100 text-blue-700'   :
+                    'bg-gray-100 text-gray-500'
+                  }`}>
+                    {duty.status === 'in_progress' ? 'In Progress' :
+                     duty.status.charAt(0).toUpperCase() + duty.status.slice(1)}
+                  </span>
+
+                  <span className="text-gray-300 group-hover:text-gray-500 transition text-xs">→</span>
+                </div>
+              </Link>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Status Manager */}
