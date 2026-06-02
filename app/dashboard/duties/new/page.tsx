@@ -7,45 +7,63 @@ import { createClient } from '@/lib/supabase/client'
 import type { ObraEvent, Profile } from '@/types/database'
 
 const dutyTypes = [
-  { value: 'photography',    label: 'Photography' },
-  { value: 'videography',    label: 'Videography' },
-  { value: 'video_editing',  label: 'Video Editing' },
-  { value: 'photo_editing',  label: 'Photo Editing' },
-  { value: 'graphic_design', label: 'Graphic Design' },
-  { value: 'animation',      label: 'Animation' },
-  { value: 'writing',        label: 'Writing' },
-  { value: 'event_assistance', label: 'Event Assistance' },
-  { value: 'other',          label: 'Other' },
+  { value: 'photographer',    label: 'Photographer' },
+  { value: 'photo_editor',    label: 'Photo Editor' },
+  { value: 'videographer',    label: 'Videographer' },
+  { value: 'video_editor',    label: 'Video Editor' },
+  { value: 'graphic_designer', label: 'Graphic Designer' },
+  { value: 'animator',        label: 'Animator' },
+  { value: 'other',           label: 'Other' },
 ]
+
+type MemberWithSkills = Profile & {
+  profile_skills: { member_skills: { name: string } }[]
+}
 
 export default function NewDutyPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const preselectedEvent = searchParams.get('event') // from event detail page
+  const preselectedEvent = searchParams.get('event')
   const supabase = createClient()
 
+  // Form state
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
-  const [dutyType, setDutyType] = useState('photography')
+  const [dutyType, setDutyType] = useState('photographer')
   const [priority, setPriority] = useState('normal')
   const [dueDate, setDueDate] = useState('')
   const [eventId, setEventId] = useState(preselectedEvent ?? '')
-  const [assignedTo, setAssignedTo] = useState('')
+  const [assignedTo, setAssignedTo] = useState<string[]>([])
   const [checklistItems, setChecklistItems] = useState<string[]>([''])
 
+  // Data
   const [events, setEvents] = useState<ObraEvent[]>([])
-  const [members, setMembers] = useState<Profile[]>([])
+  const [members, setMembers] = useState<MemberWithSkills[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
   useEffect(() => {
     async function load() {
       const [{ data: evts }, { data: mems }] = await Promise.all([
-        supabase.from('events').select('*').in('status', ['upcoming', 'ongoing']).order('event_date', { ascending: false }),
-        supabase.from('profiles').select('*').eq('is_active', true).neq('system_role', 'consultant').order('full_name'),
+        supabase
+          .from('events')
+          .select('*')
+          .in('status', ['upcoming', 'ongoing'])
+          .order('event_date', { ascending: false }),
+        supabase
+          .from('profiles')
+          .select(`
+            *,
+            profile_skills (
+              member_skills ( name )
+            )
+          `)
+          .eq('is_active', true)
+          .neq('system_role', 'consultant')
+          .order('full_name'),
       ])
       if (evts) setEvents(evts)
-      if (mems) setMembers(mems)
+      if (mems) setMembers(mems as MemberWithSkills[])
     }
     load()
   }, [])
@@ -63,17 +81,20 @@ export default function NewDutyPage() {
   }
 
   async function handleSubmit() {
-    if (!title.trim())    return setError('Duty title is required.')
-    if (!eventId)         return setError('Please select an event.')
-    if (!assignedTo)      return setError('Please select a member to assign this duty to.')
+  if (!title.trim())        return setError('Duty title is required.')
+  if (!eventId)             return setError('Please select an event.')
+  if (assignedTo.length === 0) return setError('Please select at least one member.')
 
-    setLoading(true)
-    setError('')
+  setLoading(true)
+  setError('')
 
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) { setError('Not authenticated.'); setLoading(false); return }
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) { setError('Not authenticated.'); setLoading(false); return }
 
-    // Insert duty
+  const validItems = checklistItems.filter(item => item.trim())
+
+  // Create one duty record per selected member
+  for (const memberId of assignedTo) {
     const { data: duty, error: dutyError } = await supabase
       .from('duties')
       .insert({
@@ -83,7 +104,7 @@ export default function NewDutyPage() {
         priority,
         due_date: dueDate || null,
         event_id: eventId,
-        assigned_to: assignedTo,
+        assigned_to: memberId,
         assigned_by: user.id,
         status: 'pending',
       })
@@ -92,23 +113,25 @@ export default function NewDutyPage() {
 
     if (dutyError) { setError(dutyError.message); setLoading(false); return }
 
-    // Insert checklist items (filter out blank ones)
-    const validItems = checklistItems.filter(item => item.trim())
+    // Each member gets their own copy of the checklist
     if (validItems.length > 0) {
-      const { error: checklistError } = await supabase
-        .from('duty_checklists')
-        .insert(validItems.map(item => ({
+      await supabase.from('duty_checklists').insert(
+        validItems.map(item => ({
           duty_id: duty.id,
           item_text: item.trim(),
           is_done: false,
-        })))
-
-      if (checklistError) console.error('Checklist error:', checklistError.message)
+        }))
+      )
     }
-
-    router.push(`/dashboard/duties/${duty.id}`)
-    router.refresh()
   }
+
+  router.push('/dashboard/duties')
+  router.refresh()
+}
+
+  // Group members by role for display
+  const creativeHeads = members.filter(m => m.system_role === 'creative_head')
+  const regularMembers = members.filter(m => m.system_role === 'member')
 
   return (
     <div className="max-w-2xl">
@@ -122,45 +145,90 @@ export default function NewDutyPage() {
 
       <div className="space-y-6">
 
-        {/* Assignment */}
+        {/* Event Selection */}
         <div className="bg-white rounded-xl shadow-sm p-6 space-y-4">
-          <h2 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">Assignment</h2>
-
+          <h2 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">Event</h2>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Event <span className="text-red-500">*</span>
+              Select Event <span className="text-red-500">*</span>
             </label>
             <select
               value={eventId}
               onChange={e => setEventId(e.target.value)}
               className="w-full border border-gray-300 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-400"
             >
-              <option value="">Select event</option>
+              <option value="">Choose an event...</option>
               {events.map(ev => (
                 <option key={ev.id} value={ev.id}>
-                  {ev.title} — {new Date(ev.event_date).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' })}
+                  {ev.title} — {new Date(ev.event_date).toLocaleDateString('en-PH', {
+                    month: 'short', day: 'numeric', year: 'numeric'
+                  })}
                 </option>
               ))}
             </select>
+          </div>
+        </div>
+
+        {/* Member Selection */}
+        <div className="bg-white rounded-xl shadow-sm p-6 space-y-4">
+          <div>
+            <h2 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">Assign To</h2>
+            <p className="text-gray-400 text-xs mt-1">Select the member who will handle this duty.</p>
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Assign To <span className="text-red-500">*</span>
-            </label>
-            <select
-              value={assignedTo}
-              onChange={e => setAssignedTo(e.target.value)}
-              className="w-full border border-gray-300 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-400"
-            >
-              <option value="">Select member</option>
-              {members.map(m => (
-                <option key={m.id} value={m.id}>
-                  {m.full_name} — {m.system_role.replace('_', ' ')}
-                </option>
-              ))}
-            </select>
-          </div>
+          {members.length === 0 ? (
+            <p className="text-gray-400 text-sm">No active members found.</p>
+          ) : (
+            <div className="space-y-4">
+
+              {/* Creative Heads group */}
+              {creativeHeads.length > 0 && (
+                <div>
+                  <p className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-2">
+                    Creative Heads
+                  </p>
+                  <div className="space-y-2">
+                    {creativeHeads.map(member => (
+                      <MemberCard
+                        key={member.id}
+                        member={member}
+                        selected={assignedTo.includes(member.id)}
+                        onSelect={() => setAssignedTo(prev =>
+                          prev.includes(member.id)
+                            ? prev.filter(id => id !== member.id)
+                            : [...prev, member.id]
+                        )}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Members group */}
+              {regularMembers.length > 0 && (
+                <div>
+                  <p className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-2">
+                    Members
+                  </p>
+                  <div className="space-y-2">
+                    {regularMembers.map(member => (
+                      <MemberCard
+                        key={member.id}
+                        member={member}
+                        selected={assignedTo.includes(member.id)}
+                        onSelect={() => setAssignedTo(prev =>
+                          prev.includes(member.id)
+                            ? prev.filter(id => id !== member.id)
+                            : [...prev, member.id]
+                        )}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
+
+            </div>
+          )}
         </div>
 
         {/* Duty Info */}
@@ -175,7 +243,7 @@ export default function NewDutyPage() {
               type="text"
               value={title}
               onChange={e => setTitle(e.target.value)}
-              placeholder="Vinculum Coverage"
+              placeholder="e.g. Event Photography Coverage"
               className="w-full border border-gray-300 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-400"
             />
           </div>
@@ -204,7 +272,6 @@ export default function NewDutyPage() {
                 ))}
               </select>
             </div>
-
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Priority</label>
               <select
@@ -218,7 +285,6 @@ export default function NewDutyPage() {
                 <option value="urgent">Urgent</option>
               </select>
             </div>
-
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Due Date</label>
               <input
@@ -235,9 +301,8 @@ export default function NewDutyPage() {
         <div className="bg-white rounded-xl shadow-sm p-6 space-y-3">
           <div>
             <h2 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">Checklist</h2>
-            <p className="text-gray-400 text-xs mt-1">Optional. Add step-by-step items the member needs to complete.</p>
+            <p className="text-gray-400 text-xs mt-1">Optional. Step-by-step tasks for the member to complete.</p>
           </div>
-
           {checklistItems.map((item, index) => (
             <div key={index} className="flex gap-2">
               <input
@@ -257,7 +322,6 @@ export default function NewDutyPage() {
               )}
             </div>
           ))}
-
           <button
             onClick={addChecklistItem}
             className="text-sm text-gray-500 hover:text-gray-800 underline transition"
@@ -284,6 +348,86 @@ export default function NewDutyPage() {
             Cancel
           </Link>
         </div>
+      </div>
+    </div>
+  )
+}
+
+// ── Member card component ──
+function MemberCard({
+  member,
+  selected,
+  onSelect,
+}: {
+  member: MemberWithSkills
+  selected: boolean
+  onSelect: () => void
+}) {
+  const skills = member.profile_skills?.map(ps => ps.member_skills?.name).filter(Boolean) ?? []
+
+  const roleLabels: Record<string, string> = {
+    creative_head: 'Creative Head',
+    member: 'Member',
+  }
+
+  const creativeRoleLabels: Record<string, string> = {
+    creative_producer: 'Creative Producer',
+    creative_writer: 'Creative Writer',
+    creative_director: 'Creative Director',
+    none: '',
+  }
+
+  const displayRole = member.system_role === 'creative_head' && member.creative_head_role !== 'none'
+    ? creativeRoleLabels[member.creative_head_role ?? 'none']
+    : roleLabels[member.system_role]
+
+  return (
+    <div
+      onClick={onSelect}
+      className={`flex items-center gap-4 p-4 rounded-xl border-2 cursor-pointer transition ${
+        selected
+          ? 'border-gray-900 bg-gray-50'
+          : 'border-gray-100 hover:border-gray-300 bg-white'
+      }`}
+    >
+      {/* Checkbox circle */}
+      <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 transition ${
+        selected ? 'border-gray-900 bg-gray-900' : 'border-gray-300'
+      }`}>
+        {selected && (
+          <svg width="8" height="7" viewBox="0 0 8 7" fill="none">
+            <path d="M1 3.5L3 5.5L7 1" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+        )}
+      </div>
+
+      {/* Avatar initial */}
+      <div className={`w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold shrink-0 ${
+        selected ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-600'
+      }`}>
+        {member.full_name.charAt(0).toUpperCase()}
+      </div>
+
+      {/* Info */}
+      <div className="flex-1 min-w-0">
+        <p className={`text-sm font-medium truncate ${selected ? 'text-gray-900' : 'text-gray-800'}`}>
+          {member.full_name}
+        </p>
+        <p className="text-xs text-gray-400 mt-0.5">{displayRole}</p>
+
+        {/* Skill badges */}
+        {skills.length > 0 && (
+          <div className="flex flex-wrap gap-1 mt-2">
+            {skills.map(skill => (
+              <span
+                key={skill}
+                className="bg-gray-100 text-gray-500 text-xs px-2 py-0.5 rounded-full"
+              >
+                {skill}
+              </span>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   )

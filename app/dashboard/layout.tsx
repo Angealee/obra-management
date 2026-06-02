@@ -24,8 +24,6 @@ export default async function DashboardLayout({
 
   console.log('Dashboard layout - profile:', profile, 'error:', profileError)
 
-  // ❌ OLD: redirect('/login') — this causes the loop
-  // ✅ NEW: show an error so we can see what's wrong
   if (!profile) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
@@ -78,10 +76,24 @@ export default async function DashboardLayout({
             </a>
             
           )}
+          
           <a href="/dashboard/duties" className="block px-4 py-2 rounded-lg text-sm text-gray-300 hover:bg-gray-700 hover:text-white transition">
             Obra Duties
           </a>
+
+          <a href="/dashboard/workloads"
+            className="block px-4 py-2 rounded-lg text-sm text-gray-300 hover:bg-gray-700 hover:text-white transition"
+          >
+            Obra Workloads
+          </a>
+
+          
         </nav>
+
+          
+
+
+        
 
         <div className="p-4 border-t border-gray-700">
           <p className="text-sm text-white font-medium">{profile.full_name}</p>
