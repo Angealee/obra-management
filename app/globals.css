@@ -1,1 +1,287 @@
+@import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=DM+Mono:wght@400;500&display=swap');
 @import "tailwindcss";
+
+*, *::before, *::after { box-sizing: border-box; }
+
+html {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  font-family: 'DM Sans', sans-serif;
+  background: #F7F7F5;
+  color: #111111;
+}
+
+@keyframes pageEnter {
+  from { opacity: 0; transform: translateY(7px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.page-enter {
+  animation: pageEnter 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.sidebar {
+  transition: width 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+  overflow: hidden;
+  will-change: width;
+}
+
+.sidebar-label {
+  transition: opacity 0.2s ease, transform 0.2s ease;
+  white-space: nowrap;
+}
+
+.sidebar.collapsed .sidebar-label {
+  opacity: 0;
+  transform: translateX(-6px);
+  pointer-events: none;
+}
+
+.sidebar-nav-item {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 12px;
+  border-radius: 8px;
+  font-size: 13.5px;
+  font-weight: 400;
+  color: rgba(255,255,255,0.48);
+  text-decoration: none;
+  transition: color 0.15s ease, background 0.15s ease;
+  cursor: pointer;
+  width: 100%;
+  background: transparent;
+  border: none;
+  text-align: left;
+}
+
+.sidebar-nav-item:hover {
+  color: rgba(255,255,255,0.85);
+  background: rgba(255,255,255,0.06);
+}
+
+.sidebar-nav-item.active {
+  color: #ffffff;
+  background: rgba(255,255,255,0.08);
+  font-weight: 500;
+}
+
+.sidebar-nav-item.active::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 2.5px;
+  height: 18px;
+  background: #CC0000;
+  border-radius: 0 2px 2px 0;
+}
+
+.nav-tooltip {
+  position: absolute;
+  left: calc(100% + 10px);
+  top: 50%;
+  transform: translateY(-50%);
+  background: #1A1A1A;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 500;
+  padding: 5px 10px;
+  border-radius: 6px;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+  z-index: 99;
+  border: 1px solid rgba(255,255,255,0.08);
+}
+
+.sidebar.collapsed .sidebar-nav-item:hover .nav-tooltip {
+  opacity: 1;
+}
+
+.dash-card {
+  background: #fff;
+  border: 1px solid rgba(0,0,0,0.06);
+  border-radius: 12px;
+  padding: 24px;
+}
+
+.page-title {
+  font-size: 26px;
+  font-weight: 700;
+  letter-spacing: -0.5px;
+  color: #111111;
+  line-height: 1.1;
+}
+
+.page-subtitle {
+  font-size: 13px;
+  color: #888;
+  margin-top: 3px;
+  font-weight: 400;
+}
+
+.section-label {
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #999;
+}
+
+.obra-table {
+  width: 100%;
+  font-size: 13.5px;
+  border-collapse: collapse;
+}
+
+.obra-table thead tr {
+  border-bottom: 1px solid rgba(0,0,0,0.06);
+}
+
+.obra-table thead th {
+  text-align: left;
+  padding: 12px 20px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #999;
+}
+
+.obra-table tbody tr {
+  border-bottom: 1px solid rgba(0,0,0,0.04);
+  transition: background 0.1s ease;
+}
+
+.obra-table tbody tr:last-child { border-bottom: none; }
+.obra-table tbody tr:hover { background: #FAFAF9; }
+
+.obra-table tbody td {
+  padding: 13px 20px;
+  color: #333;
+}
+
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  background: #111111;
+  color: #fff;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  text-decoration: none;
+  border: none;
+  cursor: pointer;
+  transition: background 0.15s ease, transform 0.1s ease;
+  white-space: nowrap;
+  font-family: 'DM Sans', sans-serif;
+}
+
+.btn-primary:hover  { background: #2a2a2a; }
+.btn-primary:active { transform: scale(0.98); }
+
+.btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  background: transparent;
+  color: #555;
+  border: 1px solid rgba(0,0,0,0.12);
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  text-decoration: none;
+  cursor: pointer;
+  transition: border-color 0.15s ease, color 0.15s ease, background 0.15s ease;
+  white-space: nowrap;
+  font-family: 'DM Sans', sans-serif;
+}
+
+.btn-secondary:hover {
+  border-color: rgba(0,0,0,0.25);
+  color: #111;
+  background: rgba(0,0,0,0.02);
+}
+
+.btn-danger {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  background: transparent;
+  color: #CC0000;
+  border: 1px solid rgba(204,0,0,0.2);
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background 0.15s ease;
+  font-family: 'DM Sans', sans-serif;
+}
+
+.btn-danger:hover { background: rgba(204,0,0,0.05); }
+
+.obra-input {
+  width: 100%;
+  border: 1px solid rgba(0,0,0,0.12);
+  border-radius: 8px;
+  padding: 9px 14px;
+  font-size: 13.5px;
+  font-family: 'DM Sans', sans-serif;
+  color: #111;
+  background: #fff;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  outline: none;
+}
+
+.obra-input:focus {
+  border-color: rgba(0,0,0,0.35);
+  box-shadow: 0 0 0 3px rgba(0,0,0,0.05);
+}
+
+.obra-input::placeholder { color: #bbb; }
+
+.obra-label {
+  display: block;
+  font-size: 12.5px;
+  font-weight: 500;
+  color: #555;
+  margin-bottom: 5px;
+}
+
+/* ── Card hover effects ── */
+.stat-card {
+  background: #fff;
+  border: 1px solid rgba(0,0,0,0.06);
+  border-radius: 12px;
+  padding: 20px 24px;
+  transition: box-shadow 0.2s ease, transform 0.2s ease, border-color 0.2s ease;
+  cursor: default;
+}
+
+.stat-card:hover {
+  box-shadow: 0 4px 16px rgba(0,0,0,0.07);
+  transform: translateY(-1px);
+  border-color: rgba(0,0,0,0.10);
+}
+
+.stat-card-link {
+  display: block;
+  text-decoration: none;
+  color: inherit;
+}
+
+.stat-card-link .stat-card {
+  cursor: pointer;
+}

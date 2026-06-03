@@ -18,13 +18,14 @@ function StatCard({
   color?: string
 }) {
   const inner = (
-    <div className="bg-white rounded-xl shadow-sm p-5 h-full">
-      <p className="text-xs text-gray-500 mb-1">{label}</p>
-      <p className={`text-3xl font-bold ${color}`}>{value}</p>
-      {sub && <p className="text-xs text-gray-400 mt-1">{sub}</p>}
+    <div className="stat-card">
+      <p style={{ fontSize: '12px', color: '#999', marginBottom: '6px', fontWeight: 500 }}>{label}</p>
+      <p style={{ fontSize: '28px', fontWeight: 700, lineHeight: 1, color: color.includes('green') ? '#16a34a' : color.includes('red') ? '#CC0000' : '#111' }}>
+        {value}</p>
+      {sub && <p style={{ fontSize: '12px', color: '#aaa', marginTop: '4px' }}>{sub}</p>}
     </div>
   )
-  if (href) return <Link href={href} className="block hover:opacity-80 transition">{inner}</Link>
+  if (href) return <Link href={href} className="stat-card-link">{inner}</Link>
   return inner
 }
 
@@ -130,7 +131,7 @@ export default async function DashboardPage() {
           )}
         </div>
 
-        {/* Stat cards */}
+        {/* Stat cards dito */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <StatCard label="Active Members"    value={totalMembers ?? 0} href="/dashboard/members" />
           <StatCard label="Creative Heads"    value={totalHeads ?? 0}   href="/dashboard/members" />
