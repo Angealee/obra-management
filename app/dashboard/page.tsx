@@ -3,205 +3,228 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import type { Profile } from '@/types/database'
 
-// ── Reusable stat card ──
-function StatCard({
-  label,
-  value,
-  sub,
-  href,
-  color = 'text-gray-800',
-}: {
-  label: string
-  value: number | string
-  sub?: string
-  href?: string
-  color?: string
+// ─── Design tokens ───────────────────────────────────────
+const T = {
+  card:    'bg-white rounded-[10px] border border-black/[0.06]',
+  cardHov: 'hover:-translate-y-[2px] hover:shadow-[0_6px_20px_rgba(0,0,0,0.07)] hover:border-black/[0.10] transition-all duration-200',
+  label:   { fontSize: '10.5px', fontWeight: 600, letterSpacing: '0.07em', textTransform: 'uppercase' as const, color: '#999' },
+  row:     'flex items-center justify-between p-3 rounded-lg hover:bg-black/[0.025] transition-colors duration-150 group',
+}
+
+// ─── Stat card ───────────────────────────────────────────
+function Stat({ label, value, sub, href, accent }: {
+  label: string; value: number | string; sub?: string; href?: string; accent?: string
 }) {
   const inner = (
-    <div className="stat-card">
-      <p style={{ fontSize: '12px', color: '#999', marginBottom: '6px', fontWeight: 500 }}>{label}</p>
-      <p style={{ fontSize: '28px', fontWeight: 700, lineHeight: 1, color: color.includes('green') ? '#16a34a' : color.includes('red') ? '#CC0000' : '#111' }}>
-        {value}</p>
-      {sub && <p style={{ fontSize: '12px', color: '#aaa', marginTop: '4px' }}>{sub}</p>}
+    <div className={`${T.card} ${href ? T.cardHov : ''} p-5 flex flex-col gap-1`}>
+      <p style={T.label}>{label}</p>
+      <p style={{ fontSize: '30px', fontWeight: 700, letterSpacing: '-0.5px', lineHeight: 1, color: accent ?? '#111', fontFamily: "'DM Sans', sans-serif" }}>
+        {value}
+      </p>
+      {sub && <p style={{ fontSize: '11.5px', color: '#aaa', marginTop: '1px' }}>{sub}</p>}
     </div>
   )
-  if (href) return <Link href={href} className="stat-card-link">{inner}</Link>
+  if (href) return <Link href={href} className="block">{inner}</Link>
   return inner
 }
 
-// ── Status badge ──
+// ─── Status badge ─────────────────────────────────────────
 function Badge({ status }: { status: string }) {
-  const s: Record<string, string> = {
-    pending:     'bg-gray-100 text-gray-600',
-    in_progress: 'bg-blue-100 text-blue-700',
-    completed:   'bg-yellow-100 text-yellow-700',
-    reviewed:    'bg-green-100 text-green-700',
-    upcoming:    'bg-blue-100 text-blue-700',
-    ongoing:     'bg-yellow-100 text-yellow-700',
-    cancelled:   'bg-gray-100 text-gray-400',
+  const map: Record<string, [string, string]> = {
+    pending:     ['#f3f4f6', '#6b7280'],
+    in_progress: ['#eff6ff', '#3b82f6'],
+    completed:   ['#fefce8', '#ca8a04'],
+    reviewed:    ['#f0fdf4', '#16a34a'],
+    upcoming:    ['#eff6ff', '#3b82f6'],
+    ongoing:     ['#fefce8', '#ca8a04'],
+    cancelled:   ['#f3f4f6', '#9ca3af'],
   }
-  const l: Record<string, string> = {
-    pending: 'Pending', in_progress: 'In Progress',
-    completed: 'Completed', reviewed: 'Reviewed',
-    upcoming: 'Upcoming', ongoing: 'Ongoing', cancelled: 'Cancelled',
+  const labels: Record<string, string> = {
+    pending: 'Pending', in_progress: 'In Progress', completed: 'Completed',
+    reviewed: 'Reviewed', upcoming: 'Upcoming', ongoing: 'Ongoing', cancelled: 'Cancelled',
   }
+  const [bg, color] = map[status] ?? ['#f3f4f6', '#6b7280']
   return (
-    <span className={`text-xs font-medium px-2.5 py-0.5 rounded-full ${s[status] ?? 'bg-gray-100 text-gray-500'}`}>
-      {l[status] ?? status}
+    <span style={{ background: bg, color, fontSize: '11px', fontWeight: 600, padding: '3px 10px', borderRadius: '99px', whiteSpace: 'nowrap' }}>
+      {labels[status] ?? status}
     </span>
+  )
+}
+
+// ─── Section heading ──────────────────────────────────────
+function SectionHead({ title, action }: { title: string; action?: { label: string; href: string } }) {
+  return (
+    <div className="flex items-center justify-between mb-4">
+      <p style={T.label}>{title}</p>
+      {action && (
+        <Link href={action.href} style={{ fontSize: '12px', color: '#aaa', textDecoration: 'none' }}
+          className="hover:text-gray-700 transition-colors">
+          {action.label}
+        </Link>
+      )}
+    </div>
+  )
+}
+
+// ─── Avatar ───────────────────────────────────────────────
+function Avatar({ name, size = 28, bg = '#111' }: { name: string; size?: number; bg?: string }) {
+  const init = name.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase()
+  return (
+    <div style={{ width: size, height: size, borderRadius: '50%', background: bg, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '10.5px', fontWeight: 700, flexShrink: 0 }}>
+      {init}
+    </div>
   )
 }
 
 export default async function DashboardPage() {
   const supabase = await createClient()
-
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
   const { data: profile } = await supabase
-    .from('profiles')
-    .select('*')
-    .eq('id', user.id)
-    .single() as { data: Profile | null }
-
+    .from('profiles').select('*').eq('id', user.id).single() as { data: Profile | null }
   if (!profile) redirect('/login')
 
-  // Active academic year
   const { data: activeAY } = await supabase
-    .from('academic_years')
-    .select('*')
-    .eq('is_active', true)
-    .single()
+    .from('academic_years').select('*').eq('is_active', true).single()
 
-  // ════════════════════════════════
-  // CONSULTANT DASHBOARD
-  // ════════════════════════════════
+  // ══════════════════════════════════════════
+  //  CONSULTANT
+  // ══════════════════════════════════════════
   if (profile.system_role === 'consultant') {
     const [
       { count: totalMembers },
       { count: totalHeads },
       { data: events },
       { data: duties },
-      { data: recentMembers },
     ] = await Promise.all([
       supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('system_role', 'member').eq('is_active', true),
       supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('system_role', 'creative_head').eq('is_active', true),
       supabase.from('events').select('id, title, event_date, status').eq('academic_year_id', activeAY?.id ?? '').order('event_date', { ascending: false }),
-      supabase.from('duties').select('id, title, status, assigned_to, event_id, events(title), assignee:profiles!duties_assigned_to_fkey(full_name)').order('created_at', { ascending: false }).limit(50),
-      supabase.from('profiles').select('id, full_name, system_role, created_at').neq('system_role', 'consultant').eq('is_active', true).order('created_at', { ascending: false }).limit(5),
+      supabase.from('duties').select('id, title, status, assigned_to, event_id, events(title), assignee:profiles!duties_assigned_to_fkey(full_name)').order('created_at', { ascending: false }).limit(100),
     ])
 
-    const pending     = duties?.filter(d => d.status === 'pending').length ?? 0
-    const inProgress  = duties?.filter(d => d.status === 'in_progress').length ?? 0
-    const completed   = duties?.filter(d => d.status === 'completed').length ?? 0
-    const reviewed    = duties?.filter(d => d.status === 'reviewed').length ?? 0
-    const total       = duties?.length ?? 0
-
-    const upcoming  = events?.filter(e => e.status === 'upcoming').length ?? 0
-    const ongoing   = events?.filter(e => e.status === 'ongoing').length ?? 0
-
-    // Most active members (by reviewed duties)
-    const memberDutyCount: Record<string, { name: string; count: number }> = {}
-    for (const d of duties ?? []) {
-      if (!d.assigned_to) continue
-      const name = (d as any).assignee?.full_name ?? 'Unknown'
-      if (!memberDutyCount[d.assigned_to]) memberDutyCount[d.assigned_to] = { name, count: 0 }
-      if (d.status === 'reviewed') memberDutyCount[d.assigned_to].count++
-    }
-    const topMembers = Object.entries(memberDutyCount)
-      .sort((a, b) => b[1].count - a[1].count)
-      .slice(0, 5)
+    const byStatus = (s: string) => duties?.filter(d => d.status === s).length ?? 0
+    const total = duties?.length ?? 0
+    const pending = byStatus('pending')
+    const inProg  = byStatus('in_progress')
+    const compl   = byStatus('completed')
+    const rev     = byStatus('reviewed')
 
     const needsReview = duties?.filter(d => d.status === 'completed') ?? []
 
+    const memberCount: Record<string, { name: string; count: number }> = {}
+    for (const d of duties ?? []) {
+      if (!d.assigned_to) continue
+      const name = (d as any).assignee?.full_name ?? 'Unknown'
+      if (!memberCount[d.assigned_to]) memberCount[d.assigned_to] = { name, count: 0 }
+      if (d.status === 'reviewed') memberCount[d.assigned_to].count++
+    }
+    const topMembers = Object.entries(memberCount).sort((a, b) => b[1].count - a[1].count).slice(0, 5)
+
+    const upcoming = events?.filter(e => e.status === 'upcoming').length ?? 0
+    const ongoing  = events?.filter(e => e.status === 'ongoing').length ?? 0
+
     return (
-      <div className="space-y-8">
-        {/* Welcome */}
-        <div className="flex items-start justify-between flex-wrap gap-4">
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '28px' }}>
+
+        {/* ── Header ── */}
+        <div className="flex items-start justify-between gap-4 flex-wrap">
           <div>
-            <h1 className="text-2xl font-bold text-gray-800">Good day, {profile.full_name.split(' ')[0]}.</h1>
-            <p className="text-gray-500 text-sm mt-1">
-              {activeAY ? `Active: ${activeAY.label}` : 'No active academic year set.'}
+            <h1 style={{ fontSize: '26px', fontWeight: 700, letterSpacing: '-0.4px', color: '#111', lineHeight: 1.1 }}>
+              Good day, {profile.full_name.split(' ')[0]}.
+            </h1>
+            <p style={{ fontSize: '13px', color: '#999', marginTop: '5px' }}>
+              {activeAY
+                ? <><span style={{ color: '#bbb' }}>Active year</span> &nbsp;{activeAY.label}</>
+                : 'No active academic year set.'
+              }
             </p>
           </div>
           {!activeAY && (
-            <Link href="/dashboard/academic-years" className="bg-yellow-50 border border-yellow-200 text-yellow-700 text-sm px-4 py-2 rounded-lg hover:bg-yellow-100 transition">
-              ⚠ Set an active academic year
+            <Link href="/dashboard/academic-years"
+              style={{ fontSize: '12.5px', color: '#b45309', background: '#fef3c7', border: '1px solid #fde68a', borderRadius: '8px', padding: '7px 14px', textDecoration: 'none' }}>
+              Set an active academic year
             </Link>
           )}
         </div>
 
-        {/* Stat cards dito */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <StatCard label="Active Members"    value={totalMembers ?? 0} href="/dashboard/members" />
-          <StatCard label="Creative Heads"    value={totalHeads ?? 0}   href="/dashboard/members" />
-          <StatCard label="Events This AY"    value={events?.length ?? 0} sub={`${upcoming} upcoming · ${ongoing} ongoing`} href="/dashboard/events" />
-          <StatCard label="Reviewed Duties"   value={reviewed} sub={`of ${total} total`} color="text-green-600" href="/dashboard/duties" />
+        {/* ── 4 stat cards ── */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '14px' }}>
+          <Stat label="Active Members"  value={totalMembers ?? 0} href="/dashboard/members" />
+          <Stat label="Creative Heads"  value={totalHeads ?? 0}   href="/dashboard/members" />
+          <Stat label="Events This AY"  value={events?.length ?? 0} sub={`${upcoming} upcoming · ${ongoing} ongoing`} href="/dashboard/events" />
+          <Stat label="Reviewed Duties" value={rev} sub={`of ${total} total`} accent="#16a34a" href="/dashboard/duties" />
         </div>
 
-        {/* Duty progress */}
-        <div className="bg-white rounded-xl shadow-sm p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">Duty Overview</h2>
-            <Link href="/dashboard/duties" className="text-xs text-gray-400 hover:text-gray-700 underline">View all</Link>
-          </div>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        {/* ── Duty overview ── */}
+        <div className={`${T.card} p-6`}>
+          <SectionHead title="Duty Overview" action={{ label: 'View all →', href: '/dashboard/duties' }} />
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1px', background: 'rgba(0,0,0,0.06)', borderRadius: '8px', overflow: 'hidden', marginBottom: '20px' }}>
             {[
-              { label: 'Pending',     value: pending,    color: 'text-gray-700' },
-              { label: 'In Progress', value: inProgress, color: 'text-blue-600' },
-              { label: 'Completed',   value: completed,  color: 'text-yellow-600', note: 'awaiting review' },
-              { label: 'Reviewed',    value: reviewed,   color: 'text-green-600' },
+              { label: 'Pending',     val: pending, color: '#555' },
+              { label: 'In Progress', val: inProg,  color: '#3b82f6' },
+              { label: 'Completed',   val: compl,   color: '#ca8a04', note: 'awaiting review' },
+              { label: 'Reviewed',    val: rev,     color: '#16a34a' },
             ].map(item => (
-              <div key={item.label} className="text-center p-4 bg-gray-50 rounded-xl">
-                <p className={`text-2xl font-bold ${item.color}`}>{item.value}</p>
-                <p className="text-xs text-gray-500 mt-1">{item.label}</p>
-                {item.note && <p className="text-xs text-gray-400">{item.note}</p>}
+              <div key={item.label} style={{ background: '#fff', padding: '16px', textAlign: 'center' }}>
+                <p style={{ fontSize: '24px', fontWeight: 700, color: item.color, letterSpacing: '-0.3px', lineHeight: 1 }}>{item.val}</p>
+                <p style={{ fontSize: '11px', color: '#999', marginTop: '4px', fontWeight: 500 }}>{item.label}</p>
+                {item.note && <p style={{ fontSize: '10px', color: '#bbb', marginTop: '2px' }}>{item.note}</p>}
               </div>
             ))}
           </div>
 
-          {/* Progress bar */}
-          {total > 0 && (
-            <div className="mt-4">
-              <div className="flex justify-between text-xs text-gray-400 mb-1">
-                <span>Overall progress</span>
-                <span>{Math.round((reviewed / total) * 100)}% reviewed</span>
+          {total > 0 ? (
+            <div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
+                <span style={{ fontSize: '11px', color: '#bbb' }}>Progress</span>
+                <span style={{ fontSize: '11px', color: '#bbb' }}>{Math.round((rev / total) * 100)}% reviewed</span>
               </div>
-              <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden flex">
-                <div className="h-full bg-gray-300 transition-all" style={{ width: `${(pending / total) * 100}%` }} />
-                <div className="h-full bg-blue-300 transition-all" style={{ width: `${(inProgress / total) * 100}%` }} />
-                <div className="h-full bg-yellow-300 transition-all" style={{ width: `${(completed / total) * 100}%` }} />
-                <div className="h-full bg-green-500 transition-all" style={{ width: `${(reviewed / total) * 100}%` }} />
+              <div style={{ height: '5px', background: '#f0f0ee', borderRadius: '99px', display: 'flex', overflow: 'hidden' }}>
+                <div style={{ background: '#d1d5db', width: `${(pending / total) * 100}%`, transition: 'width 0.5s ease' }} />
+                <div style={{ background: '#93c5fd', width: `${(inProg  / total) * 100}%`, transition: 'width 0.5s ease' }} />
+                <div style={{ background: '#fde047', width: `${(compl   / total) * 100}%`, transition: 'width 0.5s ease' }} />
+                <div style={{ background: '#4ade80', width: `${(rev     / total) * 100}%`, transition: 'width 0.5s ease' }} />
               </div>
             </div>
+          ) : (
+            <p style={{ fontSize: '13px', color: '#bbb' }}>No duties assigned yet.</p>
           )}
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* Needs review */}
-          <div className="bg-white rounded-xl shadow-sm p-6">
+        {/* ── Two columns ── */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
+
+          {/* Awaiting review */}
+          <div className={`${T.card} p-6`}>
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">Awaiting Review</h2>
-              <span className="text-xs bg-yellow-100 text-yellow-700 px-2 py-0.5 rounded-full font-medium">
-                {needsReview.length}
-              </span>
+              <p style={T.label}>Awaiting Review</p>
+              {needsReview.length > 0 && (
+                <span style={{ fontSize: '11px', fontWeight: 600, background: '#fefce8', color: '#ca8a04', padding: '2px 9px', borderRadius: '99px' }}>
+                  {needsReview.length}
+                </span>
+              )}
             </div>
             {needsReview.length === 0 ? (
-              <p className="text-gray-400 text-sm">All duties are reviewed. ✓</p>
+              <p style={{ fontSize: '13px', color: '#bbb' }}>All duties reviewed ✓</p>
             ) : (
-              <div className="space-y-2">
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
                 {needsReview.slice(0, 5).map(d => (
-                  <Link key={d.id} href={`/dashboard/duties/${d.id}`}
-                    className="flex items-center justify-between p-3 rounded-lg hover:bg-gray-50 transition group">
-                    <div>
-                      <p className="text-sm font-medium text-gray-800">{d.title}</p>
-                      <p className="text-xs text-gray-400">{(d as any).assignee?.full_name} · {(d as any).events?.title}</p>
+                  <Link key={d.id} href={`/dashboard/duties/${d.id}`} className={T.row} style={{ textDecoration: 'none' }}>
+                    <div style={{ minWidth: 0 }}>
+                      <p style={{ fontSize: '13.5px', fontWeight: 500, color: '#111', lineHeight: 1.3 }}>{d.title}</p>
+                      <p style={{ fontSize: '11.5px', color: '#aaa', marginTop: '2px' }}>
+                        {(d as any).assignee?.full_name} · {(d as any).events?.title}
+                      </p>
                     </div>
-                    <span className="text-gray-300 group-hover:text-gray-600 text-xs">→</span>
+                    <span style={{ fontSize: '11px', color: '#ca8a04', background: '#fefce8', padding: '3px 9px', borderRadius: '6px', flexShrink: 0, marginLeft: '8px' }}>Review</span>
                   </Link>
                 ))}
                 {needsReview.length > 5 && (
-                  <Link href="/dashboard/duties" className="block text-center text-xs text-gray-400 hover:text-gray-700 pt-2 underline">
+                  <Link href="/dashboard/duties" style={{ fontSize: '12px', color: '#bbb', textAlign: 'center', padding: '8px', textDecoration: 'none', display: 'block' }}
+                    className="hover:text-gray-500 transition-colors">
                     +{needsReview.length - 5} more
                   </Link>
                 )}
@@ -210,27 +233,24 @@ export default async function DashboardPage() {
           </div>
 
           {/* Top contributors */}
-          <div className="bg-white rounded-xl shadow-sm p-6">
-            <h2 className="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-4">Top Contributors</h2>
+          <div className={`${T.card} p-6`}>
+            <SectionHead title="Top Contributors" />
             {topMembers.length === 0 ? (
-              <p className="text-gray-400 text-sm">No reviewed duties yet.</p>
+              <p style={{ fontSize: '13px', color: '#bbb' }}>No reviewed duties yet.</p>
             ) : (
-              <div className="space-y-3">
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
                 {topMembers.map(([id, data], i) => (
-                  <Link key={id} href={`/dashboard/members/${id}`}
-                    className="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-50 transition">
-                    <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${
-                      i === 0 ? 'bg-yellow-100 text-yellow-700' :
-                      i === 1 ? 'bg-gray-100 text-gray-500' :
-                      'bg-gray-50 text-gray-400'
-                    }`}>
-                      {i + 1}
-                    </span>
-                    <div className="w-7 h-7 rounded-full bg-gray-900 text-white flex items-center justify-center text-xs font-bold shrink-0">
-                      {data.name.charAt(0)}
+                  <Link key={id} href={`/dashboard/members/${id}`} className={T.row} style={{ textDecoration: 'none' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <span style={{ fontSize: '11px', fontWeight: 700, color: i === 0 ? '#ca8a04' : '#ccc', width: '16px', textAlign: 'right', flexShrink: 0 }}>
+                        {i + 1}
+                      </span>
+                      <Avatar name={data.name} size={26} bg={i === 0 ? '#111' : '#d1d5db'} />
+                      <p style={{ fontSize: '13.5px', fontWeight: 500, color: '#111' }}>{data.name}</p>
                     </div>
-                    <p className="text-sm font-medium text-gray-800 flex-1">{data.name}</p>
-                    <span className="text-xs text-green-600 font-medium">{data.count} reviewed</span>
+                    <span style={{ fontSize: '12px', color: data.count > 0 ? '#16a34a' : '#ccc', fontWeight: 600, flexShrink: 0 }}>
+                      {data.count} reviewed
+                    </span>
                   </Link>
                 ))}
               </div>
@@ -238,26 +258,22 @@ export default async function DashboardPage() {
           </div>
         </div>
 
-        {/* Recent events */}
+        {/* ── Events list ── */}
         {events && events.length > 0 && (
-          <div className="bg-white rounded-xl shadow-sm p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">Events This Academic Year</h2>
-              <Link href="/dashboard/events" className="text-xs text-gray-400 hover:text-gray-700 underline">View all</Link>
-            </div>
-            <div className="space-y-2">
-              {events.slice(0, 6).map(event => (
-                <Link key={event.id} href={`/dashboard/events/${event.id}`}
-                  className="flex items-center justify-between p-3 rounded-lg hover:bg-gray-50 transition group">
+          <div className={`${T.card} p-6`}>
+            <SectionHead title="Events This Academic Year" action={{ label: 'View all →', href: '/dashboard/events' }} />
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+              {events.slice(0, 6).map(ev => (
+                <Link key={ev.id} href={`/dashboard/events/${ev.id}`} className={T.row} style={{ textDecoration: 'none' }}>
                   <div>
-                    <p className="text-sm font-medium text-gray-800">{event.title}</p>
-                    <p className="text-xs text-gray-400 mt-0.5">
-                      {new Date(event.event_date).toLocaleDateString('en-PH', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}
+                    <p style={{ fontSize: '13.5px', fontWeight: 500, color: '#111' }}>{ev.title}</p>
+                    <p style={{ fontSize: '11.5px', color: '#aaa', marginTop: '2px' }}>
+                      {new Date(ev.event_date).toLocaleDateString('en-PH', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}
                     </p>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <Badge status={event.status} />
-                    <span className="text-gray-300 group-hover:text-gray-600 text-xs">→</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <Badge status={ev.status} />
+                    <span style={{ fontSize: '14px', color: '#ddd' }} className="group-hover:text-gray-400 transition-colors">→</span>
                   </div>
                 </Link>
               ))}
@@ -268,97 +284,91 @@ export default async function DashboardPage() {
     )
   }
 
-  // ════════════════════════════════
-  // CREATIVE HEAD DASHBOARD
-  // ════════════════════════════════
+  // ══════════════════════════════════════════
+  //  CREATIVE HEAD
+  // ══════════════════════════════════════════
   if (profile.system_role === 'creative_head') {
     const [
       { data: events },
       { data: myDuties },
       { data: allDuties },
-      { data: members },
     ] = await Promise.all([
-      supabase.from('events').select('id, title, event_date, status').eq('academic_year_id', activeAY?.id ?? '').in('status', ['upcoming', 'ongoing']).order('event_date', { ascending: true }).limit(5),
-      supabase.from('duties').select('id, title, status, events(title)').eq('assigned_to', user.id).neq('status', 'reviewed').order('created_at', { ascending: false }).limit(5),
+      supabase.from('events').select('id, title, event_date, status').eq('academic_year_id', activeAY?.id ?? '').in('status', ['upcoming','ongoing']).order('event_date', { ascending: true }).limit(6),
+      supabase.from('duties').select('id, title, status, events(title)').eq('assigned_to', user.id).neq('status', 'reviewed').order('created_at', { ascending: false }).limit(8),
       supabase.from('duties').select('id, title, status, assigned_to, assignee:profiles!duties_assigned_to_fkey(full_name), events(title)').eq('assigned_by', user.id).order('created_at', { ascending: false }).limit(50),
-      supabase.from('profiles').select('id, full_name').eq('system_role', 'member').eq('is_active', true),
     ])
 
     const pendingReview = allDuties?.filter(d => d.status === 'completed') ?? []
-    const myPending = myDuties?.filter(d => d.status === 'pending').length ?? 0
-    const myInProgress = myDuties?.filter(d => d.status === 'in_progress').length ?? 0
+    const myPending  = myDuties?.filter(d => d.status === 'pending').length ?? 0
+    const myInProg   = myDuties?.filter(d => d.status === 'in_progress').length ?? 0
 
     return (
-      <div className="space-y-8">
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '28px' }}>
         <div>
-          <h1 className="text-2xl font-bold text-gray-800">Good day, {profile.full_name.split(' ')[0]}.</h1>
-          <p className="text-gray-500 text-sm mt-1">
-            {activeAY ? activeAY.label : 'No active academic year.'}
+          <h1 style={{ fontSize: '26px', fontWeight: 700, letterSpacing: '-0.4px', color: '#111', lineHeight: 1.1 }}>
+            Good day, {profile.full_name.split(' ')[0]}.
+          </h1>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '5px' }}>
+            <p style={{ fontSize: '13px', color: '#999' }}>{activeAY?.label ?? 'No active academic year'}</p>
             {profile.creative_head_role && profile.creative_head_role !== 'none' && (
-              <span className="ml-2 text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full capitalize">
+              <span style={{ fontSize: '10.5px', fontWeight: 600, background: '#eff6ff', color: '#3b82f6', padding: '2px 9px', borderRadius: '99px', textTransform: 'capitalize' as const }}>
                 {profile.creative_head_role.replace('_', ' ')}
               </span>
             )}
-          </p>
+          </div>
         </div>
 
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <StatCard label="My Pending Duties"    value={myPending}                  color={myPending > 0 ? 'text-gray-800' : 'text-gray-400'}   href="/dashboard/duties" />
-          <StatCard label="My In Progress"       value={myInProgress}               color={myInProgress > 0 ? 'text-blue-600' : 'text-gray-400'} href="/dashboard/duties" />
-          <StatCard label="Awaiting My Review"   value={pendingReview.length}       color={pendingReview.length > 0 ? 'text-yellow-600' : 'text-gray-400'} href="/dashboard/duties" />
-          <StatCard label="Upcoming Events"      value={events?.length ?? 0}        href="/dashboard/events" />
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '14px' }}>
+          <Stat label="My Pending"       value={myPending}           href="/dashboard/duties" />
+          <Stat label="In Progress"      value={myInProg}            accent="#3b82f6" href="/dashboard/duties" />
+          <Stat label="Awaiting Review"  value={pendingReview.length} accent={pendingReview.length > 0 ? '#ca8a04' : undefined} href="/dashboard/duties" />
+          <Stat label="Upcoming Events"  value={events?.length ?? 0} href="/dashboard/events" />
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* Duties needing review */}
-          <div className="bg-white rounded-xl shadow-sm p-6">
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
+          <div className={`${T.card} p-6`}>
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">Needs Review</h2>
+              <p style={T.label}>Needs Review</p>
               {pendingReview.length > 0 && (
-                <span className="text-xs bg-yellow-100 text-yellow-700 px-2 py-0.5 rounded-full">{pendingReview.length}</span>
+                <span style={{ fontSize: '11px', fontWeight: 600, background: '#fefce8', color: '#ca8a04', padding: '2px 9px', borderRadius: '99px' }}>
+                  {pendingReview.length}
+                </span>
               )}
             </div>
             {pendingReview.length === 0 ? (
-              <p className="text-gray-400 text-sm">Nothing to review right now. ✓</p>
+              <p style={{ fontSize: '13px', color: '#bbb' }}>Nothing to review ✓</p>
             ) : (
-              <div className="space-y-2">
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
                 {pendingReview.slice(0, 5).map(d => (
-                  <Link key={d.id} href={`/dashboard/duties/${d.id}`}
-                    className="flex items-center justify-between p-3 rounded-lg hover:bg-gray-50 transition group">
+                  <Link key={d.id} href={`/dashboard/duties/${d.id}`} className={T.row} style={{ textDecoration: 'none' }}>
                     <div>
-                      <p className="text-sm font-medium text-gray-800">{d.title}</p>
-                      <p className="text-xs text-gray-400">{(d as any).assignee?.full_name} · {(d as any).events?.title}</p>
+                      <p style={{ fontSize: '13.5px', fontWeight: 500, color: '#111' }}>{d.title}</p>
+                      <p style={{ fontSize: '11.5px', color: '#aaa', marginTop: '2px' }}>
+                        {(d as any).assignee?.full_name} · {(d as any).events?.title}
+                      </p>
                     </div>
-                    <span className="text-xs bg-yellow-100 text-yellow-700 px-2 py-0.5 rounded-full">Review</span>
+                    <span style={{ fontSize: '11px', color: '#ca8a04', background: '#fefce8', padding: '3px 9px', borderRadius: '6px', flexShrink: 0, marginLeft: '8px' }}>Review</span>
                   </Link>
                 ))}
               </div>
             )}
           </div>
 
-          {/* Upcoming events */}
-          <div className="bg-white rounded-xl shadow-sm p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">Upcoming Events</h2>
-              <Link href="/dashboard/events" className="text-xs text-gray-400 hover:text-gray-700 underline">View all</Link>
-            </div>
+          <div className={`${T.card} p-6`}>
+            <SectionHead title="Upcoming Events" action={{ label: 'View all →', href: '/dashboard/events' }} />
             {!events || events.length === 0 ? (
-              <p className="text-gray-400 text-sm">No upcoming events.</p>
+              <p style={{ fontSize: '13px', color: '#bbb' }}>No upcoming events.</p>
             ) : (
-              <div className="space-y-2">
-                {events.map(event => (
-                  <Link key={event.id} href={`/dashboard/events/${event.id}`}
-                    className="flex items-center justify-between p-3 rounded-lg hover:bg-gray-50 transition group">
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                {events.map(ev => (
+                  <Link key={ev.id} href={`/dashboard/events/${ev.id}`} className={T.row} style={{ textDecoration: 'none' }}>
                     <div>
-                      <p className="text-sm font-medium text-gray-800">{event.title}</p>
-                      <p className="text-xs text-gray-400 mt-0.5">
-                        {new Date(event.event_date).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' })}
+                      <p style={{ fontSize: '13.5px', fontWeight: 500, color: '#111' }}>{ev.title}</p>
+                      <p style={{ fontSize: '11.5px', color: '#aaa', marginTop: '2px' }}>
+                        {new Date(ev.event_date).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' })}
                       </p>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <Badge status={event.status} />
-                      <span className="text-gray-300 group-hover:text-gray-600 text-xs">→</span>
-                    </div>
+                    <Badge status={ev.status} />
                   </Link>
                 ))}
               </div>
@@ -366,25 +376,17 @@ export default async function DashboardPage() {
           </div>
         </div>
 
-        {/* My duties */}
         {myDuties && myDuties.length > 0 && (
-          <div className="bg-white rounded-xl shadow-sm p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">My Active Duties</h2>
-              <Link href="/dashboard/duties" className="text-xs text-gray-400 hover:text-gray-700 underline">View all</Link>
-            </div>
-            <div className="space-y-2">
+          <div className={`${T.card} p-6`}>
+            <SectionHead title="My Active Duties" action={{ label: 'View all →', href: '/dashboard/duties' }} />
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
               {myDuties.map(d => (
-                <Link key={d.id} href={`/dashboard/duties/${d.id}`}
-                  className="flex items-center justify-between p-3 rounded-lg hover:bg-gray-50 transition group">
+                <Link key={d.id} href={`/dashboard/duties/${d.id}`} className={T.row} style={{ textDecoration: 'none' }}>
                   <div>
-                    <p className="text-sm font-medium text-gray-800">{d.title}</p>
-                    <p className="text-xs text-gray-400">{(d as any).events?.title}</p>
+                    <p style={{ fontSize: '13.5px', fontWeight: 500, color: '#111' }}>{d.title}</p>
+                    <p style={{ fontSize: '11.5px', color: '#aaa', marginTop: '2px' }}>{(d as any).events?.title}</p>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <Badge status={d.status} />
-                    <span className="text-gray-300 group-hover:text-gray-600 text-xs">→</span>
-                  </div>
+                  <Badge status={d.status} />
                 </Link>
               ))}
             </div>
@@ -394,133 +396,100 @@ export default async function DashboardPage() {
     )
   }
 
-  // MEMBER DASHBOARD
-  const [
-    { data: myDuties },
-    { data: myEvents },
-  ] = await Promise.all([
-    supabase
-      .from('duties')
-      .select('id, title, status, duty_type, priority, due_date, events(id, title, event_date)')
-      .eq('assigned_to', user.id)
-      .order('created_at', { ascending: false }),
-    supabase
-      .from('events')
-      .select('id, title, event_date, status')
-      .eq('academic_year_id', activeAY?.id ?? '')
-      .in('status', ['upcoming', 'ongoing'])
-      .order('event_date', { ascending: true })
-      .limit(5),
+  // ══════════════════════════════════════════
+  //  MEMBER
+  // ══════════════════════════════════════════
+  const [{ data: myDuties }, { data: myEvents }] = await Promise.all([
+    supabase.from('duties').select('id, title, status, duty_type, priority, due_date, events(id, title, event_date)')
+      .eq('assigned_to', user.id).order('created_at', { ascending: false }),
+    supabase.from('events').select('id, title, event_date, status')
+      .eq('academic_year_id', activeAY?.id ?? '').in('status', ['upcoming','ongoing'])
+      .order('event_date', { ascending: true }).limit(5),
   ])
 
-  const myPending    = myDuties?.filter(d => d.status === 'pending').length ?? 0
-  const myProgress   = myDuties?.filter(d => d.status === 'in_progress').length ?? 0
-  const myCompleted  = myDuties?.filter(d => d.status === 'completed').length ?? 0
-  const myReviewed   = myDuties?.filter(d => d.status === 'reviewed').length ?? 0
-  const myTotal      = myDuties?.length ?? 0
-
-  const activeDuties = myDuties?.filter(d => d.status === 'pending' || d.status === 'in_progress') ?? []
+  const byS = (s: string) => myDuties?.filter(d => d.status === s).length ?? 0
+  const mPend = byS('pending'), mProg = byS('in_progress')
+  const mComp = byS('completed'), mRev = byS('reviewed')
+  const mTotal = myDuties?.length ?? 0
+  const active = myDuties?.filter(d => d.status === 'pending' || d.status === 'in_progress') ?? []
 
   return (
-    <div className="space-y-8">
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '28px' }}>
       <div>
-        <h1 className="text-2xl font-bold text-gray-800">Good day, {profile.full_name.split(' ')[0]}.</h1>
-        <p className="text-gray-500 text-sm mt-1">
-          {activeAY ? activeAY.label : 'No active academic year.'}
-        </p>
+        <h1 style={{ fontSize: '26px', fontWeight: 700, letterSpacing: '-0.4px', color: '#111', lineHeight: 1.1 }}>
+          Good day, {profile.full_name.split(' ')[0]}.
+        </h1>
+        <p style={{ fontSize: '13px', color: '#999', marginTop: '5px' }}>{activeAY?.label ?? 'No active academic year'}</p>
       </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <StatCard label="Pending"    value={myPending}   color={myPending > 0 ? 'text-gray-800' : 'text-gray-400'}    href="/dashboard/duties" />
-        <StatCard label="In Progress" value={myProgress}  color={myProgress > 0 ? 'text-blue-600' : 'text-gray-400'}   href="/dashboard/duties" />
-        <StatCard label="Completed"  value={myCompleted} color={myCompleted > 0 ? 'text-yellow-600' : 'text-gray-400'} href="/dashboard/duties" />
-        <StatCard label="Reviewed"   value={myReviewed}  color={myReviewed > 0 ? 'text-green-600' : 'text-gray-400'}   href="/dashboard/duties" />
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '14px' }}>
+        <Stat label="Pending"     value={mPend} href="/dashboard/duties" />
+        <Stat label="In Progress" value={mProg} accent="#3b82f6" href="/dashboard/duties" />
+        <Stat label="Completed"   value={mComp} accent="#ca8a04" href="/dashboard/duties" />
+        <Stat label="Reviewed"    value={mRev}  accent="#16a34a" href="/dashboard/duties" />
       </div>
 
-      {/* Progress bar */}
-      {myTotal > 0 && (
-        <div className="bg-white rounded-xl shadow-sm p-6">
-          <div className="flex items-center justify-between mb-2">
-            <h2 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">My Progress</h2>
-            <span className="text-xs text-gray-400">{myReviewed} of {myTotal} completed</span>
+      {mTotal > 0 && (
+        <div className={`${T.card} p-6`}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+            <p style={T.label}>My Progress</p>
+            <span style={{ fontSize: '12px', color: '#bbb' }}>{mRev} of {mTotal} reviewed</span>
           </div>
-          <div className="w-full h-3 bg-gray-100 rounded-full overflow-hidden flex">
-            <div className="h-full bg-gray-300" style={{ width: `${(myPending / myTotal) * 100}%` }} />
-            <div className="h-full bg-blue-300" style={{ width: `${(myProgress / myTotal) * 100}%` }} />
-            <div className="h-full bg-yellow-300" style={{ width: `${(myCompleted / myTotal) * 100}%` }} />
-            <div className="h-full bg-green-500" style={{ width: `${(myReviewed / myTotal) * 100}%` }} />
+          <div style={{ height: '5px', background: '#f0f0ee', borderRadius: '99px', display: 'flex', overflow: 'hidden', marginBottom: '10px' }}>
+            <div style={{ background: '#d1d5db', width: `${(mPend / mTotal) * 100}%` }} />
+            <div style={{ background: '#93c5fd', width: `${(mProg / mTotal) * 100}%` }} />
+            <div style={{ background: '#fde047', width: `${(mComp / mTotal) * 100}%` }} />
+            <div style={{ background: '#4ade80', width: `${(mRev  / mTotal) * 100}%` }} />
           </div>
-          <div className="flex gap-4 mt-2">
-            {[
-              { label: 'Pending', color: 'bg-gray-300' },
-              { label: 'In Progress', color: 'bg-blue-300' },
-              { label: 'Completed', color: 'bg-yellow-300' },
-              { label: 'Reviewed', color: 'bg-green-500' },
-            ].map(l => (
-              <div key={l.label} className="flex items-center gap-1">
-                <span className={`w-2 h-2 rounded-full ${l.color}`} />
-                <span className="text-xs text-gray-400">{l.label}</span>
+          <div style={{ display: 'flex', gap: '16px' }}>
+            {[['#d1d5db','Pending'],['#93c5fd','In Progress'],['#fde047','Completed'],['#4ade80','Reviewed']].map(([c,l]) => (
+              <div key={l} style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: c, flexShrink: 0 }} />
+                <span style={{ fontSize: '11px', color: '#bbb' }}>{l}</span>
               </div>
             ))}
           </div>
         </div>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Active duties */}
-        <div className="bg-white rounded-xl shadow-sm p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">My Active Duties</h2>
-            <Link href="/dashboard/duties" className="text-xs text-gray-400 hover:text-gray-700 underline">View all</Link>
-          </div>
-          {activeDuties.length === 0 ? (
-            <p className="text-gray-400 text-sm">No active duties right now.</p>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
+        <div className={`${T.card} p-6`}>
+          <SectionHead title="My Active Duties" action={{ label: 'View all →', href: '/dashboard/duties' }} />
+          {active.length === 0 ? (
+            <p style={{ fontSize: '13px', color: '#bbb' }}>No active duties right now.</p>
           ) : (
-            <div className="space-y-2">
-              {activeDuties.slice(0, 5).map(d => (
-                <Link key={d.id} href={`/dashboard/duties/${d.id}`}
-                  className="flex items-center justify-between p-3 rounded-lg hover:bg-gray-50 transition group">
-                  <div className="min-w-0">
-                    <p className="text-sm font-medium text-gray-800 truncate">{d.title}</p>
-                    <p className="text-xs text-gray-400 mt-0.5 truncate">
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+              {active.slice(0, 5).map(d => (
+                <Link key={d.id} href={`/dashboard/duties/${d.id}`} className={T.row} style={{ textDecoration: 'none' }}>
+                  <div style={{ minWidth: 0 }}>
+                    <p style={{ fontSize: '13.5px', fontWeight: 500, color: '#111', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{d.title}</p>
+                    <p style={{ fontSize: '11.5px', color: '#aaa', marginTop: '2px' }}>
                       {(d as any).events?.title}
                       {d.due_date && ` · Due ${new Date(d.due_date).toLocaleDateString('en-PH', { month: 'short', day: 'numeric' })}`}
                     </p>
                   </div>
-                  <div className="flex items-center gap-2 shrink-0 ml-2">
-                    <Badge status={d.status} />
-                    <span className="text-gray-300 group-hover:text-gray-600 text-xs">→</span>
-                  </div>
+                  <div style={{ flexShrink: 0, marginLeft: '8px' }}><Badge status={d.status} /></div>
                 </Link>
               ))}
             </div>
           )}
         </div>
 
-        {/* Upcoming events */}
-        <div className="bg-white rounded-xl shadow-sm p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">Upcoming Events</h2>
-            <Link href="/dashboard/events" className="text-xs text-gray-400 hover:text-gray-700 underline">View all</Link>
-          </div>
+        <div className={`${T.card} p-6`}>
+          <SectionHead title="Upcoming Events" action={{ label: 'View all →', href: '/dashboard/events' }} />
           {!myEvents || myEvents.length === 0 ? (
-            <p className="text-gray-400 text-sm">No upcoming events.</p>
+            <p style={{ fontSize: '13px', color: '#bbb' }}>No upcoming events.</p>
           ) : (
-            <div className="space-y-2">
-              {myEvents.map(event => (
-                <Link key={event.id} href={`/dashboard/events/${event.id}`}
-                  className="flex items-center justify-between p-3 rounded-lg hover:bg-gray-50 transition group">
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+              {myEvents.map(ev => (
+                <Link key={ev.id} href={`/dashboard/events/${ev.id}`} className={T.row} style={{ textDecoration: 'none' }}>
                   <div>
-                    <p className="text-sm font-medium text-gray-800">{event.title}</p>
-                    <p className="text-xs text-gray-400 mt-0.5">
-                      {new Date(event.event_date).toLocaleDateString('en-PH', { weekday: 'short', month: 'short', day: 'numeric' })}
+                    <p style={{ fontSize: '13.5px', fontWeight: 500, color: '#111' }}>{ev.title}</p>
+                    <p style={{ fontSize: '11.5px', color: '#aaa', marginTop: '2px' }}>
+                      {new Date(ev.event_date).toLocaleDateString('en-PH', { weekday: 'short', month: 'short', day: 'numeric' })}
                     </p>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <Badge status={event.status} />
-                    <span className="text-gray-300 group-hover:text-gray-600 text-xs">→</span>
-                  </div>
+                  <Badge status={ev.status} />
                 </Link>
               ))}
             </div>
@@ -528,19 +497,17 @@ export default async function DashboardPage() {
         </div>
       </div>
 
-      {/* Accomplishment history */}
-      {myReviewed > 0 && (
-        <div className="bg-white rounded-xl shadow-sm p-6">
-          <h2 className="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-4">Reviewed Accomplishments</h2>
-          <div className="space-y-2">
+      {mRev > 0 && (
+        <div className={`${T.card} p-6`}>
+          <SectionHead title="Reviewed Accomplishments" />
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
             {myDuties?.filter(d => d.status === 'reviewed').slice(0, 5).map(d => (
-              <Link key={d.id} href={`/dashboard/duties/${d.id}`}
-                className="flex items-center justify-between p-3 rounded-lg hover:bg-gray-50 transition group">
+              <Link key={d.id} href={`/dashboard/duties/${d.id}`} className={T.row} style={{ textDecoration: 'none' }}>
                 <div>
-                  <p className="text-sm font-medium text-gray-800">{d.title}</p>
-                  <p className="text-xs text-gray-400">{(d as any).events?.title}</p>
+                  <p style={{ fontSize: '13.5px', fontWeight: 500, color: '#111' }}>{d.title}</p>
+                  <p style={{ fontSize: '11.5px', color: '#aaa', marginTop: '2px' }}>{(d as any).events?.title}</p>
                 </div>
-                <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">Reviewed ★</span>
+                <span style={{ fontSize: '11px', fontWeight: 600, color: '#16a34a', background: '#f0fdf4', padding: '3px 9px', borderRadius: '6px' }}>Reviewed ★</span>
               </Link>
             ))}
           </div>

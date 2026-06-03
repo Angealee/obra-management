@@ -72,7 +72,7 @@ export default function Sidebar({ profile }: { profile: Profile }) {
   const initials = profile.full_name
     .split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase()
 
-  const width = !mounted ? '232px' : collapsed ? '67px' : '246px'
+  const width = !mounted ? '232px' : collapsed ? '67px' : '250px'
 
   return (
     <aside
