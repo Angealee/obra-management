@@ -394,9 +394,7 @@ export default async function DashboardPage() {
     )
   }
 
-  // ════════════════════════════════
   // MEMBER DASHBOARD
-  // ════════════════════════════════
   const [
     { data: myDuties },
     { data: myEvents },

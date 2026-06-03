@@ -72,79 +72,106 @@ export default function Sidebar({ profile }: { profile: Profile }) {
   const initials = profile.full_name
     .split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase()
 
-  // Prevent flash of wrong state before localStorage loads
-  const width = !mounted ? '232px' : collapsed ? '64px' : '232px'
+  const width = !mounted ? '232px' : collapsed ? '67px' : '246px'
 
   return (
     <aside
       className={`sidebar ${collapsed ? 'collapsed' : ''} shrink-0 flex flex-col h-screen sticky top-0`}
       style={{ width, background: '#0D0D0D', borderRight: '1px solid rgba(255,255,255,0.05)' }}
     >
-      {/* ── Header: logo + collapse button ── */}
+      {/* logo + collapse button */}
       <div
         style={{
           height: '56px',
           borderBottom: '1px solid rgba(255,255,255,0.05)',
           display: 'flex',
           alignItems: 'center',
-          justifyContent: 'space-between',
-          padding: '0 10px 0 14px',
+          justifyContent: collapsed ? 'center' : 'space-between',
+          padding: collapsed ? '0 8px' : '0 10px 0 14px',
           flexShrink: 0,
+          background: '#0D0D0D',
+          gap: '8px',
+          overflow: 'hidden',
+          transition: 'padding 0.25s ease, justify-content 0.25s ease',
         }}
       >
-        {/* Logo mark + wordmark */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0 }}>
-          <div style={{ width: '28px', height: '28px', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#CC0000' }}>
-            <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-              <polygon points="3,17 10,3 17,17" fill="currentColor" opacity="0.9"/>
-              <polygon points="7,17 10,10 13,17" fill="#0D0D0D"/>
-            </svg>
-          </div>
-          <div className="sidebar-label" style={{ minWidth: 0 }}>
-            <p style={{ fontSize: '14px', fontWeight: 700, color: '#fff', letterSpacing: '-0.2px', lineHeight: 1, whiteSpace: 'nowrap' }}>
-              Obra
-            </p>
-            <p style={{ fontSize: '10px', color: 'rgba(255,255,255,0.3)', marginTop: '2px', letterSpacing: '0.04em', whiteSpace: 'nowrap' }}>
-              Management
-            </p>
-          </div>
-        </div>
-
-        {/* Collapse toggle button */}
+        {/* Animated Logo */}
         <button
-          onClick={toggle}
-          title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          type="button"
+          onClick={collapsed ? toggle : undefined}
+          title={collapsed ? 'Expand sidebar' : 'Obra Logo'}
           style={{
-            flexShrink: 0,
-            width: '28px',
-            height: '28px',
+            width: collapsed ? '40px' : '96px',
+            height: collapsed ? '40px' : '56px',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            borderRadius: '6px',
-            border: '1px solid rgba(255,255,255,0.08)',
-            background: 'rgba(255,255,255,0.04)',
-            color: 'rgba(255,255,255,0.45)',
-            cursor: 'pointer',
-            transition: 'background 0.15s ease, color 0.15s ease',
-          }}
-          onMouseEnter={e => {
-            e.currentTarget.style.background = 'rgba(255,255,255,0.10)'
-            e.currentTarget.style.color = 'rgba(255,255,255,0.85)'
-          }}
-          onMouseLeave={e => {
-            e.currentTarget.style.background = 'rgba(255,255,255,0.04)'
-            e.currentTarget.style.color = 'rgba(255,255,255,0.45)'
+            flexShrink: 0,
+            overflow: 'hidden',
+            background: 'transparent',
+            border: 'none',
+            padding: 0,
+            cursor: collapsed ? 'pointer' : 'default',
+            transition:
+              'width 0.28s cubic-bezier(0.4, 0, 0.2, 1), height 0.28s cubic-bezier(0.4, 0, 0.2, 1), transform 0.28s cubic-bezier(0.4, 0, 0.2, 1)',
+            transform: collapsed ? 'scale(0.95)' : 'scale(1)',
           }}
         >
-          {collapsed
-            ? <PanelLeftOpen size={13} strokeWidth={2} />
-            : <PanelLeftClose size={13} strokeWidth={2} />
-          }
+          <img
+            src="/whiteobralogo.png"
+            alt="Obra Logo"
+            style={{
+              width: collapsed ? '36px' : '96px',
+              height: collapsed ? '36px' : '76px',
+              objectFit: 'contain',
+              display: 'block',
+              opacity: collapsed ? 0.95 : 1,
+              transform: collapsed
+                ? 'scale(0.9) rotate(-3deg)'
+                : 'scale(1) rotate(0deg)',
+              transition:
+                'width 0.28s cubic-bezier(0.4, 0, 0.2, 1), height 0.28s cubic-bezier(0.4, 0, 0.2, 1), transform 0.28s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.2s ease',
+            }}
+          />
         </button>
+
+        {/* Collapse toggle button */}
+        {!collapsed && (
+          <button
+            onClick={toggle}
+            title="Collapse sidebar"
+            style={{
+              flexShrink: 0,
+              width: '28px',
+              height: '28px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              borderRadius: '6px',
+              border: '1px solid rgba(255,255,255,0.08)',
+              background: 'rgba(255,255,255,0.04)',
+              color: 'rgba(255,255,255,0.55)',
+              cursor: 'pointer',
+              opacity: collapsed ? 0 : 1,
+              transform: collapsed ? 'translateX(8px) scale(0.9)' : 'translateX(0) scale(1)',
+              transition:
+                'background 0.15s ease, color 0.15s ease, opacity 0.2s ease, transform 0.2s ease',
+            }}
+            onMouseEnter={e => {
+              e.currentTarget.style.background = 'rgba(255,255,255,0.10)'
+              e.currentTarget.style.color = 'rgba(255,255,255,0.85)'
+            }}
+            onMouseLeave={e => {
+              e.currentTarget.style.background = 'rgba(255,255,255,0.04)'
+              e.currentTarget.style.color = 'rgba(255,255,255,0.55)'
+            }}
+          >
+            <PanelLeftClose size={14} strokeWidth={2.2} />
+          </button>
+        )}
       </div>
 
-      {/* ── Navigation ── */}
+      {/* Navigation */}
       <nav style={{ flex: 1, padding: '8px', overflowY: 'auto', overflowX: 'hidden' }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
           {visibleNav.map(item => {
@@ -156,9 +183,10 @@ export default function Sidebar({ profile }: { profile: Profile }) {
                 className={`sidebar-nav-item ${active ? 'active' : ''}`}
               >
                 <item.icon
-                  size={16}
+                  size={ collapsed ? 18 : 16}
                   style={{ flexShrink: 0 }}
                   strokeWidth={active ? 2.2 : 1.75}
+                  color={active ? '#CC0000' : 'rgba(255,255,255,0.55)'}
                 />
                 <span className="sidebar-label">{item.label}</span>
                 <span className="nav-tooltip">{item.label}</span>
@@ -168,7 +196,7 @@ export default function Sidebar({ profile }: { profile: Profile }) {
         </div>
       </nav>
 
-      {/* ── User + sign out ── */}
+      {/* ── User and sign out ── */}
       <div style={{ borderTop: '1px solid rgba(255,255,255,0.05)', padding: '8px', flexShrink: 0 }}>
         {/* User info */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '8px 6px', marginBottom: '2px' }}>
