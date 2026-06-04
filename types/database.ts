@@ -114,3 +114,20 @@ export type ChecklistItem = {
   is_done: boolean
   created_at: string
 }
+
+export type AnnouncementVisibility = 'all' | 'creative_heads' | 'members'
+
+export type Announcement = {
+  id: string
+  academic_year_id: string | null
+  title: string
+  content: string
+  posted_by: string | null
+  visibility: AnnouncementVisibility
+  created_at: string
+}
+
+export type AnnouncementWithPoster = Announcement & {
+  academic_years: { label: string } | null
+  poster: { full_name: string } | null
+}

@@ -7,6 +7,7 @@ import {
   LayoutDashboard, Users, Calendar, CheckSquare,
   BarChart2, GraduationCap, LogOut,
   PanelLeftClose, PanelLeftOpen,
+  BarChart3,
 } from 'lucide-react'
 
 type Profile = {
@@ -19,11 +20,13 @@ type Profile = {
 
 const NAV = [
   { href: '/dashboard',                label: 'Dashboard',      icon: LayoutDashboard, roles: ['consultant','creative_head','member'] },
+  { href: '/dashboard/announcements', label: 'Announcements', icon:  BarChart3,       roles: ['consultant','creative_head','member'] },
   { href: '/dashboard/members',        label: 'Members',        icon: Users,           roles: ['consultant','creative_head'] },
   { href: '/dashboard/events',         label: 'Events',         icon: Calendar,        roles: ['consultant','creative_head'] },
   { href: '/dashboard/duties',         label: 'Duties',         icon: CheckSquare,     roles: ['consultant','creative_head','member'] },
   { href: '/dashboard/workloads',      label: 'Workloads',      icon: BarChart2,       roles: ['consultant','creative_head'] },
   { href: '/dashboard/academic-years', label: 'Academic Years', icon: GraduationCap,   roles: ['consultant'] },
+  
 ]
 
 const ROLE_LABEL: Record<string, string> = {
@@ -92,7 +95,7 @@ export default function Sidebar({ profile }: { profile: Profile }) {
           flexShrink: 0,
         }}
       >
-        {/* Logo mark + wordmark */}
+        {/*title */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0 }}>
           <div style={{ width: '28px', height: '28px', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#CC0000' }}>
             <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
@@ -110,7 +113,7 @@ export default function Sidebar({ profile }: { profile: Profile }) {
           </div>
         </div>
 
-        {/* Collapse toggle button */}
+        {/* menu hide button */}
         <button
           onClick={toggle}
           title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
