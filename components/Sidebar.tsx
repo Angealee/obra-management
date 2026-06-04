@@ -16,6 +16,7 @@ type Profile = {
   system_role: string
   creative_head_role: string | null
   email: string
+  avatar_url: string | null
 }
 
 const NAV = [
@@ -26,7 +27,6 @@ const NAV = [
   { href: '/dashboard/duties',         label: 'Duties',         icon: CheckSquare,     roles: ['consultant','creative_head','member'] },
   { href: '/dashboard/workloads',      label: 'Workloads',      icon: BarChart2,       roles: ['consultant','creative_head'] },
   { href: '/dashboard/academic-years', label: 'Academic Years', icon: GraduationCap,   roles: ['consultant'] },
-  
 ]
 
 const ROLE_LABEL: Record<string, string> = {
@@ -172,17 +172,23 @@ export default function Sidebar({ profile }: { profile: Profile }) {
       </nav>
 
       {/* ── User + sign out ── */}
-      <div style={{ borderTop: '1px solid rgba(255,255,255,0.05)', padding: '8px', flexShrink: 0 }}>
-        {/* User info */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '8px 6px', marginBottom: '2px' }}>
-          <div style={{
-            width: '28px', height: '28px', flexShrink: 0,
-            borderRadius: '50%', background: '#CC0000',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: '11px', fontWeight: 700, color: '#fff',
-          }}>
-            {initials}
-          </div>
+      <Link href="/dashboard/profile" style={{ textDecoration: 'none', display: 'block' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '8px 6px', marginBottom: '2px', borderRadius: '8px', transition: 'background 0.15s ease' }}
+          onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.06)')}
+          onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+        >
+          {/* Avatar — show image if exists, otherwise initials */}
+          {profile.avatar_url ? (
+            <img
+              src={profile.avatar_url}
+              alt={profile.full_name}
+              style={{ width: '28px', height: '28px', borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }}
+            />
+          ) : (
+            <div style={{ width: '28px', height: '28px', flexShrink: 0, borderRadius: '50%', background: '#CC0000', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', fontWeight: 700, color: '#fff' }}>
+              {initials}
+            </div>
+          )}
           <div className="sidebar-label" style={{ minWidth: 0 }}>
             <p style={{ fontSize: '12.5px', fontWeight: 500, color: '#fff', lineHeight: 1.2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
               {profile.full_name}
@@ -192,6 +198,9 @@ export default function Sidebar({ profile }: { profile: Profile }) {
             </p>
           </div>
         </div>
+      </Link>
+
+        
 
         {/* Sign out */}
         <form action="/auth/signout" method="post">
@@ -201,7 +210,6 @@ export default function Sidebar({ profile }: { profile: Profile }) {
             <span className="nav-tooltip">Sign out</span>
           </button>
         </form>
-      </div>
     </aside>
   )
 }
