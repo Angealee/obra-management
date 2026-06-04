@@ -7,6 +7,7 @@ import {
   LayoutDashboard, Users, Calendar, CheckSquare,
   BarChart2, GraduationCap, LogOut,
   PanelLeftClose, PanelLeftOpen,
+  BarChart3,
 } from 'lucide-react'
 
 type Profile = {
@@ -15,10 +16,12 @@ type Profile = {
   system_role: string
   creative_head_role: string | null
   email: string
+  avatar_url: string | null
 }
 
 const NAV = [
   { href: '/dashboard',                label: 'Dashboard',      icon: LayoutDashboard, roles: ['consultant','creative_head','member'] },
+  { href: '/dashboard/announcements', label: 'Announcements', icon:  BarChart3,       roles: ['consultant','creative_head','member'] },
   { href: '/dashboard/members',        label: 'Members',        icon: Users,           roles: ['consultant','creative_head'] },
   { href: '/dashboard/events',         label: 'Events',         icon: Calendar,        roles: ['consultant','creative_head'] },
   { href: '/dashboard/duties',         label: 'Duties',         icon: CheckSquare,     roles: ['consultant','creative_head','member'] },
@@ -95,7 +98,25 @@ export default function Sidebar({ profile }: { profile: Profile }) {
           transition: 'padding 0.25s ease, justify-content 0.25s ease',
         }}
       >
-        {/* Animated Logo */}
+        {/*title */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0 }}>
+          <div style={{ width: '28px', height: '28px', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#CC0000' }}>
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+              <polygon points="3,17 10,3 17,17" fill="currentColor" opacity="0.9"/>
+              <polygon points="7,17 10,10 13,17" fill="#0D0D0D"/>
+            </svg>
+          </div>
+          <div className="sidebar-label" style={{ minWidth: 0 }}>
+            <p style={{ fontSize: '14px', fontWeight: 700, color: '#fff', letterSpacing: '-0.2px', lineHeight: 1, whiteSpace: 'nowrap' }}>
+              Obra
+            </p>
+            <p style={{ fontSize: '10px', color: 'rgba(255,255,255,0.3)', marginTop: '2px', letterSpacing: '0.04em', whiteSpace: 'nowrap' }}>
+              Management
+            </p>
+          </div>
+        </div>
+
+        {/* menu hide button */}
         <button
           type="button"
           onClick={collapsed ? toggle : undefined}
@@ -196,18 +217,24 @@ export default function Sidebar({ profile }: { profile: Profile }) {
         </div>
       </nav>
 
-      {/* ── User and sign out ── */}
-      <div style={{ borderTop: '1px solid rgba(255,255,255,0.05)', padding: '8px', flexShrink: 0 }}>
-        {/* User info */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '8px 6px', marginBottom: '2px' }}>
-          <div style={{
-            width: '28px', height: '28px', flexShrink: 0,
-            borderRadius: '50%', background: '#CC0000',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: '11px', fontWeight: 700, color: '#fff',
-          }}>
-            {initials}
-          </div>
+      {/* ── User + sign out ── */}
+      <Link href="/dashboard/profile" style={{ textDecoration: 'none', display: 'block' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '8px 6px', marginBottom: '2px', borderRadius: '8px', transition: 'background 0.15s ease' }}
+          onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.06)')}
+          onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+        >
+          {/* Avatar — show image if exists, otherwise initials */}
+          {profile.avatar_url ? (
+            <img
+              src={profile.avatar_url}
+              alt={profile.full_name}
+              style={{ width: '28px', height: '28px', borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }}
+            />
+          ) : (
+            <div style={{ width: '28px', height: '28px', flexShrink: 0, borderRadius: '50%', background: '#CC0000', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', fontWeight: 700, color: '#fff' }}>
+              {initials}
+            </div>
+          )}
           <div className="sidebar-label" style={{ minWidth: 0 }}>
             <p style={{ fontSize: '12.5px', fontWeight: 500, color: '#fff', lineHeight: 1.2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
               {profile.full_name}
@@ -217,6 +244,9 @@ export default function Sidebar({ profile }: { profile: Profile }) {
             </p>
           </div>
         </div>
+      </Link>
+
+        
 
         {/* Sign out */}
         <form action="/auth/signout" method="post">
@@ -226,7 +256,6 @@ export default function Sidebar({ profile }: { profile: Profile }) {
             <span className="nav-tooltip">Sign out</span>
           </button>
         </form>
-      </div>
     </aside>
   )
 }
