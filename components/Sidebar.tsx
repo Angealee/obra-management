@@ -98,24 +98,7 @@ export default function Sidebar({ profile }: { profile: Profile }) {
           transition: 'padding 0.25s ease, justify-content 0.25s ease',
         }}
       >
-        {/*title */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0 }}>
-          <div style={{ width: '28px', height: '28px', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#CC0000' }}>
-            <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-              <polygon points="3,17 10,3 17,17" fill="currentColor" opacity="0.9"/>
-              <polygon points="7,17 10,10 13,17" fill="#0D0D0D"/>
-            </svg>
-          </div>
-          <div className="sidebar-label" style={{ minWidth: 0 }}>
-            <p style={{ fontSize: '14px', fontWeight: 700, color: '#fff', letterSpacing: '-0.2px', lineHeight: 1, whiteSpace: 'nowrap' }}>
-              Obra
-            </p>
-            <p style={{ fontSize: '10px', color: 'rgba(255,255,255,0.3)', marginTop: '2px', letterSpacing: '0.04em', whiteSpace: 'nowrap' }}>
-              Management
-            </p>
-          </div>
-        </div>
-
+        
         {/* menu hide button */}
         <button
           type="button"
