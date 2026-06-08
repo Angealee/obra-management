@@ -1,27 +1,23 @@
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
-import type { Profile, DutyWithDetails } from '@/types/database'
+import type { Profile } from '@/types/database'
+import WorkloadBadge from '@/components/WorkLoadBadge'
 
-const statusStyles: Record<string, string> = {
-  pending:     'bg-gray-100 text-gray-600',
-  in_progress: 'bg-blue-100 text-blue-700',
-  completed:   'bg-yellow-100 text-yellow-700',
-  reviewed:    'bg-green-100 text-green-700',
+const statusStyle: Record<string, [string, string]> = {
+  pending:     ['#f3f4f6', '#6b7280'],
+  in_progress: ['#eff6ff', '#3b82f6'],
+  completed:   ['#fefce8', '#ca8a04'],
+  reviewed:    ['#f0fdf4', '#16a34a'],
 }
-
-const statusLabels: Record<string, string> = {
-  pending:     'Pending',
-  in_progress: 'In Progress',
-  completed:   'Completed',
-  reviewed:    'Reviewed',
+const statusLabel: Record<string, string> = {
+  pending: 'Pending', in_progress: 'In Progress', completed: 'Completed', reviewed: 'Reviewed',
 }
-
-const priorityStyles: Record<string, string> = {
-  low:    'bg-gray-50 text-gray-400',
-  normal: 'bg-gray-100 text-gray-500',
-  high:   'bg-orange-100 text-orange-600',
-  urgent: 'bg-red-100 text-red-600',
+const priorityStyle: Record<string, [string, string]> = {
+  low:    ['#f9fafb', '#9ca3af'],
+  normal: ['#f3f4f6', '#6b7280'],
+  high:   ['#fff7ed', '#ea580c'],
+  urgent: ['#fff1f2', '#CC0000'],
 }
 
 export default async function DutiesPage() {
@@ -31,185 +27,177 @@ export default async function DutiesPage() {
   if (!user) redirect('/login')
 
   const { data: profile } = await supabase
-    .from('profiles')
-    .select('*')
-    .eq('id', user.id)
-    .single() as { data: Profile | null }
-
+    .from('profiles').select('*').eq('id', user.id).single() as { data: Profile | null }
   if (!profile) redirect('/login')
 
   const isHead = profile.system_role === 'consultant' || profile.system_role === 'creative_head'
 
-  // Heads see all duties; members see only their own
-  const query = supabase
+  // Fetch duties
+  const dutiesQuery = supabase
     .from('duties')
     .select(`
-      *,
-      events ( title, event_date ),
+      id, title, duty_type, status, priority, created_at,
+      event_id, assigned_to,
+      events ( id, title, event_date ),
       assignee:profiles!duties_assigned_to_fkey ( full_name ),
-      assigner:profiles!duties_assigned_by_fkey ( full_name ),
       duty_checklists ( id, is_done )
     `)
     .order('created_at', { ascending: false })
 
-  if (!isHead) query.eq('assigned_to', user.id)
+  if (!isHead) dutiesQuery.eq('assigned_to', user.id)
 
-  const { data: duties } = await query as { data: DutyWithDetails[] | null }
+  const { data: duties } = await dutiesQuery
 
-  const pending     = duties?.filter(d => d.status === 'pending')     ?? []
-  const in_progress = duties?.filter(d => d.status === 'in_progress') ?? []
-  const completed   = duties?.filter(d => d.status === 'completed')   ?? []
-  const reviewed    = duties?.filter(d => d.status === 'reviewed')    ?? []
+  // Fetch workload marks for these duties
+  const eventIds   = [...new Set((duties ?? []).map((d: any) => d.event_id).filter(Boolean))]
+  const memberIds  = [...new Set((duties ?? []).map((d: any) => d.assigned_to).filter(Boolean))]
+
+  const { data: marks } = eventIds.length > 0 && memberIds.length > 0
+    ? await supabase
+        .from('workload_marks')
+        .select('member_id, event_id, mark')
+        .in('event_id', eventIds)
+        .in('member_id', memberIds)
+    : { data: [] }
+
+  // Build mark lookup: `memberId_eventId` -> mark
+  const markMap: Record<string, string> = {}
+  for (const m of marks ?? []) {
+    markMap[`${m.member_id}_${m.event_id}`] = m.mark
+  }
+
+  // Group by status
+  const groups = {
+    pending:     (duties ?? []).filter((d: any) => d.status === 'pending'),
+    in_progress: (duties ?? []).filter((d: any) => d.status === 'in_progress'),
+    completed:   (duties ?? []).filter((d: any) => d.status === 'completed'),
+    reviewed:    (duties ?? []).filter((d: any) => d.status === 'reviewed'),
+  }
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-8">
+      {/* Header */}
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '28px', gap: '16px', flexWrap: 'wrap' }}>
         <div>
-          <h1 className="text-2xl font-bold text-gray-800">
+          <h1 style={{ fontSize: '26px', fontWeight: 700, letterSpacing: '-0.4px', color: '#111', lineHeight: 1.1 }}>
             {isHead ? 'All Duties' : 'My Duties'}
           </h1>
-          <p className="text-gray-500 text-sm mt-1">
-            {pending.length} pending · {in_progress.length} in progress · {completed.length} completed · {reviewed.length} reviewed
+          <p style={{ fontSize: '13px', color: '#999', marginTop: '5px' }}>
+            {groups.pending.length} pending · {groups.in_progress.length} in progress · {groups.completed.length} awaiting review · {groups.reviewed.length} reviewed
           </p>
         </div>
         {isHead && (
-          <Link
-            href="/dashboard/duties/new"
-            className="bg-gray-900 text-white px-4 py-2 rounded-lg text-sm hover:bg-gray-700 transition"
-          >
-            + Assign Duty
-          </Link>
+          <Link href="/dashboard/duties/new" className="btn-primary">+ Assign Duty</Link>
         )}
       </div>
 
       {!duties || duties.length === 0 ? (
-        <div className="bg-white rounded-xl p-12 text-center shadow-sm">
-          <p className="text-gray-400 text-sm">
+        <div style={{ background: '#fff', border: '1px solid rgba(0,0,0,0.06)', borderRadius: '10px', padding: '48px', textAlign: 'center' }}>
+          <p style={{ fontSize: '13px', color: '#bbb' }}>
             {isHead ? 'No duties assigned yet.' : 'You have no duties assigned yet.'}
           </p>
         </div>
       ) : (
-        <div className="space-y-8">
-          {pending.length > 0 && (
-            <DutySection title="Pending" duties={pending} isHead={isHead}
-              statusStyles={statusStyles} statusLabels={statusLabels} priorityStyles={priorityStyles} />
-          )}
-          {in_progress.length > 0 && (
-            <DutySection title="In Progress" duties={in_progress} isHead={isHead}
-              statusStyles={statusStyles} statusLabels={statusLabels} priorityStyles={priorityStyles} />
-          )}
-          {completed.length > 0 && (
-            <DutySection title="Completed — Awaiting Review" duties={completed} isHead={isHead}
-              statusStyles={statusStyles} statusLabels={statusLabels} priorityStyles={priorityStyles} />
-          )}
-          {reviewed.length > 0 && (
-            <DutySection title="Reviewed" duties={reviewed} isHead={isHead} muted
-              statusStyles={statusStyles} statusLabels={statusLabels} priorityStyles={priorityStyles} />
-          )}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+          {Object.entries(groups).map(([groupStatus, groupDuties]) => {
+            if (groupDuties.length === 0) return null
+            const titles: Record<string, string> = {
+              pending: 'Pending', in_progress: 'In Progress',
+              completed: 'Completed — Awaiting Review', reviewed: 'Reviewed',
+            }
+            return (
+              <div key={groupStatus}>
+                <p style={{ fontSize: '10.5px', fontWeight: 600, letterSpacing: '0.07em', textTransform: 'uppercase', color: '#999', marginBottom: '10px' }}>
+                  {titles[groupStatus]} <span style={{ color: '#ccc' }}>({groupDuties.length})</span>
+                </p>
+                <div style={{ background: '#fff', border: '1px solid rgba(0,0,0,0.06)', borderRadius: '10px', overflow: 'hidden', opacity: groupStatus === 'reviewed' ? 0.75 : 1 }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13.5px' }}>
+                    <thead>
+                      <tr style={{ borderBottom: '1px solid rgba(0,0,0,0.06)' }}>
+                        <th style={{ textAlign: 'left', padding: '11px 20px', fontSize: '11px', fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', color: '#bbb' }}>Duty</th>
+                        <th style={{ textAlign: 'left', padding: '11px 20px', fontSize: '11px', fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', color: '#bbb' }}>Event</th>
+                        {isHead && <th style={{ textAlign: 'left', padding: '11px 20px', fontSize: '11px', fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', color: '#bbb' }}>Assigned To</th>}
+                        <th style={{ textAlign: 'left', padding: '11px 20px', fontSize: '11px', fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', color: '#bbb' }}>Priority</th>
+                        <th style={{ textAlign: 'left', padding: '11px 20px', fontSize: '11px', fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', color: '#bbb' }}>Progress</th>
+                        <th style={{ textAlign: 'left', padding: '11px 20px', fontSize: '11px', fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', color: '#bbb' }}>Status</th>
+                        <th style={{ textAlign: 'left', padding: '11px 20px', fontSize: '11px', fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', color: '#bbb' }}>Mark</th>
+                        <th style={{ padding: '11px 20px' }}></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {groupDuties.map((duty: any, i: number) => {
+                        const checklist = duty.duty_checklists ?? []
+                        const done  = checklist.filter((c: any) => c.is_done).length
+                        const total = checklist.length
+                        const mark  = markMap[`${duty.assigned_to}_${duty.event_id}`] ?? null
+                        const [sbg, stc] = statusStyle[duty.status] ?? ['#f3f4f6', '#6b7280']
+                        const [pbg, ptc] = priorityStyle[duty.priority] ?? ['#f3f4f6', '#6b7280']
+
+                        return (
+                          <tr key={duty.id} style={{ borderTop: i > 0 ? '1px solid rgba(0,0,0,0.04)' : 'none', transition: 'background 0.1s ease' }}
+                            className="hover:bg-gray-50/60">
+                            <td style={{ padding: '13px 20px' }}>
+                              <p style={{ fontWeight: 500, color: '#111' }}>{duty.title}</p>
+                              <p style={{ fontSize: '11.5px', color: '#bbb', marginTop: '2px', textTransform: 'capitalize' }}>
+                                {duty.duty_type.replace('_', ' ')}
+                              </p>
+                            </td>
+                            <td style={{ padding: '13px 20px' }}>
+                              <p style={{ color: '#555' }}>{duty.events?.title ?? '—'}</p>
+                              {duty.events?.event_date && (
+                                <p style={{ fontSize: '11.5px', color: '#bbb', marginTop: '2px' }}>
+                                  {new Date(duty.events.event_date).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' })}
+                                </p>
+                              )}
+                            </td>
+                            {isHead && (
+                              <td style={{ padding: '13px 20px', color: '#555' }}>
+                                {duty.assignee?.full_name ?? '—'}
+                              </td>
+                            )}
+                            <td style={{ padding: '13px 20px' }}>
+                              <span style={{ fontSize: '11px', fontWeight: 600, background: pbg, color: ptc, padding: '3px 9px', borderRadius: '99px', textTransform: 'capitalize' }}>
+                                {duty.priority}
+                              </span>
+                            </td>
+                            <td style={{ padding: '13px 20px' }}>
+                              {total > 0 ? (
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                  <div style={{ width: '56px', height: '4px', background: '#f0f0ee', borderRadius: '99px', overflow: 'hidden' }}>
+                                    <div style={{ height: '100%', background: '#111', width: `${(done / total) * 100}%`, borderRadius: '99px' }} />
+                                  </div>
+                                  <span style={{ fontSize: '11.5px', color: '#bbb' }}>{done}/{total}</span>
+                                </div>
+                              ) : (
+                                <span style={{ fontSize: '12px', color: '#ddd' }}>—</span>
+                              )}
+                            </td>
+                            <td style={{ padding: '13px 20px' }}>
+                              <span style={{ fontSize: '11px', fontWeight: 600, background: sbg, color: stc, padding: '3px 10px', borderRadius: '99px' }}>
+                                {statusLabel[duty.status]}
+                              </span>
+                            </td>
+                            <td style={{ padding: '13px 20px' }}>
+                              <WorkloadBadge mark={mark} />
+                            </td>
+                            <td style={{ padding: '13px 20px' }}>
+                              <Link href={`/dashboard/duties/${duty.id}`}
+                                style={{ fontSize: '12px', color: '#bbb', textDecoration: 'none' }}
+                                className="hover:text-gray-700 transition-colors">
+                                View →
+                              </Link>
+                            </td>
+                          </tr>
+                        )
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )
+          })}
         </div>
       )}
-    </div>
-  )
-}
-
-function DutySection({
-  title, duties, isHead, muted = false,
-  statusStyles, statusLabels, priorityStyles,
-}: {
-  title: string
-  duties: DutyWithDetails[]
-  isHead: boolean
-  muted?: boolean
-  statusStyles: Record<string, string>
-  statusLabels: Record<string, string>
-  priorityStyles: Record<string, string>
-}) {
-  return (
-    <div>
-      <h2 className={`text-sm font-medium mb-3 ${muted ? 'text-gray-400' : 'text-gray-600'}`}>
-        {title}
-      </h2>
-      <div className={`bg-white rounded-xl shadow-sm overflow-hidden ${muted ? 'opacity-60' : ''}`}>
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b border-gray-100">
-              <th className="text-left px-6 py-4 text-gray-500 font-medium">Duty</th>
-              <th className="text-left px-6 py-4 text-gray-500 font-medium">Event</th>
-              {isHead && <th className="text-left px-6 py-4 text-gray-500 font-medium">Assigned To</th>}
-              <th className="text-left px-6 py-4 text-gray-500 font-medium">Priority</th>
-              <th className="text-left px-6 py-4 text-gray-500 font-medium">Progress</th>
-              <th className="text-left px-6 py-4 text-gray-500 font-medium">Status</th>
-              <th className="px-6 py-4"></th>
-            </tr>
-          </thead>
-          <tbody>
-            {duties.map(duty => {
-              const checklist = (duty.duty_checklists as any[]) ?? []
-              const done = checklist.filter((c: any) => c.is_done).length
-              const total = checklist.length
-
-              return (
-                <tr key={duty.id} className="border-b border-gray-50 hover:bg-gray-50 transition last:border-0">
-                  <td className="px-6 py-4">
-                    <p className="font-medium text-gray-800">{duty.title}</p>
-                    <p className="text-xs text-gray-400 capitalize mt-0.5">
-                      {duty.duty_type.replace('_', ' ')}
-                    </p>
-                  </td>
-                  <td className="px-6 py-4 text-gray-500">
-                    <p>{duty.events?.title ?? '—'}</p>
-                    {duty.events?.event_date && (
-                      <p className="text-xs text-gray-400 mt-0.5">
-                        {new Date(duty.events.event_date).toLocaleDateString('en-PH', {
-                          month: 'short', day: 'numeric', year: 'numeric'
-                        })}
-                      </p>
-                    )}
-                  </td>
-                  {isHead && (
-                    <td className="px-6 py-4 text-gray-500">
-                      {(duty as any).assignee?.full_name ?? '—'}
-                    </td>
-                  )}
-                  <td className="px-6 py-4">
-                    <span className={`text-xs font-medium px-2 py-1 rounded-full capitalize ${priorityStyles[duty.priority]}`}>
-                      {duty.priority}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4">
-                    {total > 0 ? (
-                      <div className="flex items-center gap-2">
-                        <div className="w-20 h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                          <div
-                            className="h-full bg-gray-900 rounded-full transition-all"
-                            style={{ width: `${(done / total) * 100}%` }}
-                          />
-                        </div>
-                        <span className="text-xs text-gray-400">{done}/{total}</span>
-                      </div>
-                    ) : (
-                      <span className="text-xs text-gray-300">—</span>
-                    )}
-                  </td>
-                  <td className="px-6 py-4">
-                    <span className={`text-xs font-medium px-3 py-1 rounded-full ${statusStyles[duty.status]}`}>
-                      {statusLabels[duty.status]}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4">
-                    <Link
-                      href={`/dashboard/duties/${duty.id}`}
-                      className="text-gray-500 hover:text-gray-900 underline text-xs"
-                    >
-                      View
-                    </Link>
-                  </td>
-                </tr>
-              )
-            })}
-          </tbody>
-        </table>
-      </div>
     </div>
   )
 }

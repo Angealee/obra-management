@@ -102,7 +102,19 @@ export default async function DashboardPage() {
       supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('system_role', 'creative_head').eq('is_active', true),
       supabase.from('events').select('id, title, event_date, status').eq('academic_year_id', activeAY?.id ?? '').order('event_date', { ascending: false }),
       supabase.from('duties').select('id, title, status, assigned_to, event_id, events(title), assignee:profiles!duties_assigned_to_fkey(full_name)').order('created_at', { ascending: false }).limit(100),
+      supabase.from('workload_marks').select('mark').in('event_id',
+      (await supabase.from('events').select('id').eq('academic_year_id', activeAY?.id ?? '')).data?.map((e: any) => e.id) ?? []),
     ])
+
+    // Fetch workload mark stats for this AY
+    const ayEventIds = events?.map(e => e.id) ?? []
+    const { data: allMarks } = ayEventIds.length > 0
+      ? await supabase.from('workload_marks').select('mark').in('event_id', ayEventIds)
+      : { data: [] }
+
+    const lateMarks  = allMarks?.filter(m => m.mark === 'late').length ?? 0
+    const dndMarks   = allMarks?.filter(m => m.mark === 'did_not_duty').length ?? 0
+    const doneMarks  = allMarks?.filter(m => m.mark === 'completed').length ?? 0
 
     const byStatus = (s: string) => duties?.filter(d => d.status === s).length ?? 0
     const total = duties?.length ?? 0
@@ -149,6 +161,8 @@ export default async function DashboardPage() {
           )}
         </div>
 
+        
+
         {/* ── 4 stat cards ── */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '14px' }}>
           <Stat label="Active Members"  value={totalMembers ?? 0} href="/dashboard/members" />
@@ -157,6 +171,13 @@ export default async function DashboardPage() {
           <Stat label="Reviewed Duties" value={rev} sub={`of ${total} total`} accent="#16a34a" href="/dashboard/duties" />
         </div>
 
+        {/* Expand to 3 columns on second row */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '14px' }}>
+          <Stat label="Marked Completed" value={doneMarks}  accent="#16a34a" href="/dashboard/workloads" />
+          <Stat label="Marked Late"      value={lateMarks}  accent="#ca8a04" href="/dashboard/workloads" />
+          <Stat label="Did Not Duty"     value={dndMarks}   accent="#CC0000" href="/dashboard/workloads" />
+        </div>
+        
         {/* ── Duty overview ── */}
         <div className={`${T.card} p-6`}>
           <SectionHead title="Duty Overview" action={{ label: 'View all →', href: '/dashboard/duties' }} />

@@ -10,6 +10,8 @@ export type Profile = {
   id: string
   full_name: string
   email: string
+  username: string | null
+  avatar_url: string | null
   system_role: SystemRole
   creative_head_role: CreativeHeadRole
   student_number: string | null
@@ -28,8 +30,6 @@ export type AcademicYear = {
   is_active: boolean
   created_at: string
 }
-
-// Add these new types below
 
 export type MemberSkill = {
   id: string

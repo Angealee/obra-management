@@ -55,6 +55,15 @@ export default async function DutyDetailPage({
     .single()
 
   if (!duty) redirect('/dashboard/duties')
+    // Fetch workload mark for this duty
+  const { data: workloadMark } = duty.assigned_to && duty.event_id
+    ? await supabase
+        .from('workload_marks')
+        .select('mark')
+        .eq('member_id', duty.assigned_to)
+        .eq('event_id', duty.event_id)
+        .single()
+    : { data: null }
 
   // Members can only view their own duties
   const isHead = profile.system_role === 'consultant' || profile.system_role === 'creative_head'
