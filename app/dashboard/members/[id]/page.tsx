@@ -72,7 +72,7 @@ export default async function MemberDetailPage({
   }
 
   const eventMap: Record<string, { event: any; duties: DutyRow[] }> = {}
-  for (const d of (duties ?? []) as DutyRow[]) {
+  for (const d of (duties ?? []) as any[]) {
     if (!d.event_id || !d.events) continue
     if (!eventMap[d.event_id]) {
       eventMap[d.event_id] = { event: d.events, duties: [] }

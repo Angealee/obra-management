@@ -6,8 +6,9 @@ import { usePathname } from 'next/navigation'
 import {
   LayoutDashboard, Users, Calendar, CheckSquare,
   BarChart2, GraduationCap, LogOut,
-  PanelLeftClose, PanelLeftOpen,
+  PanelLeftClose, PanelLeftOpen, 
   BarChart3,
+  ClipboardList,
 } from 'lucide-react'
 
 type Profile = {
@@ -27,6 +28,7 @@ const NAV = [
   { href: '/dashboard/duties',         label: 'Duties',         icon: CheckSquare,     roles: ['consultant','creative_head','member'] },
   { href: '/dashboard/workloads',      label: 'Workloads',      icon: BarChart2,       roles: ['consultant','creative_head'] },
   { href: '/dashboard/academic-years', label: 'Academic Years', icon: GraduationCap,   roles: ['consultant'] },
+  { href: '/dashboard/applications',   label: 'Applications',   icon: ClipboardList,   roles: ['consultant','creative_head'] },
 ]
 
 const ROLE_LABEL: Record<string, string> = {

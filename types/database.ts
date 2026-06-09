@@ -131,3 +131,32 @@ export type AnnouncementWithPoster = Announcement & {
   academic_years: { label: string } | null
   poster: { full_name: string } | null
 }
+
+export type ApplicationStatus =
+  | 'pending'
+  | 'shortlisted'
+  | 'interviewed'
+  | 'approved'
+  | 'rejected'
+  | 'withdrawn'
+
+export type MemberApplication = {
+  id: string
+  full_name: string
+  email: string
+  contact_number: string
+  year_level: string
+  course_section: string
+  positions: string[]
+  motivation: string
+  portfolio_url: string | null
+  status: ApplicationStatus
+  notes: string | null
+  reviewed_by: string | null
+  reviewed_at: string | null
+  academic_year_id: string | null
+  created_at: string
+  // joined fields
+  reviewer?: { full_name: string } | null
+  academic_year?: { label: string } | null
+}

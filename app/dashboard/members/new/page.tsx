@@ -1,25 +1,28 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { useState, useEffect, Suspense } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import type { MemberSkill } from '@/types/database'
 
-export default function NewMemberPage() {
+// Separated into its own component because useSearchParams()
+// must be wrapped in a Suspense boundary in Next.js App Router
+function NewMemberForm() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const supabase = createClient()
 
-  // Form fields
-  const [fullName, setFullName] = useState('')
-  const [email, setEmail] = useState('')
+  // Pre-fill from URL params (set when coming from an approved application)
+  const [fullName, setFullName] = useState(searchParams.get('full_name') || '')
+  const [email, setEmail] = useState(searchParams.get('email') || '')
   const [password, setPassword] = useState('')
   const [systemRole, setSystemRole] = useState<'member' | 'creative_head'>('member')
   const [creativeHeadRole, setCreativeHeadRole] = useState('none')
   const [studentNumber, setStudentNumber] = useState('')
-  const [courseSection, setCourseSection] = useState('')
-  const [yearLevel, setYearLevel] = useState('')
-  const [contactNumber, setContactNumber] = useState('')
+  const [courseSection, setCourseSection] = useState(searchParams.get('course_section') || '')
+  const [yearLevel, setYearLevel] = useState(searchParams.get('year_level') || '')
+  const [contactNumber, setContactNumber] = useState(searchParams.get('contact_number') || '')
   const [selectedSkills, setSelectedSkills] = useState<string[]>([])
 
   // UI state
@@ -27,7 +30,9 @@ export default function NewMemberPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
-  // Load available skills on mount
+  // Show a notice banner if form was prefilled from an application
+  const prefilled = !!searchParams.get('full_name')
+
   useEffect(() => {
     async function loadSkills() {
       const { data } = await supabase
@@ -55,7 +60,6 @@ export default function NewMemberPage() {
     setLoading(true)
     setError('')
 
-    // Call our server API route to create the auth user safely
     const response = await fetch('/api/members/create', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -88,63 +92,77 @@ export default function NewMemberPage() {
   return (
     <div className="max-w-2xl">
       <div className="mb-8">
-        <Link href="/dashboard/members" className="text-gray-400 hover:text-gray-600 text-sm mb-2 inline-block">
+        <Link href="/dashboard/members" style={{ fontFamily: 'DM Sans', fontSize: 13, color: '#999' }} className="mb-2 inline-block">
           ← Back to Members
         </Link>
-        <h1 className="text-2xl font-bold text-gray-800">Add Member</h1>
-        <p className="text-gray-500 text-sm mt-1">Create a new account for an Obra member.</p>
+        <h1 style={{ fontFamily: 'Bebas Neue, sans-serif', fontSize: 32, letterSpacing: '0.04em', color: '#111', marginBottom: 4 }}>
+          ADD MEMBER
+        </h1>
+        <p style={{ fontFamily: 'DM Sans', fontSize: 14, color: '#666' }}>
+          Create a new account for an Obra member.
+        </p>
       </div>
 
-      <div className="space-y-6">
-        {/* Basic Info */}
-        <div className="bg-white rounded-xl shadow-sm p-6 space-y-4">
-          <h2 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">Basic Information</h2>
+      {/* Prefill notice banner */}
+      {prefilled && (
+        <div style={{
+          background: '#dcfce7',
+          border: '1px solid #bbf7d0',
+          borderRadius: 10,
+          padding: '12px 16px',
+          marginBottom: 20,
+          fontFamily: 'DM Sans',
+          fontSize: 13,
+          color: '#166534',
+        }}>
+          ✓ Form prefilled from approved application. Please review all fields and set a password before creating the account.
+        </div>
+      )}
 
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+
+        {/* Basic Info */}
+        <div style={{ background: '#fff', border: '1px solid rgba(0,0,0,0.07)', borderRadius: 12, padding: 24 }}>
+          <h2 style={{ fontFamily: 'DM Mono', fontSize: 11, color: '#999', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 16 }}>
+            Basic Information
+          </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Full Name <span className="text-red-500">*</span>
-              </label>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <label className="obra-label">Full Name *</label>
               <input
+                className="obra-input"
                 type="text"
                 value={fullName}
-                onChange={(e) => setFullName(e.target.value)}
+                onChange={e => setFullName(e.target.value)}
                 placeholder="Juan Dela Cruz"
-                className="w-full border border-gray-300 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-400"
               />
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Student Number
-              </label>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <label className="obra-label">Student Number</label>
               <input
+                className="obra-input"
                 type="text"
                 value={studentNumber}
-                onChange={(e) => setStudentNumber(e.target.value)}
+                onChange={e => setStudentNumber(e.target.value)}
                 placeholder="2021-00123"
-                className="w-full border border-gray-300 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-400"
               />
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Section
-              </label>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <label className="obra-label">Course & Section</label>
               <input
+                className="obra-input"
                 type="text"
                 value={courseSection}
-                onChange={(e) => setCourseSection(e.target.value)}
+                onChange={e => setCourseSection(e.target.value)}
                 placeholder="BSIT 3-A"
-                className="w-full border border-gray-300 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-400"
               />
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Year Level
-              </label>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <label className="obra-label">Year Level</label>
               <select
+                className="obra-input"
                 value={yearLevel}
-                onChange={(e) => setYearLevel(e.target.value)}
-                className="w-full border border-gray-300 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-400"
+                onChange={e => setYearLevel(e.target.value)}
               >
                 <option value="">Select year level</option>
                 <option value="1st Year">1st Year</option>
@@ -153,51 +171,46 @@ export default function NewMemberPage() {
                 <option value="4th Year">4th Year</option>
               </select>
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Contact Number
-              </label>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <label className="obra-label">Contact Number</label>
               <input
+                className="obra-input"
                 type="text"
                 value={contactNumber}
-                onChange={(e) => setContactNumber(e.target.value)}
+                onChange={e => setContactNumber(e.target.value)}
                 placeholder="09XX XXX XXXX"
-                className="w-full border border-gray-300 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-400"
                 maxLength={11}
               />
             </div>
           </div>
         </div>
 
-        {/* Account Info */}
-        <div className="bg-white rounded-xl shadow-sm p-6 space-y-4">
-          <h2 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">Login Credentials</h2>
-
+        {/* Login Credentials */}
+        <div style={{ background: '#fff', border: '1px solid rgba(0,0,0,0.07)', borderRadius: 12, padding: 24 }}>
+          <h2 style={{ fontFamily: 'DM Mono', fontSize: 11, color: '#999', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 16 }}>
+            Login Credentials
+          </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Email <span className="text-red-500">*</span>
-              </label>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <label className="obra-label">Email *</label>
               <input
+                className="obra-input"
                 type="email"
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                onChange={e => setEmail(e.target.value)}
                 placeholder="juan@obra.com"
-                className="w-full border border-gray-300 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-400"
               />
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Temporary Password <span className="text-red-500">*</span>
-              </label>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <label className="obra-label">Temporary Password *</label>
               <input
+                className="obra-input"
                 type="text"
                 value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                onChange={e => setPassword(e.target.value)}
                 placeholder="Min. 6 characters"
-                className="w-full border border-gray-300 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-400"
               />
-              <p className="text-gray-400 text-xs mt-1">
+              <p style={{ fontFamily: 'DM Sans', fontSize: 12, color: '#999' }}>
                 Share this with the member. They can change it later.
               </p>
             </div>
@@ -205,74 +218,89 @@ export default function NewMemberPage() {
         </div>
 
         {/* Role */}
-        <div className="bg-white rounded-xl shadow-sm p-6 space-y-4">
-          <h2 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">Role</h2>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              System Role <span className="text-red-500">*</span>
-            </label>
-            <select
-              value={systemRole}
-              onChange={(e) => setSystemRole(e.target.value as 'member' | 'creative_head')}
-              className="w-full border border-gray-300 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-400"
-            >
-              <option value="member">Member</option>
-              <option value="creative_head">Creative Head</option>
-            </select>
-          </div>
-
-          {systemRole === 'creative_head' && (
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Creative Head Role
-              </label>
+        <div style={{ background: '#fff', border: '1px solid rgba(0,0,0,0.07)', borderRadius: 12, padding: 24 }}>
+          <h2 style={{ fontFamily: 'DM Mono', fontSize: 11, color: '#999', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 16 }}>
+            Role
+          </h2>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <label className="obra-label">System Role *</label>
               <select
-                value={creativeHeadRole}
-                onChange={(e) => setCreativeHeadRole(e.target.value)}
-                className="w-full border border-gray-300 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-400"
+                className="obra-input"
+                value={systemRole}
+                onChange={e => setSystemRole(e.target.value as 'member' | 'creative_head')}
               >
-                <option value="none">Not specified</option>
-                <option value="creative_producer">Creative Producer</option>
-                <option value="creative_writer">Creative Writer</option>
-                <option value="creative_director">Creative Director</option>
+                <option value="member">Member</option>
+                <option value="creative_head">Creative Head</option>
               </select>
             </div>
-          )}
+            {systemRole === 'creative_head' && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <label className="obra-label">Creative Head Role</label>
+                <select
+                  className="obra-input"
+                  value={creativeHeadRole}
+                  onChange={e => setCreativeHeadRole(e.target.value)}
+                >
+                  <option value="none">Not specified</option>
+                  <option value="creative_producer">Creative Producer</option>
+                  <option value="creative_writer">Creative Writer</option>
+                  <option value="creative_director">Creative Director</option>
+                </select>
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Skills */}
-        <div className="bg-white rounded-xl shadow-sm p-6 space-y-4">
-          <div>
-            <h2 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">Skills</h2>
-            <p className="text-gray-400 text-xs mt-1">Select all skills this member has.</p>
-          </div>
-
+        <div style={{ background: '#fff', border: '1px solid rgba(0,0,0,0.07)', borderRadius: 12, padding: 24 }}>
+          <h2 style={{ fontFamily: 'DM Mono', fontSize: 11, color: '#999', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 4 }}>
+            Skills
+          </h2>
+          <p style={{ fontFamily: 'DM Sans', fontSize: 12, color: '#999', marginBottom: 14 }}>
+            Select all skills this member has.
+          </p>
           <div className="flex flex-wrap gap-2">
-            {skills.map((skill) => (
+            {skills.map(skill => (
               <button
                 key={skill.id}
                 type="button"
                 onClick={() => toggleSkill(skill.id)}
-                className={`px-4 py-2 rounded-full text-sm border transition ${
-                  selectedSkills.includes(skill.id)
-                    ? 'bg-gray-900 text-white border-gray-900'
-                    : 'bg-white text-gray-600 border-gray-300 hover:border-gray-500'
-                }`}
+                style={{
+                  padding: '8px 16px',
+                  borderRadius: 999,
+                  border: selectedSkills.includes(skill.id) ? '1.5px solid #111' : '1.5px solid rgba(0,0,0,0.15)',
+                  background: selectedSkills.includes(skill.id) ? '#111' : '#fff',
+                  color: selectedSkills.includes(skill.id) ? '#fff' : '#444',
+                  fontFamily: 'DM Sans',
+                  fontSize: 13,
+                  fontWeight: 500,
+                  cursor: 'pointer',
+                  transition: 'all 0.15s',
+                }}
               >
                 {skill.name}
               </button>
             ))}
           </div>
-
           {selectedSkills.length > 0 && (
-            <p className="text-xs text-gray-400">{selectedSkills.length} skill(s) selected</p>
+            <p style={{ fontFamily: 'DM Sans', fontSize: 12, color: '#999', marginTop: 10 }}>
+              {selectedSkills.length} skill(s) selected
+            </p>
           )}
         </div>
 
         {error && (
-          <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-3">
-            <p className="text-red-600 text-sm">{error}</p>
+          <div style={{
+            background: '#fef2f2',
+            border: '1px solid #fecaca',
+            borderRadius: 8,
+            padding: '12px 16px',
+            color: '#dc2626',
+            fontFamily: 'DM Sans',
+            fontSize: 14,
+          }}>
+            {error}
           </div>
         )}
 
@@ -280,18 +308,33 @@ export default function NewMemberPage() {
           <button
             onClick={handleSubmit}
             disabled={loading}
-            className="bg-gray-900 text-white px-6 py-2 rounded-lg text-sm hover:bg-gray-700 transition disabled:opacity-50"
+            className="btn-primary"
+            style={{ opacity: loading ? 0.7 : 1 }}
           >
             {loading ? 'Creating Account...' : 'Create Member Account'}
           </button>
           <Link
             href="/dashboard/members"
-            className="px-6 py-2 rounded-lg text-sm border border-gray-300 text-gray-600 hover:bg-gray-50 transition"
+            className="btn-secondary"
           >
             Cancel
           </Link>
         </div>
       </div>
     </div>
+  )
+}
+
+// Suspense wrapper — required by Next.js when using useSearchParams()
+// Without this, the build will fail with a "missing Suspense boundary" error
+export default function NewMemberPage() {
+  return (
+    <Suspense fallback={
+      <div style={{ fontFamily: 'DM Sans', fontSize: 14, color: '#999', padding: 40 }}>
+        Loading...
+      </div>
+    }>
+      <NewMemberForm />
+    </Suspense>
   )
 }
