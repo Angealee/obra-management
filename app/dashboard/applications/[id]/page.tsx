@@ -1,3 +1,4 @@
+`use client`
 import { createClient } from '@/lib/supabase/server'
 import { redirect, notFound } from 'next/navigation'
 import ApplicationsClient from '../ApplicationsClient'
@@ -249,26 +250,23 @@ export default async function ApplicationDetailPage({
                 }}>
                 Portfolio
                 </p>
-                <button
-                onClick={() => { window.open(application.portfolio_url!, '_blank') }}
-                style={{
+                <a
+                  href={application.portfolio_url!}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{
                     display: 'inline-flex',
                     alignItems: 'center',
                     gap: 6,
                     color: '#CC0000',
-                    fontFamily: 'DM Sans',
-                    fontSize: 14,
+                    fontFamily: 'DM Sans, sans-serif',
+                    fontSize: 13.5,
                     fontWeight: 500,
-                    background: 'none',
-                    border: 'none',
-                    padding: 0,
-                    cursor: 'pointer',
                     textDecoration: 'underline',
-                }}
+                  }}
                 >
-                <ExternalLink size={14} />
-                View Portfolio
-                </button>
+                  View Portfolio ↗
+                </a>
             </div>
             )}
 
