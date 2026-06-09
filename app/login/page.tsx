@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import Image from 'next/image'
-import { Mail, Lock, ArrowRight, FolderOpen, Users, Calendar, Play, Users2, SkipForward, Calendar1 } from 'lucide-react'
+import { Mail, Lock, ArrowRight, FolderOpen, Users, Calendar, Play, Users2, SkipForward, Calendar1, Eye, EyeOff } from 'lucide-react'
 
 export default function LoginPage() {
   const router = useRouter()
@@ -14,7 +14,7 @@ export default function LoginPage() {
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
-
+  const [showPassword, setShowPassword] = useState(false)
   async function handleLogin() {
     setLoading(true)
     setError('')
@@ -71,14 +71,26 @@ export default function LoginPage() {
               <label className="flex items-center gap-1.5 text-[11px] uppercase tracking-widest text-white font-normal mb-2">
                 <Lock size={13} /> Password
               </label>
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••"
-                onKeyDown={(e) => e.key === 'Enter' && handleLogin()}
-                className="w-full h-11 border border-gray-700 rounded-md px-4 text-sm bg-gray-900 text-white focus:bg-gray-800 focus:border-gray-400 focus:outline-none transition-colors placeholder:text-gray-600"
-              />
+
+              <div className="relative">
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="••••••••"
+                  onKeyDown={(e) => e.key === 'Enter' && handleLogin()}
+                  className="w-full h-11 border border-gray-700 rounded-md px-4 pr-12 text-sm bg-gray-900 text-white focus:bg-gray-800 focus:border-gray-400 focus:outline-none transition-colors placeholder:text-gray-600"
+                />
+
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white transition-colors"
+                >
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
+
               <p className="text-xs text-gray-500 text-right mt-2 cursor-pointer hover:text-gray-300 transition-colors">
                 Forgot password?
               </p>
