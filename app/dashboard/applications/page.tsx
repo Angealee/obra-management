@@ -26,41 +26,27 @@ export default async function ApplicationsPage() {
   return (
     <div className="page-enter">
       <div style={{ marginBottom: 24 }}>
-        <h1 style={{
-          fontFamily: 'Bebas Neue, sans-serif',
-          fontSize: 32,
-          letterSpacing: '0.04em',
-          color: '#111',
-          marginBottom: 4,
-        }}>
-          MEMBERSHIP APPLICATIONS
-        </h1>
-        <p style={{ fontFamily: 'DM Sans', fontSize: 14, color: '#666' }}>
-          Review and evaluate applicants for Obra Creative Media Productions.
-        </p>
+        <h1 className="page-title">Membership Applications</h1>
+        <p className="page-subtitle">Review and evaluate applicants for Obra Creative Media Productions.</p>
       </div>
 
       <ApplicationsClient
         applications={(applications as any[]) || []}
         selectedId={null}
       >
-        {/* Empty state when no application is selected */}
-        <div style={{
+        <div className="dash-card" style={{
           height: '100%',
+          minHeight: 400,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          background: '#fff',
-          border: '1px solid rgba(0,0,0,0.07)',
-          borderRadius: 12,
-          minHeight: 400,
         }}>
           <div style={{ textAlign: 'center' }}>
-            <p style={{ fontFamily: 'DM Sans', fontSize: 15, color: '#BBB', fontWeight: 500 }}>
+            <p style={{ fontFamily: 'DM Sans, sans-serif', fontSize: 14, color: '#bbb', fontWeight: 500 }}>
               Select an applicant to view details
             </p>
-            <p style={{ fontFamily: 'DM Sans', fontSize: 13, color: '#DDD', marginTop: 4 }}>
-              Use the list on the left to browse applications
+            <p style={{ fontFamily: 'DM Sans, sans-serif', fontSize: 13, color: '#ddd', marginTop: 4 }}>
+              Use the list on the left to browse
             </p>
           </div>
         </div>

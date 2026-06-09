@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { MemberApplication } from '@/types/database'
-import { ArrowRight, XCircle, Loader, ExternalLink } from 'lucide-react'
+import { ArrowRight, XCircle, Loader } from 'lucide-react'
 
 type Props = {
   application: MemberApplication
@@ -25,19 +25,14 @@ export default function ApplicationActions({ application, userRole }: Props) {
   const isTerminal = ['approved', 'rejected', 'withdrawn'].includes(currentStatus)
 
   const stageFlow: Record<string, string> = {
-    pending: 'shortlisted',
+    pending:     'shortlisted',
     shortlisted: 'interviewed',
     interviewed: 'approved',
   }
   const stageLabel: Record<string, string> = {
-    pending: 'Move to Shortlisted',
+    pending:     'Move to Shortlisted',
     shortlisted: 'Move to Interviewed',
     interviewed: 'Mark as Approved',
-  }
-  const stageBg: Record<string, string> = {
-    pending: '#111111',
-    shortlisted: '#111111',
-    interviewed: '#16a34a',
   }
 
   const nextStatus = stageFlow[currentStatus] ?? null
@@ -46,10 +41,10 @@ export default function ApplicationActions({ application, userRole }: Props) {
     : isHead && currentStatus === 'pending'
 
   const qs = [
-    'full_name=' + encodeURIComponent(application.full_name),
-    'email=' + encodeURIComponent(application.email),
+    'full_name='      + encodeURIComponent(application.full_name),
+    'email='          + encodeURIComponent(application.email),
     'contact_number=' + encodeURIComponent(application.contact_number),
-    'year_level=' + encodeURIComponent(application.year_level),
+    'year_level='     + encodeURIComponent(application.year_level),
     'course_section=' + encodeURIComponent(application.course_section),
   ].join('&')
   const addMemberUrl = '/dashboard/members/new?' + qs
@@ -90,7 +85,7 @@ export default function ApplicationActions({ application, userRole }: Props) {
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
 
       {error && (
         <div style={{
@@ -99,126 +94,82 @@ export default function ApplicationActions({ application, userRole }: Props) {
           borderRadius: 8,
           padding: '10px 14px',
           color: '#dc2626',
-          fontFamily: 'DM Sans',
+          fontFamily: 'DM Sans, sans-serif',
           fontSize: 13,
         }}>
           {error}
         </div>
       )}
 
+      {/* Stage actions */}
       <div style={{
-        background: '#f9fafb',
-        border: '1px solid rgba(0,0,0,0.07)',
+        background: '#F7F7F5',
         borderRadius: 10,
-        padding: '16px 20px',
+        padding: '14px 16px',
       }}>
 
         {isTerminal && (
           <div>
-            <p style={{ fontFamily: 'DM Sans', fontSize: 13, color: '#666', margin: 0 }}>
-              This application is <strong>{currentStatus}</strong>. No further stage actions available.
+            <p style={{
+              fontFamily: 'DM Sans, sans-serif',
+              fontSize: 13,
+              color: '#888',
+              margin: '0 0 12px',
+            }}>
+              This application is <strong style={{ color: '#555' }}>{currentStatus}</strong>. No further stage actions available.
             </p>
             {currentStatus === 'approved' && isConsultant && (
-              <div style={{ marginTop: 12 }}>
-                <button
-                  onClick={() => { window.location.href = addMemberUrl }}
-                  style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: 6,
-                    background: '#111',
-                    color: '#fff',
-                    fontFamily: 'DM Sans',
-                    fontSize: 13,
-                    fontWeight: 600,
-                    padding: '9px 16px',
-                    borderRadius: 8,
-                    border: 'none',
-                    cursor: 'pointer',
-                  }}
-                >
-                  <ExternalLink size={14} />
-                  Create Member Account
-                </button>
-              </div>
+              <button
+                className="btn-primary"
+                onClick={() => { window.location.href = addMemberUrl }}
+              >
+                Create Member Account →
+              </button>
             )}
           </div>
         )}
 
         {!isTerminal && (
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
 
             {canAdvance && nextStatus && (
               <button
+                className="btn-primary"
                 onClick={() => updateStatus(nextStatus)}
                 disabled={loading !== null}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 6,
-                  background: stageBg[currentStatus] ?? '#111',
-                  color: '#fff',
-                  fontFamily: 'DM Sans',
-                  fontSize: 13,
-                  fontWeight: 600,
-                  padding: '9px 16px',
-                  borderRadius: 8,
-                  border: 'none',
-                  cursor: loading !== null ? 'not-allowed' : 'pointer',
-                  opacity: loading !== null ? 0.7 : 1,
-                }}
+                style={{ opacity: loading !== null ? 0.7 : 1 }}
               >
-                {loading === nextStatus ? <Loader size={14} /> : <ArrowRight size={14} />}
+                {loading === nextStatus
+                  ? <Loader size={13} />
+                  : <ArrowRight size={13} />
+                }
                 {stageLabel[currentStatus]}
               </button>
             )}
 
             {isConsultant && (
               <button
+                className="btn-danger"
                 onClick={() => updateStatus('rejected')}
                 disabled={loading !== null}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 6,
-                  background: '#fef2f2',
-                  color: '#dc2626',
-                  border: '1px solid #fecaca',
-                  fontFamily: 'DM Sans',
-                  fontSize: 13,
-                  fontWeight: 600,
-                  padding: '9px 16px',
-                  borderRadius: 8,
-                  cursor: loading !== null ? 'not-allowed' : 'pointer',
-                  opacity: loading !== null ? 0.7 : 1,
-                }}
+                style={{ opacity: loading !== null ? 0.7 : 1 }}
               >
-                {loading === 'rejected' ? <Loader size={14} /> : <XCircle size={14} />}
+                {loading === 'rejected'
+                  ? <Loader size={13} />
+                  : <XCircle size={13} />
+                }
                 Reject
               </button>
             )}
 
             {isConsultant && (
               <button
+                className="btn-secondary"
                 onClick={() => updateStatus('withdrawn')}
                 disabled={loading !== null}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 6,
-                  background: '#f3f4f6',
-                  color: '#4b5563',
-                  border: '1px solid rgba(0,0,0,0.1)',
-                  fontFamily: 'DM Sans',
-                  fontSize: 13,
-                  fontWeight: 600,
-                  padding: '9px 16px',
-                  borderRadius: 8,
-                  cursor: loading !== null ? 'not-allowed' : 'pointer',
-                  opacity: loading !== null ? 0.7 : 1,
-                }}
+                style={{ opacity: loading !== null ? 0.7 : 1 }}
               >
-                {loading === 'withdrawn' && <Loader size={14} />}
+                {loading === 'withdrawn' && <Loader size={13} />}
                 Mark as Withdrawn
               </button>
             )}
@@ -227,8 +178,9 @@ export default function ApplicationActions({ application, userRole }: Props) {
         )}
       </div>
 
+      {/* Notes */}
       {(isConsultant || isHead) && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
           <label className="obra-label">
             {isConsultant ? 'Notes & Remarks' : 'Add Notes (visible to Consultant)'}
           </label>
@@ -240,14 +192,16 @@ export default function ApplicationActions({ application, userRole }: Props) {
             placeholder="Add evaluation notes, interview observations, or remarks..."
             style={{ resize: 'vertical', minHeight: 100 }}
           />
-          <button
-            onClick={saveNotes}
-            disabled={loading !== null}
-            className="btn-secondary"
-            style={{ alignSelf: 'flex-start', opacity: loading !== null ? 0.7 : 1 }}
-          >
-            {loading === 'notes' ? 'Saving...' : 'Save Notes'}
-          </button>
+          <div>
+            <button
+              className="btn-secondary"
+              onClick={saveNotes}
+              disabled={loading !== null}
+              style={{ opacity: loading !== null ? 0.7 : 1 }}
+            >
+              {loading === 'notes' ? 'Saving...' : 'Save Notes'}
+            </button>
+          </div>
         </div>
       )}
 
