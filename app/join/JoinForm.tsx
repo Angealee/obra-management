@@ -216,7 +216,7 @@ export default function JoinForm() {
 
       {/* Portfolio */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-        <label className="obra-label">Portfolio Link <span style={{ color: '#999', fontWeight: 400 }}>(optional)</span></label>
+        <label className="obra-label">Portfolio Link <span style={{ color: '#999', fontWeight: 400 }}>*</span></label>
         <input
           className="obra-input"
           type="url"

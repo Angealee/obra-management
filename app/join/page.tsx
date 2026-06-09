@@ -40,7 +40,7 @@ export default function JoinPage() {
           lineHeight: 1,
           marginBottom: 12,
         }}>
-          OBRA CREATIVE MEDIA
+          OBRA CREATIVE MEDIA PRODUCTIONS
         </h1>
         <p style={{
           fontFamily: 'DM Sans',
