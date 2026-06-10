@@ -300,3 +300,35 @@ body {
   box-shadow: 0 4px 16px rgba(0,0,0,0.07);
   border-color: rgba(0,0,0,0.10);
 }
+
+/* ── Obra Join Page additions ──────────────────────────────── */
+
+/* Position chip toggle buttons */
+.position-chip {
+  padding: 7px 15px;
+  border-radius: 999px;
+  border: 1.5px solid rgba(0, 0, 0, 0.14);
+  background: #fff;
+  color: #555;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease, color 0.15s ease, transform 0.1s ease;
+  white-space: nowrap;
+}
+
+.position-chip:hover {
+  border-color: rgba(0, 0, 0, 0.28);
+  color: #111;
+}
+
+.position-chip[data-selected] {
+  background: #CC0000;
+  border-color: #CC0000;
+  color: #fff;
+}
+
+.position-chip:active {
+  transform: scale(0.97);
+}

@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import type { Profile } from '@/types/database'
 import ToggleActiveButton from './ToggleActiveButton'
 import WorkloadBadge from '@/components/WorkLoadBadge'
+import ArchiveMemberButton from './ArchiveMemberButton'
 
 const dutyStatusStyle: Record<string, [string, string]> = {
   pending:     ['#f3f4f6', '#6b7280'],
@@ -35,7 +36,7 @@ export default async function MemberDetailPage({
   // Fetch member with skills
   const { data: member } = await supabase
     .from('profiles')
-    .select(`*, profile_skills ( skill_id, member_skills ( id, name ) )`)
+    .select(`*, member_status, profile_skills ( skill_id, member_skills ( id, name ) )`)
     .eq('id', id)
     .single() as { data: any | null }
 
@@ -261,6 +262,11 @@ export default async function MemberDetailPage({
             Inactive members cannot log in but their records are preserved.
           </p>
           <ToggleActiveButton memberId={member.id} isActive={member.is_active} memberName={member.full_name} />
+          <ArchiveMemberButton
+            memberId={member.id}
+            currentStatus={member.member_status ?? 'active'}
+            memberName={member.full_name}
+          />
         </div>
       )}
     </div>
