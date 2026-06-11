@@ -12,7 +12,7 @@ export const metadata = {
     siteName: 'Obra Online Application Form',
     images: [
       {
-        url: 'https://ccs-obra.vercel.app/join',
+        url: 'https://ccs-obra.vercel.app/webbg.png',
         width: 1200,
         height: 630,
         alt: 'Obra Creative Media Productions — Join Us',
