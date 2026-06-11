@@ -89,38 +89,38 @@ export default async function WorkloadsPage({
     marksMap[`${m.member_id}_${m.event_id}`] = { id: m.id, mark: m.mark }
   }
 
-  const totalDuties    = duties?.length ?? 0
-  const reviewedDuties = duties?.filter(d => d.status === 'reviewed').length ?? 0
-  const pendingDuties  = duties?.filter(d => d.status === 'pending').length ?? 0
-
   return (
-    <div>
+    <div className="page-enter">
       {/* Page header */}
       <div className="flex items-start justify-between mb-6 flex-wrap gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-800">Obra Workload</h1>
-          <p className="text-gray-500 text-sm mt-1">
-            Track member assignments and identify workload distribution.
-          </p>
+          <h1 className="page-title">Workload Matrix</h1>
+          <p className="page-subtitle">Track member assignments and balance duties across events.</p>
         </div>
 
         {/* AY Filter */}
-        <div className="flex items-center gap-2 flex-wrap">
-          <span className="text-sm text-gray-500">Academic Year:</span>
-          {academicYears?.map(ay => (
-            <Link
-              key={ay.id}
-              href={`/dashboard/workloads?ay=${ay.id}`}
-              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition ${
-                ay.id === selectedAYId
-                  ? 'bg-gray-900 text-white'
-                  : 'bg-white text-gray-500 border border-gray-200 hover:border-gray-400'
-              }`}
-            >
-              {ay.label}
-            </Link>
-          ))}
-        </div>
+        {academicYears && academicYears.length > 0 && (
+          <div className="flex items-center gap-2 flex-wrap">
+            {academicYears.map(year => {
+              const active = year.id === selectedAYId
+              return (
+                <Link
+                  key={year.id}
+                  href={`/dashboard/workloads?ay=${year.id}`}
+                  style={{
+                    padding: '7px 14px', borderRadius: 999, fontSize: 12.5, fontWeight: 500,
+                    textDecoration: 'none', whiteSpace: 'nowrap', transition: 'all 0.15s ease',
+                    background: active ? '#111' : '#fff',
+                    color: active ? '#fff' : '#888',
+                    border: active ? '1px solid #111' : '1px solid rgba(0,0,0,0.08)',
+                  }}
+                >
+                  {year.label}
+                </Link>
+              )
+            })}
+          </div>
+        )}
       </div>
 
       <WorkloadMatrix
@@ -129,9 +129,6 @@ export default async function WorkloadsPage({
         matrix={matrix}
         initialMarksMap={marksMap}
         canManage={canManage}
-        totalDuties={totalDuties}
-        reviewedDuties={reviewedDuties}
-        pendingDuties={pendingDuties}
       />
     </div>
   )

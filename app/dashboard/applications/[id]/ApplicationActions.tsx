@@ -3,8 +3,9 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { MemberApplication } from '@/types/database'
-import { ArrowRight, XCircle, Loader } from 'lucide-react'
+import { MemberApplication, ApplicationStatus } from '@/types/database'
+import { ArrowRight, ArrowLeft, Loader2 } from 'lucide-react'
+import { STATUS_ACCENTS } from '../utils'
 
 type Props = {
   application: MemberApplication
@@ -34,11 +35,27 @@ export default function ApplicationActions({ application, userRole }: Props) {
     shortlisted: 'Move to Interviewed',
     interviewed: 'Mark as Approved',
   }
+  const reverseStageFlow: Record<string, string> = {
+    shortlisted: 'pending',
+    interviewed: 'shortlisted',
+    approved:    'interviewed',
+  }
+  const stageNames: Record<string, string> = {
+    pending:     'Pending',
+    shortlisted: 'Shortlisted',
+    interviewed: 'Interviewed',
+    approved:    'Approved',
+  }
 
   const nextStatus = stageFlow[currentStatus] ?? null
   const canAdvance = isConsultant
     ? nextStatus !== null
     : isHead && currentStatus === 'pending'
+
+  const prevStatus = reverseStageFlow[currentStatus] ?? null
+  const canRevert = isConsultant
+    ? prevStatus !== null
+    : isHead && currentStatus === 'shortlisted'
 
   const qs = [
     'full_name='      + encodeURIComponent(application.full_name),
@@ -101,23 +118,58 @@ export default function ApplicationActions({ application, userRole }: Props) {
         </div>
       )}
 
-      {/* Stage actions */}
+      {/* Stage status / primary action */}
       <div style={{
         background: '#F7F7F5',
         borderRadius: 10,
         padding: '14px 16px',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 12,
       }}>
 
-        {isTerminal && (
-          <div>
-            <p style={{
-              fontFamily: 'DM Sans, sans-serif',
-              fontSize: 13,
-              color: '#888',
-              margin: '0 0 12px',
-            }}>
-              This application is <strong style={{ color: '#555' }}>{currentStatus}</strong>. No further stage actions available.
-            </p>
+        <p style={{ fontFamily: 'DM Sans, sans-serif', fontSize: 13, color: '#888', margin: 0 }}>
+          {isTerminal ? (
+            <>
+              This application is <strong style={{ color: '#555' }}>{currentStatus}</strong>.
+              {currentStatus === 'approved' && canRevert && ' You can create a member account or revert this decision.'}
+              {currentStatus !== 'approved' && ' No further stage actions available.'}
+            </>
+          ) : canAdvance ? (
+            <>
+              Currently <strong style={{ color: '#555' }}>{stageNames[currentStatus]}</strong>. Advance to the next stage, or revert if this was a mistake.
+            </>
+          ) : (
+            <>
+              This application is currently <strong style={{ color: '#555' }}>{currentStatus}</strong>. Awaiting further review by the Consultant.
+            </>
+          )}
+        </p>
+
+        {(canAdvance || canRevert || (currentStatus === 'approved' && isConsultant)) && (
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+            {!isTerminal && canAdvance && nextStatus && (
+              <button
+                onClick={() => updateStatus(nextStatus)}
+                disabled={loading !== null}
+                style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 6,
+                  padding: '8px 16px', borderRadius: 8, border: 'none',
+                  fontFamily: 'DM Sans, sans-serif', fontSize: 13, fontWeight: 600,
+                  color: '#fff',
+                  background: STATUS_ACCENTS[nextStatus as ApplicationStatus],
+                  cursor: loading !== null ? 'wait' : 'pointer',
+                  opacity: loading !== null ? 0.7 : 1,
+                }}
+              >
+                {loading === nextStatus
+                  ? <Loader2 size={13} className="animate-spin" />
+                  : <ArrowRight size={13} />
+                }
+                {stageLabel[currentStatus]}
+              </button>
+            )}
+
             {currentStatus === 'approved' && isConsultant && (
               <button
                 className="btn-primary"
@@ -126,54 +178,29 @@ export default function ApplicationActions({ application, userRole }: Props) {
                 Create Member Account →
               </button>
             )}
-          </div>
-        )}
 
-        {!isTerminal && (
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-
-            {canAdvance && nextStatus && (
+            {canRevert && prevStatus && (
               <button
-                className="btn-primary"
-                onClick={() => updateStatus(nextStatus)}
+                onClick={() => updateStatus(prevStatus)}
                 disabled={loading !== null}
-                style={{ opacity: loading !== null ? 0.7 : 1 }}
+                style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 6,
+                  padding: '8px 16px', borderRadius: 8,
+                  border: `1px solid ${STATUS_ACCENTS[prevStatus as ApplicationStatus]}`,
+                  fontFamily: 'DM Sans, sans-serif', fontSize: 13, fontWeight: 600,
+                  color: STATUS_ACCENTS[prevStatus as ApplicationStatus],
+                  background: '#fff',
+                  cursor: loading !== null ? 'wait' : 'pointer',
+                  opacity: loading !== null ? 0.7 : 1,
+                }}
               >
-                {loading === nextStatus
-                  ? <Loader size={13} />
-                  : <ArrowRight size={13} />
+                {loading === prevStatus
+                  ? <Loader2 size={13} className="animate-spin" />
+                  : <ArrowLeft size={13} />
                 }
-                {stageLabel[currentStatus]}
+                Revert
               </button>
             )}
-
-            {isConsultant && (
-              <button
-                className="btn-danger"
-                onClick={() => updateStatus('rejected')}
-                disabled={loading !== null}
-                style={{ opacity: loading !== null ? 0.7 : 1 }}
-              >
-                {loading === 'rejected'
-                  ? <Loader size={13} />
-                  : <XCircle size={13} />
-                }
-                Reject
-              </button>
-            )}
-
-            {isConsultant && (
-              <button
-                className="btn-secondary"
-                onClick={() => updateStatus('withdrawn')}
-                disabled={loading !== null}
-                style={{ opacity: loading !== null ? 0.7 : 1 }}
-              >
-                {loading === 'withdrawn' && <Loader size={13} />}
-                Mark as Withdrawn
-              </button>
-            )}
-
           </div>
         )}
       </div>

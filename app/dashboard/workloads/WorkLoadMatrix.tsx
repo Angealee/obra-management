@@ -1,10 +1,15 @@
 'use client'
 
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import WorkloadCell from './WorkLoadCell'
+import {
+  Users, CalendarDays, ListChecks, CheckCircle2, Scale, Search,
+  ArrowUpAZ, ArrowDownAZ, ArrowUp10, ArrowDown10, ChevronDown, ChevronUp, Loader2,
+  type LucideIcon,
+} from 'lucide-react'
 
 type Mark = 'completed' | 'late' | 'did_not_duty' | null
 
@@ -36,24 +41,80 @@ type MarkRecord = {
   mark: string
 } | null
 
+type SortOption = 'alpha' | 'alpha_desc' | 'most' | 'least'
+
+const SORT_OPTIONS: { value: SortOption; label: string; icon: LucideIcon }[] = [
+  { value: 'alpha',      label: 'A–Z',   icon: ArrowUpAZ },
+  { value: 'alpha_desc', label: 'Z–A',   icon: ArrowDownAZ },
+  { value: 'most',       label: 'Most',  icon: ArrowDown10 },
+  { value: 'least',      label: 'Least', icon: ArrowUp10 },
+]
+
+const EVENT_STATUS_STYLE: Record<string, { bg: string; color: string }> = {
+  upcoming:  { bg: '#eff6ff', color: '#3b82f6' },
+  ongoing:   { bg: '#fefce8', color: '#ca8a04' },
+  completed: { bg: '#f0fdf4', color: '#16a34a' },
+  cancelled: { bg: '#f3f4f6', color: '#9ca3af' },
+}
+
+function MiniBar({ value, max }: { value: number; max: number }) {
+  const pct = max > 0 ? Math.min(100, (value / max) * 100) : 0
+  return (
+    <div style={{ width: 52, height: 5, borderRadius: 99, background: '#F1F1EF', overflow: 'hidden' }}>
+      <div style={{
+        width: `${pct}%`, height: '100%', borderRadius: 99,
+        background: value === 0 ? '#e9e9e7' : '#3b82f6',
+        transition: 'width 0.4s ease',
+      }} />
+    </div>
+  )
+}
+
+function SkillTag({ name }: { name: string }) {
+  return (
+    <span style={{
+      fontSize: 10.5, fontWeight: 500, color: '#888', background: '#F7F7F5',
+      padding: '2px 8px', borderRadius: 999, whiteSpace: 'nowrap',
+    }}>
+      {name}
+    </span>
+  )
+}
+
+function StatCard({ icon: Icon, label, value, sub, accent }: {
+  icon: LucideIcon; label: string; value: string | number; sub?: string; accent: string
+}) {
+  return (
+    <div className="dash-card" style={{ padding: '16px 18px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+      <div style={{
+        width: 32, height: 32, borderRadius: 9, background: `${accent}1a`, color: accent,
+        display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+      }}>
+        <Icon size={15} strokeWidth={2.25} />
+      </div>
+      <div>
+        <p className="section-label">{label}</p>
+        <p style={{ fontSize: 22, fontWeight: 700, letterSpacing: '-0.5px', color: '#111', marginTop: 4, fontFamily: "'DM Sans', sans-serif" }}>
+          {value}
+        </p>
+        {sub && <p style={{ fontSize: 11, color: '#aaa', marginTop: 2 }}>{sub}</p>}
+      </div>
+    </div>
+  )
+}
+
 export default function WorkloadMatrix({
   members,
   events,
   matrix,
   initialMarksMap,
   canManage,
-  totalDuties,
-  reviewedDuties,
-  pendingDuties,
 }: {
   members: Member[]
   events: Event[]
   matrix: Record<string, Record<string, DutyCell[]>>
   initialMarksMap: Record<string, MarkRecord>
   canManage: boolean
-  totalDuties: number
-  reviewedDuties: number
-  pendingDuties: number
 }) {
   const router = useRouter()
   const supabase = createClient()
@@ -67,6 +128,11 @@ export default function WorkloadMatrix({
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState('')
   const [saveSuccess, setSaveSuccess] = useState(false)
+
+  const [search, setSearch] = useState('')
+  const [dutyTypeFilter, setDutyTypeFilter] = useState('all')
+  const [sortBy, setSortBy] = useState<SortOption>('alpha')
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({})
 
   const hasPending = Object.keys(pending).length > 0
   const cycle: Mark[] = ['completed', 'late', 'did_not_duty', null]
@@ -153,74 +219,193 @@ export default function WorkloadMatrix({
     setSaveError('')
   }
 
-  // Sort members: least duties first
-  function getMemberTotal(memberId: string) {
-    return Object.values(matrix[memberId] ?? {}).flat().length
+  function toggleExpanded(memberId: string) {
+    setExpanded(prev => ({ ...prev, [memberId]: !prev[memberId] }))
   }
 
-  function getMemberReviewed(memberId: string) {
-    return Object.values(matrix[memberId] ?? {}).flat().filter(d => d.status === 'reviewed').length
+  // ── Derived data ──────────────────────────────────────────
+  function getMemberSkills(member: Member): string[] {
+    return (member.profile_skills?.map(ps => ps.member_skills?.name).filter(Boolean) as string[]) ?? []
   }
 
-  const sortedMembers = [...members].sort((a, b) => getMemberTotal(a.id) - getMemberTotal(b.id))
-
-  const statusColor: Record<string, string> = {
-    pending:     'bg-gray-100 text-gray-500',
-    in_progress: 'bg-blue-100 text-blue-700',
-    completed:   'bg-yellow-100 text-yellow-700',
-    reviewed:    'bg-green-100 text-green-700',
+  // Duties for a member, excluding events marked "did not duty"
+  // Per-member workload counts, excluding events marked "did not duty".
+  // An event counts toward the total if it has assigned duty record(s), or — when no
+  // duty record exists — if it carries a "completed"/"late" mark on its own.
+  function getMemberCounts(memberId: string): { total: number; reviewed: number; pendingCount: number } {
+    let total = 0
+    let reviewed = 0
+    let pendingCount = 0
+    for (const event of events) {
+      const mark = getDisplayMark(memberId, event.id)
+      if (mark === 'did_not_duty') continue
+      const cellDuties = matrix[memberId]?.[event.id] ?? []
+      if (cellDuties.length > 0) {
+        total += cellDuties.length
+        reviewed += cellDuties.filter(d => d.status === 'reviewed').length
+        pendingCount += cellDuties.filter(d => d.status === 'pending').length
+      } else if (mark === 'completed' || mark === 'late') {
+        total += 1
+      }
+    }
+    return { total, reviewed, pendingCount }
   }
+
+  const dutyTypeOptions = useMemo(
+    () => Array.from(new Set(members.flatMap(getMemberSkills))).sort(),
+    [members]
+  )
+
+  const memberStats = useMemo(() => {
+    const stats: Record<string, { total: number; reviewed: number; pendingCount: number }> = {}
+    for (const m of members) {
+      stats[m.id] = getMemberCounts(m.id)
+    }
+    return stats
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [members, events, matrix, marksMap, pending])
+
+  const visibleMembers = useMemo(() => {
+    let list = members.filter(m => {
+      if (search.trim() && !m.full_name.toLowerCase().includes(search.trim().toLowerCase())) return false
+      if (dutyTypeFilter !== 'all' && !getMemberSkills(m).includes(dutyTypeFilter)) return false
+      return true
+    })
+    list = [...list].sort((a, b) => {
+      switch (sortBy) {
+        case 'alpha_desc': return b.full_name.localeCompare(a.full_name)
+        case 'most':       return memberStats[b.id].total - memberStats[a.id].total || a.full_name.localeCompare(b.full_name)
+        case 'least':      return memberStats[a.id].total - memberStats[b.id].total || a.full_name.localeCompare(b.full_name)
+        default:           return a.full_name.localeCompare(b.full_name)
+      }
+    })
+    return list
+  }, [members, search, dutyTypeFilter, sortBy, memberStats])
+
+  const totals = members.map(m => memberStats[m.id].total)
+  const overallTotal = totals.reduce((s, t) => s + t, 0)
+  const overallReviewed = members.reduce((s, m) => s + memberStats[m.id].reviewed, 0)
+  const overallPending = members.reduce((s, m) => s + memberStats[m.id].pendingCount, 0)
+  const maxTotal = Math.max(1, ...totals)
+  const minTotal = totals.length ? Math.min(...totals) : 0
+  const avgTotal = totals.length ? overallTotal / totals.length : 0
+  const noDutyCount = totals.filter(t => t === 0).length
+  const completionRate = overallTotal > 0 ? Math.round((overallReviewed / overallTotal) * 100) : 0
 
   return (
-    <div>
+    <div className="flex flex-col gap-4">
 
       {/* Summary cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-        {[
-          { label: 'Total Members',  value: members.length,   color: 'text-gray-800' },
-          { label: 'Total Events',   value: events.length,    color: 'text-gray-800' },
-          { label: 'Total Duties',   value: totalDuties,      color: 'text-gray-800' },
-          { label: 'Reviewed',       value: reviewedDuties,   color: 'text-green-600' },
-        ].map(card => (
-          <div key={card.label} className="bg-white rounded-xl shadow-sm p-5">
-            <p className="text-xs text-gray-500 mb-1">{card.label}</p>
-            <p className={`text-3xl font-bold ${card.color}`}>{card.value}</p>
-          </div>
-        ))}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+        <StatCard icon={Users} label="Members" value={members.length} accent="#3b82f6" />
+        <StatCard icon={CalendarDays} label="Events" value={events.length} accent="#7c3aed" />
+        <StatCard icon={ListChecks} label="Total Duties" value={overallTotal} accent="#0891b2" />
+        <StatCard
+          icon={CheckCircle2}
+          label="Reviewed"
+          value={overallReviewed}
+          sub={overallTotal > 0 ? `${completionRate}% complete` : undefined}
+          accent="#16a34a"
+        />
+        <StatCard
+          icon={Scale}
+          label="Avg Workload"
+          value={avgTotal.toFixed(1)}
+          sub={`min ${minTotal} · max ${maxTotal}`}
+          accent="#ca8a04"
+        />
       </div>
 
-      {/* Legend */}
-      <div className="flex items-center gap-4 mb-4 flex-wrap">
-        <span className="text-xs text-gray-400 uppercase tracking-wide font-medium">Legend:</span>
-        {[
-          { color: 'bg-green-500', icon: '✓', label: 'Completed' },
-          { color: 'bg-yellow-400', icon: '!', label: 'Late' },
-          { color: 'bg-red-500', icon: '✗', label: 'Did Not Duty' },
-        ].map(l => (
-          <div key={l.label} className="flex items-center gap-1.5">
-            <span className={`w-6 h-6 rounded-lg ${l.color} flex items-center justify-center text-white text-xs font-bold`}>{l.icon}</span>
-            <span className="text-xs text-gray-500">{l.label}</span>
+      {/* Toolbar */}
+      <div className="dash-card" style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 14 }}>
+        <div className="flex flex-wrap items-center gap-3">
+          {/* Search */}
+          <div style={{ position: 'relative', flex: '1 1 200px', minWidth: 180 }}>
+            <Search size={14} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: '#bbb' }} />
+            <input
+              className="obra-input"
+              style={{ paddingLeft: 34 }}
+              placeholder="Search members..."
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+            />
           </div>
-        ))}
-        <div className="flex items-center gap-1.5">
-          <span className="w-6 h-6 rounded-lg bg-gray-50 border border-gray-200" />
-          <span className="text-xs text-gray-500">Not Assigned</span>
+
+          {/* Duty type filter */}
+          {dutyTypeOptions.length > 0 && (
+            <select
+              className="obra-input"
+              style={{ width: 'auto', minWidth: 150, flex: '0 0 auto' }}
+              value={dutyTypeFilter}
+              onChange={e => setDutyTypeFilter(e.target.value)}
+            >
+              <option value="all">All roles</option>
+              {dutyTypeOptions.map(opt => (
+                <option key={opt} value={opt}>{opt}</option>
+              ))}
+            </select>
+          )}
+
+          {/* Sort control */}
+          <div style={{ display: 'flex', gap: 3, background: '#F7F7F5', borderRadius: 9, padding: 3, flexShrink: 0 }}>
+            {SORT_OPTIONS.map(opt => {
+              const active = sortBy === opt.value
+              return (
+                <button
+                  key={opt.value}
+                  onClick={() => setSortBy(opt.value)}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 5, padding: '6px 10px', borderRadius: 6, border: 'none',
+                    background: active ? '#111' : 'transparent',
+                    color: active ? '#fff' : '#888',
+                    fontSize: 12, fontWeight: 500, cursor: 'pointer', transition: 'all 0.15s ease',
+                    fontFamily: "'DM Sans', sans-serif",
+                  }}
+                >
+                  <opt.icon size={12} />
+                  {opt.label}
+                </button>
+              )
+            })}
+          </div>
         </div>
-        <div className="flex items-center gap-1.5">
-          <span className="w-6 h-6 rounded-lg bg-gray-200 flex items-center justify-center text-gray-500 text-xs font-bold">P</span>
-          <span className="text-xs text-gray-500">Pending duty</span>
+
+        {/* Legend */}
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2" style={{ paddingTop: 12, borderTop: '1px solid rgba(0,0,0,0.05)' }}>
+          <span className="section-label">Legend</span>
+          {[
+            { bg: '#16a34a', label: 'Completed', icon: '✓' },
+            { bg: '#ca8a04', label: 'Late', icon: '!' },
+            { bg: '#CC0000', label: 'Did Not Duty', icon: '✗' },
+          ].map(item => (
+            <span key={item.label} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: '#888' }}>
+              <span style={{ width: 18, height: 18, borderRadius: 5, background: item.bg, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 700 }}>
+                {item.icon}
+              </span>
+              {item.label}
+            </span>
+          ))}
+          <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: '#888' }}>
+            <span style={{ width: 18, height: 18, borderRadius: 5, background: '#FCFCFB', border: '1px dashed rgba(0,0,0,0.08)' }} />
+            Not assigned
+          </span>
+          {canManage && (
+            <span style={{ fontSize: 11.5, color: '#bbb', fontStyle: 'italic', marginLeft: 'auto' }}>
+              Click any cell to cycle marks
+            </span>
+          )}
         </div>
-        {canManage && (
-          <span className="text-xs text-gray-400 italic">· Click any cell to cycle marks</span>
-        )}
       </div>
 
-      {/* Save bar — only shows when there are pending changes */}
+      {/* Save bar */}
       {hasPending && (
-        <div className="flex items-center justify-between bg-gray-900 text-white px-5 py-3 rounded-xl mb-4 gap-4 flex-wrap">
+        <div style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap',
+          background: '#111', color: '#fff', borderRadius: 12, padding: '12px 18px',
+        }}>
           <div className="flex items-center gap-3">
-            <span className="w-2 h-2 rounded-full bg-yellow-400" />
-            <p className="text-sm font-medium">
+            <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#ca8a04', flexShrink: 0 }} />
+            <p style={{ fontSize: 13, fontWeight: 500, margin: 0 }}>
               {Object.keys(pending).length} unsaved change{Object.keys(pending).length !== 1 ? 's' : ''}
             </p>
           </div>
@@ -228,170 +413,307 @@ export default function WorkloadMatrix({
             <button
               onClick={handleDiscard}
               disabled={saving}
-              className="px-4 py-1.5 rounded-lg text-sm text-gray-400 hover:text-white transition disabled:opacity-50"
+              style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.5)', fontSize: 13, cursor: 'pointer', padding: '6px 14px', opacity: saving ? 0.5 : 1 }}
             >
               Discard
             </button>
             <button
               onClick={handleSave}
               disabled={saving}
-              className="bg-white text-gray-900 px-5 py-1.5 rounded-lg text-sm font-semibold hover:bg-gray-100 transition disabled:opacity-50"
+              style={{
+                display: 'flex', alignItems: 'center', gap: 6,
+                background: '#fff', color: '#111', border: 'none', borderRadius: 8,
+                padding: '7px 18px', fontSize: 13, fontWeight: 600,
+                cursor: saving ? 'wait' : 'pointer', opacity: saving ? 0.7 : 1,
+              }}
             >
+              {saving && <Loader2 size={13} className="animate-spin" />}
               {saving ? 'Saving...' : 'Save Changes'}
             </button>
           </div>
         </div>
       )}
 
-      {/* Success message */}
+      {/* Success / error */}
       {saveSuccess && !hasPending && (
-        <div className="bg-green-50 border border-green-200 text-green-700 text-sm px-5 py-3 rounded-xl mb-4">
-          ✓ Changes saved successfully.
+        <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', color: '#16a34a', fontSize: 13, padding: '10px 16px', borderRadius: 10 }}>
+          Changes saved successfully.
         </div>
       )}
-
-      {/* Error message */}
       {saveError && (
-        <div className="bg-red-50 border border-red-200 text-red-600 text-sm px-5 py-3 rounded-xl mb-4">
+        <div style={{ background: '#fef2f2', border: '1px solid #fecaca', color: '#dc2626', fontSize: 13, padding: '10px 16px', borderRadius: 10 }}>
           {saveError}
         </div>
       )}
 
-      {/* Matrix table */}
+      {/* Matrix */}
       {events.length === 0 ? (
-        <div className="bg-white rounded-xl p-12 text-center shadow-sm">
-          <p className="text-gray-400 text-sm">No events found for this academic year.</p>
-          <Link href="/dashboard/events/new" className="mt-3 inline-block text-sm text-gray-600 underline">
+        <div className="dash-card" style={{ textAlign: 'center', padding: '48px 24px' }}>
+          <p style={{ fontSize: 13, color: '#bbb', margin: 0 }}>No events found for this academic year.</p>
+          <Link href="/dashboard/events/new" className="btn-secondary" style={{ marginTop: 14, display: 'inline-flex' }}>
             Create an event
           </Link>
         </div>
       ) : members.length === 0 ? (
-        <div className="bg-white rounded-xl p-12 text-center shadow-sm">
-          <p className="text-gray-400 text-sm">No active members found.</p>
+        <div className="dash-card" style={{ textAlign: 'center', padding: '48px 24px' }}>
+          <p style={{ fontSize: 13, color: '#bbb', margin: 0 }}>No active members found.</p>
+        </div>
+      ) : visibleMembers.length === 0 ? (
+        <div className="dash-card" style={{ textAlign: 'center', padding: '48px 24px' }}>
+          <p style={{ fontSize: 13, color: '#bbb', margin: 0 }}>No members match your search or filter.</p>
+          <button
+            className="btn-secondary"
+            style={{ marginTop: 14 }}
+            onClick={() => { setSearch(''); setDutyTypeFilter('all') }}
+          >
+            Clear filters
+          </button>
         </div>
       ) : (
-        <div className="bg-white rounded-xl shadow-sm overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="text-sm border-collapse" style={{ minWidth: `${Math.max(800, 280 + events.length * 130)}px` }}>
-              <thead>
-                <tr className="border-b border-gray-100">
-                  <th className="sticky left-0 z-10 bg-gray-50 text-left px-5 py-4 font-medium text-gray-600 border-r border-gray-100 min-w-64">
-                    <div className="flex items-center justify-between">
-                      <span>Member</span>
-                      <span className="text-xs text-gray-400 font-normal">↑ least active first</span>
-                    </div>
-                  </th>
-                  {events.map(event => (
-                    <th key={event.id} className="text-center px-3 py-4 font-medium text-gray-600 min-w-32 max-w-36">
-                      <Link href={`/dashboard/events/${event.id}`} className="block hover:text-gray-900 transition">
-                        <p className="text-xs leading-tight line-clamp-2 text-center">{event.title}</p>
-                        <p className="text-xs text-gray-400 font-normal mt-1">
-                          {new Date(event.event_date).toLocaleDateString('en-PH', { month: 'short', day: 'numeric' })}
-                        </p>
-                        <span className={`inline-block mt-1 text-xs px-2 py-0.5 rounded-full ${statusColor[event.status] ?? 'bg-gray-100 text-gray-500'}`}>
-                          {event.status}
-                        </span>
-                      </Link>
+        <>
+          {/* Desktop / tablet table */}
+          <div className="hidden md:block" style={{ background: '#fff', border: '1px solid rgba(0,0,0,0.06)', borderRadius: 12, overflow: 'hidden' }}>
+            <div className="overflow-x-auto">
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, minWidth: Math.max(700, 260 + events.length * 110) }}>
+                <thead>
+                  <tr style={{ borderBottom: '1px solid rgba(0,0,0,0.05)' }}>
+                    <th
+                      className="sticky left-0 z-10"
+                      style={{
+                        background: '#F1F1EF', textAlign: 'left', padding: '14px 20px',
+                        fontSize: 11, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: '#555',
+                        borderRight: '1px solid rgba(0,0,0,0.06)', minWidth: 240,
+                      }}
+                    >
+                      Member
                     </th>
-                  ))}
-                  <th className="text-center px-4 py-4 font-medium text-gray-600 bg-gray-50 min-w-20">Total</th>
-                </tr>
-              </thead>
+                    {events.map(event => {
+                      const es = EVENT_STATUS_STYLE[event.status] ?? EVENT_STATUS_STYLE.upcoming
+                      return (
+                        <th key={event.id} style={{ textAlign: 'center', padding: '12px 8px', minWidth: 104, maxWidth: 120 }}>
+                          <Link href={`/dashboard/events/${event.id}`} style={{ textDecoration: 'none' }}>
+                            <p style={{
+                              fontSize: 11.5, fontWeight: 600, color: '#555', lineHeight: 1.3, margin: 0,
+                              display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden',
+                            }}>
+                              {event.title}
+                            </p>
+                            <p style={{ fontSize: 10.5, color: '#bbb', margin: '4px 0 0' }}>
+                              {new Date(event.event_date).toLocaleDateString('en-PH', { month: 'short', day: 'numeric' })}
+                            </p>
+                            <span style={{
+                              display: 'inline-block', marginTop: 4, fontSize: 9.5, fontWeight: 600,
+                              padding: '2px 8px', borderRadius: 999, background: es.bg, color: es.color, textTransform: 'capitalize',
+                            }}>
+                              {event.status}
+                            </span>
+                          </Link>
+                        </th>
+                      )
+                    })}
+                    <th style={{
+                      textAlign: 'center', padding: '12px 16px', background: '#F1F1EF', minWidth: 100,
+                      fontSize: 11, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: '#555',
+                    }}>
+                      Workload
+                    </th>
+                  </tr>
+                </thead>
 
-              <tbody>
-                {sortedMembers.map(member => {
-                  const total = getMemberTotal(member.id)
-                  const reviewed = getMemberReviewed(member.id)
-                  const skills = member.profile_skills?.map(ps => ps.member_skills?.name).filter(Boolean) ?? []
+                <tbody>
+                  {visibleMembers.map(member => {
+                    const { total, reviewed } = memberStats[member.id]
+                    const skills = getMemberSkills(member)
 
-                  return (
-                    <tr key={member.id} className={`border-b border-gray-50 hover:bg-gray-50 transition ${total === 0 ? 'opacity-60' : ''}`}>
-                      <td className="sticky left-0 z-10 bg-white px-5 py-3 border-r border-gray-100 hover:bg-gray-50">
-                        <Link href={`/dashboard/members/${member.id}`} className="block group">
-                          <div className="flex items-center gap-3">
-                            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${total === 0 ? 'bg-gray-100 text-gray-400' : 'bg-gray-900 text-white'}`}>
+                    return (
+                      <tr key={member.id} className="group hover:bg-[#FAFAF9]" style={{ borderBottom: '1px solid rgba(0,0,0,0.03)', opacity: total === 0 ? 0.6 : 1 }}>
+                        <td className="sticky left-0 z-10 bg-white group-hover:bg-[#FAFAF9]" style={{ padding: '12px 20px', borderRight: '1px solid rgba(0,0,0,0.05)', transition: 'background 0.1s ease' }}>
+                          <Link href={`/dashboard/members/${member.id}`} className="flex items-center gap-3 group/link">
+                            <div style={{
+                              width: 32, height: 32, borderRadius: '50%', flexShrink: 0,
+                              display: 'flex', alignItems: 'center', justifyContent: 'center',
+                              fontSize: 12, fontWeight: 700,
+                              background: total === 0 ? '#F7F7F5' : '#111',
+                              color: total === 0 ? '#bbb' : '#fff',
+                            }}>
                               {member.full_name.charAt(0)}
                             </div>
-                            <div>
-                              <p className="font-medium text-gray-800 text-sm leading-tight">{member.full_name}</p>
-                              <p className="text-xs text-gray-400 mt-0.5">{member.course_section ?? '—'}</p>
-                              {skills.length > 0 && (
-                                <p className="text-xs text-gray-400 mt-0.5">{skills.join(' · ')}</p>
-                              )}
+                            <div className="min-w-0">
+                              <p className="truncate group-hover/link:underline" style={{ fontSize: 13, fontWeight: 600, color: '#111', margin: 0 }}>
+                                {member.full_name}
+                              </p>
+                              <div className="flex items-center gap-1.5 flex-wrap" style={{ marginTop: 2 }}>
+                                <span style={{ fontSize: 11, color: '#bbb' }}>{member.course_section ?? '—'}</span>
+                                {skills.slice(0, 2).map(s => <SkillTag key={s} name={s} />)}
+                                {skills.length > 2 && <SkillTag name={`+${skills.length - 2}`} />}
+                              </div>
                             </div>
-                          </div>
-                        </Link>
-                      </td>
+                          </Link>
+                        </td>
 
-                      {events.map(event => {
-                        const cellDuties = matrix[member.id]?.[event.id] ?? []
-                        const displayMark = getDisplayMark(member.id, event.id)
-                        const isPendingChange = pending[`${member.id}_${event.id}`] !== undefined
+                        {events.map(event => {
+                          const cellDuties = matrix[member.id]?.[event.id] ?? []
+                          const displayMark = getDisplayMark(member.id, event.id)
+                          const isPendingChange = pending[`${member.id}_${event.id}`] !== undefined
 
-                        return (
-                          <td key={event.id} className={`px-2 py-3 text-center align-middle ${isPendingChange ? 'bg-yellow-50' : ''}`}>
-                            <WorkloadCell
-                              mark={displayMark}
-                              dutyStatus={cellDuties[0]?.status ?? null}
-                              canEdit={canManage}
-                              onClick={() => handleCellClick(member.id, event.id)}
-                            />
-                          </td>
-                        )
-                      })}
+                          return (
+                            <td key={event.id} style={{ padding: '10px 8px', textAlign: 'center', background: isPendingChange ? '#fffbeb' : undefined }}>
+                              <div className="flex justify-center">
+                                <WorkloadCell
+                                  mark={displayMark}
+                                  dutyStatus={cellDuties[0]?.status ?? null}
+                                  canEdit={canManage}
+                                  onClick={() => handleCellClick(member.id, event.id)}
+                                />
+                              </div>
+                            </td>
+                          )
+                        })}
 
-                      <td className="px-4 py-3 text-center bg-gray-50">
-                        {total === 0 ? (
-                          <span className="text-xs text-gray-300">—</span>
-                        ) : (
-                          <div>
-                            <p className="text-sm font-bold text-gray-800">{total}</p>
-                            {reviewed > 0 && <p className="text-xs text-green-600">{reviewed} done</p>}
-                          </div>
-                        )}
-                      </td>
-                    </tr>
-                  )
-                })}
-              </tbody>
+                        <td style={{ padding: '10px 16px', textAlign: 'center', background: '#F7F7F5' }}>
+                          {total === 0 ? (
+                            <span style={{ fontSize: 12, color: '#bbb' }}>—</span>
+                          ) : (
+                            <div className="flex flex-col items-center gap-1.5">
+                              <p style={{ fontSize: 14, fontWeight: 700, color: '#111', margin: 0 }}>
+                                {total}
+                                {reviewed > 0 && <span style={{ fontSize: 11, fontWeight: 500, color: '#16a34a' }}> · {reviewed} done</span>}
+                              </p>
+                              <MiniBar value={total} max={maxTotal} />
+                            </div>
+                          )}
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
 
-              <tfoot>
-                <tr className="border-t-2 border-gray-200 bg-gray-50">
-                  <td className="sticky left-0 z-10 bg-gray-50 px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide border-r border-gray-100">
-                    Duties per Event
-                  </td>
-                  {events.map(event => (
-                    <td key={event.id} className="text-center px-2 py-3">
-                      <span className="text-sm font-bold text-gray-700">
-                        {Object.values(matrix).reduce((count, memberEvents) => count + (memberEvents[event.id]?.length ?? 0), 0)}
-                      </span>
+                <tfoot>
+                  <tr style={{ borderTop: '2px solid rgba(0,0,0,0.08)', background: '#F1F1EF' }}>
+                    <td className="sticky left-0 z-10" style={{
+                      background: '#F1F1EF', padding: '12px 20px',
+                      fontSize: 10.5, fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', color: '#555',
+                      borderRight: '1px solid rgba(0,0,0,0.06)',
+                    }}>
+                      Duties / Event
                     </td>
-                  ))}
-                  <td className="text-center px-4 py-3 bg-gray-100">
-                    <span className="text-sm font-bold text-gray-800">{totalDuties}</span>
-                  </td>
-                </tr>
-              </tfoot>
-            </table>
+                    {events.map(event => (
+                      <td key={event.id} style={{ textAlign: 'center', padding: '10px 8px', fontSize: 13, fontWeight: 700, color: '#555' }}>
+                        {Object.values(matrix).reduce((c, me) => c + (me[event.id]?.length ?? 0), 0)}
+                      </td>
+                    ))}
+                    <td style={{ textAlign: 'center', padding: '10px 16px', fontSize: 13, fontWeight: 700, color: '#111', background: '#F1F1EF' }}>
+                      {overallTotal}
+                    </td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
           </div>
 
-          <div className="px-5 py-3 border-t border-gray-100 bg-gray-50 flex items-center gap-6 flex-wrap">
-            <p className="text-xs text-gray-500">
-              <span className="font-medium text-gray-700">{sortedMembers.filter(m => getMemberTotal(m.id) === 0).length}</span> members with no duties
-            </p>
-            <p className="text-xs text-gray-500">
-              <span className="font-medium text-gray-700">{pendingDuties}</span> duties pending
-            </p>
-            <p className="text-xs text-gray-500">
-              <span className="font-medium text-gray-700">{reviewedDuties}</span> of {totalDuties} reviewed
-            </p>
-            {totalDuties > 0 && (
-              <p className="text-xs text-gray-500">
-                <span className="font-medium text-green-600">{Math.round((reviewedDuties / totalDuties) * 100)}%</span> completion rate
-              </p>
-            )}
+          {/* Mobile cards */}
+          <div className="md:hidden flex flex-col gap-2">
+            {visibleMembers.map(member => {
+              const { total, reviewed } = memberStats[member.id]
+              const skills = getMemberSkills(member)
+              const isOpen = !!expanded[member.id]
+
+              return (
+                <div key={member.id} className="dash-card" style={{ padding: 0, overflow: 'hidden' }}>
+                  <button
+                    onClick={() => toggleExpanded(member.id)}
+                    className="flex items-center gap-3 w-full"
+                    style={{ padding: '14px 16px', background: 'none', border: 'none', textAlign: 'left', cursor: 'pointer' }}
+                  >
+                    <div style={{
+                      width: 36, height: 36, borderRadius: '50%', flexShrink: 0,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      fontSize: 13, fontWeight: 700,
+                      background: total === 0 ? '#F7F7F5' : '#111',
+                      color: total === 0 ? '#bbb' : '#fff',
+                    }}>
+                      {member.full_name.charAt(0)}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="truncate" style={{ fontSize: 13.5, fontWeight: 600, color: '#111', margin: 0 }}>{member.full_name}</p>
+                      <div className="flex items-center gap-1.5 flex-wrap" style={{ marginTop: 3 }}>
+                        <span style={{ fontSize: 11, color: '#bbb' }}>{member.course_section ?? '—'}</span>
+                        {skills.slice(0, 2).map(s => <SkillTag key={s} name={s} />)}
+                      </div>
+                    </div>
+                    <div className="flex flex-col items-end gap-1.5 flex-shrink-0">
+                      {total === 0 ? (
+                        <span style={{ fontSize: 11.5, color: '#ddd' }}>No duties</span>
+                      ) : (
+                        <>
+                          <p style={{ fontSize: 14, fontWeight: 700, color: '#111', margin: 0 }}>
+                            {total}
+                            {reviewed > 0 && <span style={{ fontSize: 11, fontWeight: 500, color: '#16a34a' }}> · {reviewed} done</span>}
+                          </p>
+                          <MiniBar value={total} max={maxTotal} />
+                        </>
+                      )}
+                    </div>
+                    {isOpen
+                      ? <ChevronUp size={16} style={{ color: '#bbb', flexShrink: 0 }} />
+                      : <ChevronDown size={16} style={{ color: '#bbb', flexShrink: 0 }} />
+                    }
+                  </button>
+
+                  {isOpen && (
+                    <div style={{ padding: '4px 16px 16px', borderTop: '1px solid rgba(0,0,0,0.04)' }}>
+                      <div className="grid grid-cols-3 sm:grid-cols-4 gap-3" style={{ marginTop: 12 }}>
+                        {events.map(event => {
+                          const cellDuties = matrix[member.id]?.[event.id] ?? []
+                          const displayMark = getDisplayMark(member.id, event.id)
+
+                          return (
+                            <div key={event.id} className="flex flex-col items-center gap-1.5">
+                              <WorkloadCell
+                                mark={displayMark}
+                                dutyStatus={cellDuties[0]?.status ?? null}
+                                canEdit={canManage}
+                                onClick={() => handleCellClick(member.id, event.id)}
+                              />
+                              <p style={{ fontSize: 9.5, color: '#bbb', textAlign: 'center', lineHeight: 1.3, margin: 0 }}>
+                                {event.title.length > 14 ? `${event.title.slice(0, 13)}…` : event.title}
+                              </p>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )
+            })}
           </div>
-        </div>
+
+          {/* Footer summary */}
+          <div className="dash-card" style={{ padding: '14px 18px' }}>
+            <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
+              <p style={{ fontSize: 12, color: '#888', margin: 0 }}>
+                <span style={{ fontWeight: 600, color: '#555' }}>{noDutyCount}</span> member{noDutyCount !== 1 ? 's' : ''} with no duties
+              </p>
+              <p style={{ fontSize: 12, color: '#888', margin: 0 }}>
+                <span style={{ fontWeight: 600, color: '#555' }}>{overallPending}</span> duties pending
+              </p>
+              <p style={{ fontSize: 12, color: '#888', margin: 0 }}>
+                <span style={{ fontWeight: 600, color: '#555' }}>{overallReviewed}</span> of {overallTotal} reviewed
+              </p>
+              {overallTotal > 0 && (
+                <p style={{ fontSize: 12, color: '#888', margin: 0 }}>
+                  <span style={{ fontWeight: 600, color: '#16a34a' }}>{completionRate}%</span> completion rate
+                </p>
+              )}
+              {visibleMembers.length !== members.length && (
+                <p style={{ fontSize: 12, color: '#888', margin: '0 0 0 auto' }}>
+                  Showing <span style={{ fontWeight: 600, color: '#555' }}>{visibleMembers.length}</span> of {members.length} members
+                </p>
+              )}
+            </div>
+          </div>
+        </>
       )}
     </div>
   )

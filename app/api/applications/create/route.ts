@@ -24,7 +24,7 @@ export async function POST(req: NextRequest) {
     } = body
 
     // Basic server-side validation
-    if (!full_name || !email || !contact_number || !year_level || !course_section || !motivation) {
+    if (!full_name || !email || !contact_number || !year_level || !course_section || !motivation || !portfolio_url) {
       return NextResponse.json({ error: 'Missing required fields.' }, { status: 400 })
     }
 

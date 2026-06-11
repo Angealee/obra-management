@@ -2,6 +2,10 @@ import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import type { Profile } from '@/types/database'
+import {
+  Users, CalendarDays, ListChecks, FileText, CheckCircle2, Clock, XCircle,
+  Activity, ClipboardCheck, Trophy, Medal, type LucideIcon,
+} from 'lucide-react'
 
 // ─── Design tokens ───────────────────────────────────────
 const T = {
@@ -12,16 +16,28 @@ const T = {
 }
 
 // ─── Stat card ───────────────────────────────────────────
-function Stat({ label, value, sub, href, accent }: {
-  label: string; value: number | string; sub?: string; href?: string; accent?: string
+function Stat({ label, value, sub, href, accent, icon: Icon }: {
+  label: string; value: number | string; sub?: string; href?: string; accent: string; icon: LucideIcon
 }) {
   const inner = (
-    <div className={`${T.card} ${href ? T.cardHov : ''} p-5 flex flex-col gap-1`}>
-      <p style={T.label}>{label}</p>
-      <p style={{ fontSize: '30px', fontWeight: 700, letterSpacing: '-0.5px', lineHeight: 1, color: accent ?? '#111', fontFamily: "'DM Sans', sans-serif" }}>
-        {value}
-      </p>
-      {sub && <p style={{ fontSize: '11.5px', color: '#aaa', marginTop: '1px' }}>{sub}</p>}
+    <div className={`${T.card} ${href ? T.cardHov : ''} group p-5 flex flex-col gap-3`}>
+      <div
+        className="transition-transform duration-200 group-hover:scale-110"
+        style={{
+          width: 36, height: 36, borderRadius: 10, flexShrink: 0,
+          background: `${accent}1a`, color: accent,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+        }}
+      >
+        <Icon size={17} strokeWidth={2.25} />
+      </div>
+      <div>
+        <p style={T.label}>{label}</p>
+        <p style={{ fontSize: '28px', fontWeight: 700, letterSpacing: '-0.5px', lineHeight: 1.15, color: accent, fontFamily: "'DM Sans', sans-serif", marginTop: '4px' }}>
+          {value}
+        </p>
+        {sub && <p style={{ fontSize: '11.5px', color: '#aaa', marginTop: '3px' }}>{sub}</p>}
+      </div>
     </div>
   )
   if (href) return <Link href={href} className="block">{inner}</Link>
@@ -66,6 +82,13 @@ function SectionHead({ title, action }: { title: string; action?: { label: strin
   )
 }
 
+// ─── Top contributor rank badges ──────────────────────────
+const RANK_BADGES: { icon: LucideIcon; color: string; bg: string }[] = [
+  { icon: Trophy, color: '#ca8a04', bg: '#fef9c3' }, // gold
+  { icon: Medal,  color: '#94a3b8', bg: '#f1f5f9' }, // silver
+  { icon: Medal,  color: '#c2703d', bg: '#fdf1e7' }, // bronze
+]
+
 // ─── Avatar ───────────────────────────────────────────────
 function Avatar({ name, size = 28, bg = '#111' }: { name: string; size?: number; bg?: string }) {
   const init = name.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase()
@@ -94,16 +117,14 @@ export default async function DashboardPage() {
   if (profile.system_role === 'consultant') {
     const [
       { count: totalMembers },
-      { count: totalHeads },
       { data: events },
       { data: duties },
+      { count: pendingApplications },
     ] = await Promise.all([
-      supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('system_role', 'member').eq('is_active', true),
-      supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('system_role', 'creative_head').eq('is_active', true),
+      supabase.from('profiles').select('*', { count: 'exact', head: true }).in('system_role', ['member', 'creative_head']).eq('is_active', true),
       supabase.from('events').select('id, title, event_date, status').eq('academic_year_id', activeAY?.id ?? '').order('event_date', { ascending: false }),
       supabase.from('duties').select('id, title, status, assigned_to, event_id, events(title), assignee:profiles!duties_assigned_to_fkey(full_name)').order('created_at', { ascending: false }).limit(100),
-      supabase.from('workload_marks').select('mark').in('event_id',
-      (await supabase.from('events').select('id').eq('academic_year_id', activeAY?.id ?? '')).data?.map((e: any) => e.id) ?? []),
+      supabase.from('member_applications').select('*', { count: 'exact', head: true }).eq('status', 'pending'),
     ])
 
     // Fetch workload mark stats for this AY
@@ -123,16 +144,21 @@ export default async function DashboardPage() {
     const compl   = byStatus('completed')
     const rev     = byStatus('reviewed')
 
-    const needsReview = duties?.filter(d => d.status === 'completed') ?? []
-
-    const memberCount: Record<string, { name: string; count: number }> = {}
+    type MemberStats = { name: string; total: number; reviewed: number; events: Set<string> }
+    const memberStats: Record<string, MemberStats> = {}
     for (const d of duties ?? []) {
       if (!d.assigned_to) continue
       const name = (d as any).assignee?.full_name ?? 'Unknown'
-      if (!memberCount[d.assigned_to]) memberCount[d.assigned_to] = { name, count: 0 }
-      if (d.status === 'reviewed') memberCount[d.assigned_to].count++
+      if (!memberStats[d.assigned_to]) memberStats[d.assigned_to] = { name, total: 0, reviewed: 0, events: new Set() }
+      const m = memberStats[d.assigned_to]
+      m.total++
+      if (d.status === 'reviewed') m.reviewed++
+      if (d.event_id) m.events.add(d.event_id)
     }
-    const topMembers = Object.entries(memberCount).sort((a, b) => b[1].count - a[1].count).slice(0, 5)
+    const topMembers = Object.entries(memberStats)
+      .filter(([, m]) => m.reviewed > 0)
+      .sort((a, b) => b[1].reviewed - a[1].reviewed)
+      .slice(0, 5)
 
     const upcoming = events?.filter(e => e.status === 'upcoming').length ?? 0
     const ongoing  = events?.filter(e => e.status === 'ongoing').length ?? 0
@@ -165,17 +191,17 @@ export default async function DashboardPage() {
 
         {/* ── 4 stat cards ── */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '14px' }}>
-          <Stat label="Active Members"  value={totalMembers ?? 0} href="/dashboard/members" />
-          <Stat label="Creative Heads"  value={totalHeads ?? 0}   href="/dashboard/members" />
-          <Stat label="Events This AY"  value={events?.length ?? 0} sub={`${upcoming} upcoming · ${ongoing} ongoing`} href="/dashboard/events" />
-          <Stat label="Reviewed Duties" value={rev} sub={`of ${total} total`} accent="#16a34a" href="/dashboard/duties" />
+          <Stat label="Active Members" value={totalMembers ?? 0} accent="#3b82f6" icon={Users} href="/dashboard/members" />
+          <Stat label="Events This AY" value={events?.length ?? 0} sub={`${upcoming} upcoming · ${ongoing} ongoing`} accent="#7c3aed" icon={CalendarDays} href="/dashboard/events" />
+          <Stat label="Total Duties" value={total} sub={`${rev} reviewed`} accent="#0891b2" icon={ListChecks} href="/dashboard/duties" />
+          <Stat label="Pending Applications" value={pendingApplications ?? 0} accent="#ca8a04" icon={FileText} href="/dashboard/applications" />
         </div>
 
         {/* Expand to 3 columns on second row */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '14px' }}>
-          <Stat label="Marked Completed" value={doneMarks}  accent="#16a34a" href="/dashboard/workloads" />
-          <Stat label="Marked Late"      value={lateMarks}  accent="#ca8a04" href="/dashboard/workloads" />
-          <Stat label="Did Not Duty"     value={dndMarks}   accent="#CC0000" href="/dashboard/workloads" />
+          <Stat label="Marked Completed" value={doneMarks}  accent="#16a34a" icon={CheckCircle2} href="/dashboard/workloads" />
+          <Stat label="Marked Late"      value={lateMarks}  accent="#ca8a04" icon={Clock}        href="/dashboard/workloads" />
+          <Stat label="Did Not Duty"     value={dndMarks}   accent="#CC0000" icon={XCircle}      href="/dashboard/workloads" />
         </div>
         
         {/* ── Duty overview ── */}
@@ -215,68 +241,51 @@ export default async function DashboardPage() {
           )}
         </div>
 
-        {/* ── Two columns ── */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
-
-          {/* Awaiting review */}
-          <div className={`${T.card} p-6`}>
-            <div className="flex items-center justify-between mb-4">
-              <p style={T.label}>Awaiting Review</p>
-              {needsReview.length > 0 && (
-                <span style={{ fontSize: '11px', fontWeight: 600, background: '#fefce8', color: '#ca8a04', padding: '2px 9px', borderRadius: '99px' }}>
-                  {needsReview.length}
-                </span>
-              )}
-            </div>
-            {needsReview.length === 0 ? (
-              <p style={{ fontSize: '13px', color: '#bbb' }}>All duties reviewed ✓</p>
-            ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                {needsReview.slice(0, 5).map(d => (
-                  <Link key={d.id} href={`/dashboard/duties/${d.id}`} className={T.row} style={{ textDecoration: 'none' }}>
-                    <div style={{ minWidth: 0 }}>
-                      <p style={{ fontSize: '13.5px', fontWeight: 500, color: '#111', lineHeight: 1.3 }}>{d.title}</p>
-                      <p style={{ fontSize: '11.5px', color: '#aaa', marginTop: '2px' }}>
-                        {(d as any).assignee?.full_name} · {(d as any).events?.title}
-                      </p>
-                    </div>
-                    <span style={{ fontSize: '11px', color: '#ca8a04', background: '#fefce8', padding: '3px 9px', borderRadius: '6px', flexShrink: 0, marginLeft: '8px' }}>Review</span>
-                  </Link>
-                ))}
-                {needsReview.length > 5 && (
-                  <Link href="/dashboard/duties" style={{ fontSize: '12px', color: '#bbb', textAlign: 'center', padding: '8px', textDecoration: 'none', display: 'block' }}
-                    className="hover:text-gray-500 transition-colors">
-                    +{needsReview.length - 5} more
-                  </Link>
-                )}
-              </div>
-            )}
-          </div>
-
-          {/* Top contributors */}
-          <div className={`${T.card} p-6`}>
-            <SectionHead title="Top Contributors" />
-            {topMembers.length === 0 ? (
-              <p style={{ fontSize: '13px', color: '#bbb' }}>No reviewed duties yet.</p>
-            ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                {topMembers.map(([id, data], i) => (
-                  <Link key={id} href={`/dashboard/members/${id}`} className={T.row} style={{ textDecoration: 'none' }}>
+        {/* ── Top contributors ── */}
+        <div className={`${T.card} p-6`}>
+          <SectionHead title="Top Contributors" />
+          {topMembers.length === 0 ? (
+            <p style={{ fontSize: '13px', color: '#bbb' }}>No reviewed duties yet.</p>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+              {topMembers.map(([id, data], i) => {
+                const rate = data.total > 0 ? Math.round((data.reviewed / data.total) * 100) : 0
+                const badge = RANK_BADGES[i]
+                return (
+                  <Link key={id} href={`/dashboard/members/${id}`}
+                    className={`${T.card} ${T.cardHov} p-4 flex flex-col gap-3 relative`}
+                    style={{ textDecoration: 'none' }}>
+                    {badge && (
+                      <div style={{
+                        position: 'absolute', top: 10, right: 10,
+                        width: 24, height: 24, borderRadius: '50%',
+                        background: badge.bg, color: badge.color,
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      }}>
+                        <badge.icon size={13} />
+                      </div>
+                    )}
                     <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                      <span style={{ fontSize: '11px', fontWeight: 700, color: i === 0 ? '#ca8a04' : '#ccc', width: '16px', textAlign: 'right', flexShrink: 0 }}>
-                        {i + 1}
-                      </span>
-                      <Avatar name={data.name} size={26} bg={i === 0 ? '#111' : '#d1d5db'} />
-                      <p style={{ fontSize: '13.5px', fontWeight: 500, color: '#111' }}>{data.name}</p>
+                      <Avatar name={data.name} size={36} bg={i === 0 ? '#111' : '#d1d5db'} />
+                      <div style={{ minWidth: 0 }}>
+                        <p style={{ fontSize: '13.5px', fontWeight: 600, color: '#111', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{data.name}</p>
+                        <p style={{ fontSize: '11px', color: '#aaa' }}>#{i + 1} contributor</p>
+                      </div>
                     </div>
-                    <span style={{ fontSize: '12px', color: data.count > 0 ? '#16a34a' : '#ccc', fontWeight: 600, flexShrink: 0 }}>
-                      {data.count} reviewed
-                    </span>
+                    <div>
+                      <div style={{ height: '4px', background: '#f0f0ee', borderRadius: '99px', overflow: 'hidden', marginBottom: '8px' }}>
+                        <div style={{ height: '100%', width: `${rate}%`, background: '#16a34a', transition: 'width 0.5s ease' }} />
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <span style={{ fontSize: '11px', color: '#999' }}>{data.reviewed}/{data.total} reviewed</span>
+                        <span style={{ fontSize: '11px', color: '#999' }}>{data.events.size} event{data.events.size !== 1 ? 's' : ''}</span>
+                      </div>
+                    </div>
                   </Link>
-                ))}
-              </div>
-            )}
-          </div>
+                )
+              })}
+            </div>
+          )}
         </div>
 
         {/* ── Events list ── */}
@@ -340,10 +349,10 @@ export default async function DashboardPage() {
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '14px' }}>
-          <Stat label="My Pending"       value={myPending}           href="/dashboard/duties" />
-          <Stat label="In Progress"      value={myInProg}            accent="#3b82f6" href="/dashboard/duties" />
-          <Stat label="Awaiting Review"  value={pendingReview.length} accent={pendingReview.length > 0 ? '#ca8a04' : undefined} href="/dashboard/duties" />
-          <Stat label="Upcoming Events"  value={events?.length ?? 0} href="/dashboard/events" />
+          <Stat label="My Pending"       value={myPending}            accent="#64748b" icon={Clock}          href="/dashboard/duties" />
+          <Stat label="In Progress"      value={myInProg}             accent="#3b82f6" icon={Activity}       href="/dashboard/duties" />
+          <Stat label="Awaiting Review"  value={pendingReview.length} accent="#ca8a04" icon={ClipboardCheck} href="/dashboard/duties" />
+          <Stat label="Upcoming Events"  value={events?.length ?? 0}  accent="#7c3aed" icon={CalendarDays}   href="/dashboard/events" />
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
@@ -444,10 +453,10 @@ export default async function DashboardPage() {
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '14px' }}>
-        <Stat label="Pending"     value={mPend} href="/dashboard/duties" />
-        <Stat label="In Progress" value={mProg} accent="#3b82f6" href="/dashboard/duties" />
-        <Stat label="Completed"   value={mComp} accent="#ca8a04" href="/dashboard/duties" />
-        <Stat label="Reviewed"    value={mRev}  accent="#16a34a" href="/dashboard/duties" />
+        <Stat label="Pending"     value={mPend} accent="#64748b" icon={Clock}        href="/dashboard/duties" />
+        <Stat label="In Progress" value={mProg} accent="#3b82f6" icon={Activity}     href="/dashboard/duties" />
+        <Stat label="Completed"   value={mComp} accent="#ca8a04" icon={CheckCircle2} href="/dashboard/duties" />
+        <Stat label="Reviewed"    value={mRev}  accent="#16a34a" icon={Trophy}       href="/dashboard/duties" />
       </div>
 
       {mTotal > 0 && (

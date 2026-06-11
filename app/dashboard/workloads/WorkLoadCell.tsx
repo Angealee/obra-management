@@ -1,29 +1,21 @@
 'use client'
 
+import type { CSSProperties } from 'react'
+
 type Mark = 'completed' | 'late' | 'did_not_duty' | null
 
-const markStyle: Record<string, string> = {
-  completed:    'bg-green-500 text-white',
-  late:         'bg-yellow-400 text-white',
-  did_not_duty: 'bg-red-500 text-white',
+const MARK_STYLE: Record<string, { bg: string; color: string; icon: string }> = {
+  completed:    { bg: '#16a34a', color: '#fff', icon: '✓' },
+  late:         { bg: '#ca8a04', color: '#fff', icon: '!' },
+  did_not_duty: { bg: '#CC0000', color: '#fff', icon: '✗' },
 }
 
-const markIcon: Record<string, string> = {
-  completed: '✓', late: '!', did_not_duty: '✗',
+const DUTY_STYLE: Record<string, { bg: string; color: string; icon: string; border?: string }> = {
+  pending:     { bg: '#eef2ff', color: '#6366f1', icon: 'P' },
+  in_progress: { bg: '#eff6ff', color: '#3b82f6', icon: '…' },
+  completed:   { bg: '#fefce8', color: '#ca8a04', icon: '✓' },
+  reviewed:    { bg: '#f0fdf4', color: '#16a34a', icon: '★' },
 }
-
-const dutyStyle: Record<string, string> = {
-  pending:     'bg-gray-200 text-gray-500',
-  in_progress: 'bg-blue-100 text-blue-600',
-  completed:   'bg-yellow-100 text-yellow-600',
-  reviewed:    'bg-green-100 text-green-600',
-}
-
-const dutyIcon: Record<string, string> = {
-  pending: 'P', in_progress: '…', completed: '✓', reviewed: '★',
-}
-
-const cycle: Mark[] = ['completed', 'late', 'did_not_duty', null]
 
 export default function WorkloadCell({
   mark,
@@ -36,23 +28,45 @@ export default function WorkloadCell({
   canEdit: boolean
   onClick: () => void
 }) {
-  const base = 'w-8 h-8 rounded-lg text-xs font-bold flex items-center justify-center transition-all duration-150'
-  const interactive = canEdit
-    ? 'cursor-pointer hover:scale-110 hover:shadow-sm active:scale-95'
-    : 'cursor-default'
+  const base: CSSProperties = {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    fontSize: 12,
+    fontWeight: 700,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    border: 'none',
+    fontFamily: "'DM Sans', sans-serif",
+    transition: 'transform 0.12s ease, box-shadow 0.12s ease',
+    cursor: canEdit ? 'pointer' : 'default',
+  }
+
+  const interactive = canEdit ? 'hover:scale-110 active:scale-95' : ''
 
   if (mark) {
+    const s = MARK_STYLE[mark]
     return (
-      <button onClick={canEdit ? onClick : undefined} className={`${base} ${markStyle[mark]} ${interactive} shadow-sm`}>
-        {markIcon[mark]}
+      <button
+        onClick={canEdit ? onClick : undefined}
+        className={interactive}
+        style={{ ...base, background: s.bg, color: s.color, boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}
+      >
+        {s.icon}
       </button>
     )
   }
 
   if (dutyStatus) {
+    const s = DUTY_STYLE[dutyStatus] ?? { bg: '#f1f5f9', color: '#64748b', icon: '?' }
     return (
-      <button onClick={canEdit ? onClick : undefined} className={`${base} ${dutyStyle[dutyStatus] ?? 'bg-gray-100 text-gray-400'} ${interactive} border border-gray-200`}>
-        {dutyIcon[dutyStatus] ?? '?'}
+      <button
+        onClick={canEdit ? onClick : undefined}
+        className={interactive}
+        style={{ ...base, background: s.bg, color: s.color, border: '1px solid rgba(0,0,0,0.05)' }}
+      >
+        {s.icon}
       </button>
     )
   }
@@ -60,7 +74,8 @@ export default function WorkloadCell({
   return (
     <button
       onClick={canEdit ? onClick : undefined}
-      className={`${base} bg-gray-50 border border-gray-100 ${canEdit ? 'cursor-pointer hover:border-gray-300 hover:bg-gray-100' : 'cursor-default'}`}
+      className={canEdit ? 'hover:border-[#3b82f6] hover:bg-[#eff6ff]' : ''}
+      style={{ ...base, background: '#fff', border: '1.5px dashed rgba(0,0,0,0.18)' }}
     />
   )
 }

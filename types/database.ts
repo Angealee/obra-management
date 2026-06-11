@@ -159,4 +159,19 @@ export type MemberApplication = {
   // joined fields
   reviewer?: { full_name: string } | null
   academic_year?: { label: string } | null
+  // computed fields (added in app code, not from Supabase directly)
+  avgScore?: number | null
+  scoreCount?: number
+  isDuplicate?: boolean
+}
+
+export type ApplicationScore = {
+  id: string
+  application_id: string
+  scored_by: string
+  score: number
+  created_at: string
+  updated_at: string
+  // joined fields
+  scorer?: { full_name: string } | null
 }

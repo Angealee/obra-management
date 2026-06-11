@@ -1,24 +1,34 @@
 import JoinForm from './JoinForm'
 import Slideshow from './Slideshow'
+import { createAdminClient } from '@/lib/supabase/admin'
 
 export const metadata = {
   title: 'Obra Online Application Form',
 }
 
 async function getMemberCount(): Promise<number> {
-  return 42
+  try {
+    const supabase = createAdminClient()
+    const { count } = await supabase
+      .from('profiles')
+      .select('*', { count: 'exact', head: true })
+      .eq('member_status', 'active')
+    return count ?? 0
+  } catch {
+    return 0
+  }
 }
 
 export default async function JoinPage() {
   const memberCount = await getMemberCount()
 
   return (
-    <div className="flex min-h-screen flex-col lg:flex-row">
+    <div className="flex min-h-screen flex-col lg:h-screen lg:flex-row lg:overflow-hidden">
 
       {/* =====================================================
-          MOBILE SLIDESHOW (from 2nd set)
+          MOBILE SLIDESHOW
       ===================================================== */}
-      <div className="relative h-[220px] w-full overflow-hidden bg-[#0A0A0A] lg:hidden">
+      <div className="relative h-55 w-full overflow-hidden bg-[#0A0A0A] lg:hidden">
         <Slideshow variant="panel" />
 
         <div
@@ -66,22 +76,41 @@ export default async function JoinPage() {
       </div>
 
       {/* =====================================================
-          DESKTOP LEFT PANEL (your original)
+          DESKTOP LEFT PANEL — full-bleed slideshow with
+          frosted-glass info overlay
       ===================================================== */}
       <div
-        className="hidden lg:flex lg:w-[42%] lg:shrink-0 lg:flex-col lg:sticky lg:top-0 lg:h-screen"
+        className="hidden lg:flex lg:w-1/2 lg:shrink-0 lg:flex-col lg:h-screen"
         style={{
+          position: 'relative',
           background: '#0A0A0A',
           overflow: 'hidden',
         }}
       >
-        {/* Dark info section */}
+        {/* Slideshow — fills the entire panel */}
+        <div style={{ position: 'absolute', inset: 0 }}>
+          <Slideshow variant="panel" />
+        </div>
+
+        {/* Dark gradient accent — adds a black accent over the photos
+            without obscuring or blurring them */}
         <div
           style={{
-            padding: '36px 40px 28px',
-            flexShrink: 0,
-            borderBottom: '1px solid rgba(255,255,255,0.06)',
+            position: 'absolute',
+            inset: 0,
+            zIndex: 1,
+            pointerEvents: 'none',
+            background:
+              'linear-gradient(to bottom, rgba(10,10,10,0.7) 0%, rgba(10,10,10,0.22) 32%, rgba(10,10,10,0.14) 65%, rgba(0,0,0,0.5) 100%)',
+          }}
+        />
+
+        {/* Info section — sits over the gradient, no glass/blur */}
+        <div
+          style={{
+            position: 'relative',
             zIndex: 2,
+            padding: '36px 40px 28px',
           }}
         >
           <span
@@ -90,7 +119,7 @@ export default async function JoinPage() {
               fontSize: 10,
               letterSpacing: '0.15em',
               textTransform: 'uppercase',
-              color: 'rgba(255,255,255,0.35)',
+              color: 'rgba(255,255,255,0.45)',
             }}
           >
             Dominican College of Tarlac
@@ -112,7 +141,7 @@ export default async function JoinPage() {
             <br />
             <span style={{ color: '#CC0000' }}>CREATIVE</span>
             <br />
-            MEDIA
+            MEDIA PRODUCTIONS
           </h1>
 
           <div
@@ -129,9 +158,9 @@ export default async function JoinPage() {
             style={{
               marginTop: 12,
               fontSize: 13,
-              color: 'rgba(255,255,255,0.45)',
+              color: 'rgba(255,255,255,0.6)',
               lineHeight: 1.65,
-              maxWidth: 280,
+              maxWidth: 320,
             }}
           >
             The official creative organization of CCS — handling photography,
@@ -139,41 +168,23 @@ export default async function JoinPage() {
           </p>
         </div>
 
-        {/* Slideshow */}
-        <div
-          style={{
-            position: 'relative',
-            flex: 1,
-            overflow: 'hidden',
-          }}
-        >
-          <Slideshow variant="panel" />
-
-          <div
-            style={{
-              position: 'absolute',
-              inset: 0,
-              pointerEvents: 'none',
-              background:
-                'linear-gradient(to bottom, rgba(10,10,10,0.45) 0%, rgba(0,0,0,0.15) 50%, rgba(0,0,0,0.5) 100%)',
-              zIndex: 1,
-            }}
-          />
-        </div>
+        {/* Spacer — lets the slideshow show through unobstructed below
+            the frosted info panel */}
+        <div style={{ flex: 1, position: 'relative', zIndex: 1 }} />
       </div>
 
       {/* =====================================================
           FORM PANEL
       ===================================================== */}
       <div
-        className="flex-1"
+        id="join-scroll-panel"
+        className="flex-1 lg:h-screen lg:overflow-y-auto"
         style={{
           background: '#F7F7F5',
-          overflowY: 'auto',
         }}
       >
         <div
-          className="mx-auto w-full max-w-[640px] px-5 py-10 sm:px-8 lg:px-10 lg:py-12"
+          className="mx-auto w-full max-w-160 px-5 py-10 sm:px-8 lg:px-10 lg:py-12"
         >
           {/* Section eyebrow */}
           <div style={{ marginBottom: 28 }}>
@@ -246,7 +257,7 @@ export default async function JoinPage() {
           >
             {[
               {
-                value: 'secret muna',
+                value: String(memberCount),
                 label: 'Current Members',
               },
               {

@@ -71,13 +71,17 @@ export default function Slideshow({ variant = 'panel' }: SlideshowProps) {
         width:100%;
         height:100%;
         object-fit:cover;
-        object-position:center top;
+        object-position:center center;
         opacity:0;
-        transition:transform 00ms cubic-bezier(0.22, 1, 0.36, 1);`
+        transform:scale(1);
+        transition:opacity ${FADE}ms ease, transform ${DURATION + FADE}ms linear;`
       containerEl.appendChild(img)
 
       img.onload  = () => {
-        requestAnimationFrame(() => { img.style.opacity = '1' })
+        requestAnimationFrame(() => {
+          img.style.opacity   = '1'
+          img.style.transform = 'scale(1.06)'
+        })
         setTimeout(() => { current?.remove(); current = img }, FADE + 50)
       }
       img.onerror = () => { img.remove(); next() }
@@ -111,5 +115,13 @@ export default function Slideshow({ variant = 'panel' }: SlideshowProps) {
   }
 
   // panel variant — caller wraps in a positioned container
-  return <div ref={containerRef} style={{ position: 'absolute', inset: 0 }} />
+  return (
+    <div style={{ position: 'absolute', inset: 0 }}>
+      <div ref={containerRef} style={{ position: 'absolute', inset: 0 }} />
+      <div
+        ref={dotsRef}
+        style={{ position: 'absolute', bottom: 18, left: '50%', transform: 'translateX(-50%)', display: 'flex', gap: 6, zIndex: 10 }}
+      />
+    </div>
+  )
 }

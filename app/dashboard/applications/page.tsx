@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import ApplicationsClient from './ApplicationsClient'
+import { enrichApplications } from './utils'
 
 export default async function ApplicationsPage() {
   const supabase = await createClient()
@@ -23,6 +24,8 @@ export default async function ApplicationsPage() {
     .select('*')
     .order('created_at', { ascending: false })
 
+  const enriched = await enrichApplications(supabase, (applications as any[]) || [])
+
   return (
     <div className="page-enter">
       <div style={{ marginBottom: 24 }}>
@@ -31,8 +34,10 @@ export default async function ApplicationsPage() {
       </div>
 
       <ApplicationsClient
-        applications={(applications as any[]) || []}
+        applications={enriched}
         selectedId={null}
+        userRole={profile.system_role}
+        userId={user.id}
       >
         <div className="dash-card" style={{
           height: '100%',
