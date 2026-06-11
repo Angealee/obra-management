@@ -62,7 +62,7 @@ export default async function EventsPage() {
   return (
     <div>
       {/* Header */}
-      <div className="flex items-center justify-between mb-8">
+      <div className="flex items-start justify-between flex-wrap gap-3 mb-8">
         <div>
           <h1 className="text-2xl font-bold text-gray-800">Events</h1>
           <p className="text-gray-500 text-sm mt-1">
@@ -132,7 +132,37 @@ function EventSection({
       <h2 className={`text-sm font-medium mb-3 ${muted ? 'text-gray-400' : 'text-gray-600'}`}>
         {title}
       </h2>
-      <div className={`bg-white rounded-xl shadow-sm overflow-hidden ${muted ? 'opacity-60' : ''}`}>
+      {/* Mobile: stacked cards */}
+      <div className={`md:hidden bg-white rounded-xl shadow-sm overflow-hidden ${muted ? 'opacity-60' : ''}`}>
+        {events.map((event) => (
+          <Link
+            key={event.id}
+            href={`/dashboard/events/${event.id}`}
+            className="block px-4 py-3.5 border-b border-gray-50 last:border-0 hover:bg-gray-50 transition"
+          >
+            <div className="flex items-start justify-between gap-2">
+              <p className="font-medium text-gray-800 text-sm">{event.title}</p>
+              <StatusBadge status={event.status} />
+            </div>
+            {event.description && (
+              <p className="text-gray-400 text-xs mt-1 line-clamp-1">{event.description}</p>
+            )}
+            <div className="flex items-center flex-wrap gap-x-3 gap-y-1 mt-2 text-xs text-gray-500">
+              <span>
+                {new Date(event.event_date).toLocaleDateString('en-PH', {
+                  year: 'numeric', month: 'short', day: 'numeric',
+                })}
+                {event.event_time && ` · ${event.event_time.slice(0, 5)}`}
+              </span>
+              {event.location && <span>· {event.location}</span>}
+              {event.academic_years?.label && <span>· {event.academic_years.label}</span>}
+            </div>
+          </Link>
+        ))}
+      </div>
+
+      {/* Desktop: Table */}
+      <div className={`hidden md:block bg-white rounded-xl shadow-sm overflow-hidden ${muted ? 'opacity-60' : ''}`}>
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-gray-100">

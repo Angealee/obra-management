@@ -56,7 +56,7 @@ export default async function AnnouncementDetailPage({
       {/* Main card */}
       <div style={{ background: '#fff', border: '1px solid rgba(0,0,0,0.07)', borderRadius: '12px', overflow: 'hidden', marginBottom: '14px' }}>
         {/* Header stripe */}
-        <div style={{ padding: '28px 28px 20px', borderBottom: '1px solid rgba(0,0,0,0.05)' }}>
+        <div className="px-5 pt-6 pb-5 sm:px-7 sm:pt-7" style={{ borderBottom: '1px solid rgba(0,0,0,0.05)' }}>
           <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '12px', marginBottom: '10px', flexWrap: 'wrap' }}>
             <span style={{ fontSize: '11px', fontWeight: 600, background: bgColor, color: textColor, padding: '3px 10px', borderRadius: '99px' }}>
               {visibilityLabel[a.visibility]}
@@ -85,7 +85,7 @@ export default async function AnnouncementDetailPage({
         </div>
 
         {/* Content body */}
-        <div style={{ padding: '24px 28px' }}>
+        <div className="px-5 py-6 sm:px-7">
           <div style={{ fontSize: '14.5px', color: '#333', lineHeight: 1.75, whiteSpace: 'pre-wrap' }}>
             {a.content}
           </div>
@@ -94,7 +94,7 @@ export default async function AnnouncementDetailPage({
 
       {/* Actions — only for authorized users */}
       {(canEdit || canDelete) && (
-        <div style={{ background: '#fff', border: '1px solid rgba(0,0,0,0.07)', borderRadius: '10px', padding: '20px 24px' }}>
+        <div className="px-5 py-5 sm:px-6" style={{ background: '#fff', border: '1px solid rgba(0,0,0,0.07)', borderRadius: '10px' }}>
           <p style={{ fontSize: '10.5px', fontWeight: 600, letterSpacing: '0.07em', textTransform: 'uppercase', color: '#999', marginBottom: '12px' }}>
             Actions
           </p>

@@ -627,7 +627,7 @@ export default function JoinForm() {
                 onChange={e => setForm(p => ({ ...p, portfolio_url: e.target.value }))}
                 onBlur={e => handleBlur('portfolio_url', e.target.value)} />
               <p className="mt-1 text-[11.5px] text-[#bbb]">
-                Google Drive, Behance, or any public link to your work
+                Google Drive, Canva link, or any public link to your work
               </p>
             </Field>
           </div>

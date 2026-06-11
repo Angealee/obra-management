@@ -105,6 +105,36 @@ body {
   opacity: 1;
 }
 
+/* ── Mobile sidebar drawer ──────────────────────────────────── */
+@media (max-width: 767px) {
+  .sidebar {
+    position: fixed !important;
+    top: 0;
+    left: 0;
+    width: 250px !important;
+    height: 100vh;
+    z-index: 50;
+    transform: translateX(-100%);
+    transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    box-shadow: 8px 0 24px rgba(0,0,0,0.25);
+  }
+
+  .sidebar.mobile-open {
+    transform: translateX(0);
+  }
+
+  /* Always show full labels in the mobile drawer, regardless of desktop collapsed state */
+  .sidebar .sidebar-label {
+    opacity: 1 !important;
+    transform: none !important;
+    pointer-events: auto !important;
+  }
+
+  .sidebar .nav-tooltip {
+    display: none;
+  }
+}
+
 .dash-card {
   background: #fff;
   border: 1px solid rgba(0,0,0,0.06);

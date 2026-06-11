@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import Image from 'next/image'
 import { Mail, Lock, ArrowRight, FolderOpen, Users, Calendar, Play, Users2, SkipForward, Calendar1, Eye, EyeOff } from 'lucide-react'
+import ForgotPasswordModal from './ForgotPasswordModal'
 
 export default function LoginPage() {
   const router = useRouter()
@@ -15,15 +16,51 @@ export default function LoginPage() {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
+  const [showForgot, setShowForgot] = useState(false)
+
   async function handleLogin() {
     setLoading(true)
     setError('')
-    const { error } = await supabase.auth.signInWithPassword({ email, password })
+
+    const identifier = email.trim()
+    let loginEmail = identifier
+
+    // Allow logging in with a username: resolve it to the account's email first.
+    if (identifier && !identifier.includes('@')) {
+      try {
+        const res = await fetch('/api/auth/resolve-login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ identifier }),
+        })
+        const data = await res.json()
+        if (res.ok && data?.email) loginEmail = data.email
+      } catch {
+        // fall through with the original identifier — sign-in will fail generically
+      }
+    }
+
+    const { data, error } = await supabase.auth.signInWithPassword({ email: loginEmail, password })
     if (error) {
       setError(error.message)
       setLoading(false)
       return
     }
+
+    // Block archived/deactivated accounts even if the password is correct.
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('is_active, member_status')
+      .eq('id', data.user.id)
+      .maybeSingle() as { data: { is_active: boolean; member_status: string } | null }
+
+    if (profile && (profile.is_active === false || profile.member_status === 'archived')) {
+      await supabase.auth.signOut()
+      setError('This account is inactive. Please contact a Consultant.')
+      setLoading(false)
+      return
+    }
+
     router.push('/dashboard')
   }
 
@@ -56,13 +93,13 @@ export default function LoginPage() {
 
             <div>
               <label className="flex items-center gap-1.5 text-[11px] uppercase tracking-widest text-white font-normal mb-2">
-                <Mail size={13} /> Email
+                <Mail size={13} /> Email or Username
               </label>
               <input
-                type="email"
+                type="text"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="sample@gmail.com"
+                placeholder="sample@gmail.com or username"
                 className="w-full h-11 border border-gray-700 rounded-md px-4 text-sm bg-gray-900 text-white focus:bg-gray-800 focus:border-gray-400 focus:outline-none transition-colors placeholder:text-gray-600"
               />
             </div>
@@ -91,7 +128,10 @@ export default function LoginPage() {
                 </button>
               </div>
 
-              <p className="text-xs text-gray-500 text-right mt-2 cursor-pointer hover:text-gray-300 transition-colors">
+              <p
+                className="text-xs text-gray-500 text-right mt-2 cursor-pointer hover:text-gray-300 transition-colors"
+                onClick={() => setShowForgot(true)}
+              >
                 Forgot password?
               </p>
             </div>
@@ -155,6 +195,8 @@ export default function LoginPage() {
           </div>
         </div>
       </div>
+
+      {showForgot && <ForgotPasswordModal onClose={() => setShowForgot(false)} />}
 
     </main>
   )

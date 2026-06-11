@@ -122,7 +122,7 @@ function NewMemberForm() {
       <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
 
         {/* Basic Info */}
-        <div style={{ background: '#fff', border: '1px solid rgba(0,0,0,0.07)', borderRadius: 12, padding: 24 }}>
+        <div className="p-4 sm:p-6" style={{ background: '#fff', border: '1px solid rgba(0,0,0,0.07)', borderRadius: 12 }}>
           <h2 style={{ fontFamily: 'DM Mono', fontSize: 11, color: '#999', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 16 }}>
             Basic Information
           </h2>
@@ -186,7 +186,7 @@ function NewMemberForm() {
         </div>
 
         {/* Login Credentials */}
-        <div style={{ background: '#fff', border: '1px solid rgba(0,0,0,0.07)', borderRadius: 12, padding: 24 }}>
+        <div className="p-4 sm:p-6" style={{ background: '#fff', border: '1px solid rgba(0,0,0,0.07)', borderRadius: 12 }}>
           <h2 style={{ fontFamily: 'DM Mono', fontSize: 11, color: '#999', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 16 }}>
             Login Credentials
           </h2>
@@ -218,7 +218,7 @@ function NewMemberForm() {
         </div>
 
         {/* Role */}
-        <div style={{ background: '#fff', border: '1px solid rgba(0,0,0,0.07)', borderRadius: 12, padding: 24 }}>
+        <div className="p-4 sm:p-6" style={{ background: '#fff', border: '1px solid rgba(0,0,0,0.07)', borderRadius: 12 }}>
           <h2 style={{ fontFamily: 'DM Mono', fontSize: 11, color: '#999', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 16 }}>
             Role
           </h2>
@@ -253,7 +253,7 @@ function NewMemberForm() {
         </div>
 
         {/* Skills */}
-        <div style={{ background: '#fff', border: '1px solid rgba(0,0,0,0.07)', borderRadius: 12, padding: 24 }}>
+        <div className="p-4 sm:p-6" style={{ background: '#fff', border: '1px solid rgba(0,0,0,0.07)', borderRadius: 12 }}>
           <h2 style={{ fontFamily: 'DM Mono', fontSize: 11, color: '#999', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 4 }}>
             Skills
           </h2>

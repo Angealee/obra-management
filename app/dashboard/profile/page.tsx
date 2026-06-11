@@ -46,21 +46,21 @@ export default async function ProfilePage() {
       <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
 
         {/* Identity card — read-only system info */}
-        <div style={{ background: '#fff', border: '1px solid rgba(0,0,0,0.07)', borderRadius: '12px', padding: '24px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+        <div className="p-4 sm:p-6" style={{ background: '#fff', border: '1px solid rgba(0,0,0,0.07)', borderRadius: '12px' }}>
+          <div className="flex flex-col sm:flex-row items-center sm:items-center text-center sm:text-left" style={{ gap: '20px' }}>
             <AvatarUpload
               userId={profile.id}
               currentAvatarUrl={profile.avatar_url}
               fullName={profile.full_name}
             />
-            <div>
+            <div className="min-w-0">
               <p style={{ fontSize: '18px', fontWeight: 700, color: '#111', letterSpacing: '-0.2px' }}>
                 {profile.full_name}
               </p>
               {profile.username && (
                 <p style={{ fontSize: '13px', color: '#999', marginTop: '2px' }}>@{profile.username}</p>
               )}
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '6px' }}>
+              <div className="flex flex-wrap justify-center sm:justify-start items-center" style={{ gap: '8px', marginTop: '6px' }}>
                 <span style={{ fontSize: '11px', fontWeight: 600, background: '#f1f5f9', color: '#475569', padding: '3px 10px', borderRadius: '99px' }}>
                   {displayRole}
                 </span>
@@ -77,7 +77,7 @@ export default async function ProfilePage() {
         <PasswordForm email={profile.email} />
 
         {/* Read-only system info */}
-        <div style={{ background: '#fff', border: '1px solid rgba(0,0,0,0.07)', borderRadius: '12px', padding: '24px' }}>
+        <div className="p-4 sm:p-6" style={{ background: '#fff', border: '1px solid rgba(0,0,0,0.07)', borderRadius: '12px' }}>
           <p style={{ fontSize: '10.5px', fontWeight: 600, letterSpacing: '0.07em', textTransform: 'uppercase', color: '#999', marginBottom: '14px' }}>
             System Information
           </p>
@@ -89,8 +89,7 @@ export default async function ProfilePage() {
               ['Year Level', profile.year_level ?? '—'],
               ['Member Since', new Date(profile.created_at).toLocaleDateString('en-PH', { year: 'numeric', month: 'long', day: 'numeric' })],
             ].map(([label, value]) => (
-              <div key={label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '11px 0', borderBottom: '1px solid rgba(0,0,0,0.04)' }}
-                className="last:border-0">
+              <div key={label} className="flex justify-between items-center flex-wrap gap-x-3 last:border-0" style={{ padding: '11px 0', borderBottom: '1px solid rgba(0,0,0,0.04)' }}>
                 <span style={{ fontSize: '13px', color: '#999' }}>{label}</span>
                 <span style={{ fontSize: '13px', color: '#333', fontWeight: 500 }}>{value}</span>
               </div>

@@ -146,7 +146,7 @@ export default function NewDutyPage() {
       <div className="space-y-6">
 
         {/* Event Selection */}
-        <div className="bg-white rounded-xl shadow-sm p-6 space-y-4">
+        <div className="bg-white rounded-xl shadow-sm p-4 sm:p-6 space-y-4">
           <h2 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">Event</h2>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -170,7 +170,7 @@ export default function NewDutyPage() {
         </div>
 
         {/* Member Selection */}
-        <div className="bg-white rounded-xl shadow-sm p-6 space-y-4">
+        <div className="bg-white rounded-xl shadow-sm p-4 sm:p-6 space-y-4">
           <div>
             <h2 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">Assign To</h2>
             <p className="text-gray-400 text-xs mt-1">Select the member who will handle this duty.</p>
@@ -232,7 +232,7 @@ export default function NewDutyPage() {
         </div>
 
         {/* Duty Info */}
-        <div className="bg-white rounded-xl shadow-sm p-6 space-y-4">
+        <div className="bg-white rounded-xl shadow-sm p-4 sm:p-6 space-y-4">
           <h2 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">Duty Details</h2>
 
           <div>
@@ -298,7 +298,7 @@ export default function NewDutyPage() {
         </div>
 
         {/* Checklist */}
-        <div className="bg-white rounded-xl shadow-sm p-6 space-y-3">
+        <div className="bg-white rounded-xl shadow-sm p-4 sm:p-6 space-y-3">
           <div>
             <h2 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">Checklist</h2>
             <p className="text-gray-400 text-xs mt-1">Optional. Step-by-step tasks for the member to complete.</p>

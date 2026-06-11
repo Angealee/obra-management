@@ -32,7 +32,7 @@ export default async function AcademicYearsPage() {
   return (
     <div>
       {/* Page header */}
-      <div className="flex items-center justify-between mb-8">
+      <div className="flex items-start justify-between flex-wrap gap-3 mb-8">
         <div>
           <h1 className="text-2xl font-bold text-gray-800">Academic Years</h1>
           <p className="text-gray-500 text-sm mt-1">
@@ -59,55 +59,91 @@ export default async function AcademicYearsPage() {
           </Link>
         </div>
       ) : (
-        <div className="bg-white rounded-xl shadow-sm overflow-hidden">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-gray-100">
-                <th className="text-left px-6 py-4 text-gray-500 font-medium">Label</th>
-                <th className="text-left px-6 py-4 text-gray-500 font-medium">Start Date</th>
-                <th className="text-left px-6 py-4 text-gray-500 font-medium">End Date</th>
-                <th className="text-left px-6 py-4 text-gray-500 font-medium">Status</th>
-                <th className="text-left px-6 py-4 text-gray-500 font-medium">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {academicYears.map((ay) => (
-                <tr key={ay.id} className="border-b border-gray-50 hover:bg-gray-50 transition">
-                  <td className="px-6 py-4 font-medium text-gray-800">{ay.label}</td>
-                  <td className="px-6 py-4 text-gray-600">
-                    {new Date(ay.start_date).toLocaleDateString('en-PH', {
-                      year: 'numeric', month: 'long', day: 'numeric'
-                    })}
-                  </td>
-                  <td className="px-6 py-4 text-gray-600">
-                    {new Date(ay.end_date).toLocaleDateString('en-PH', {
-                      year: 'numeric', month: 'long', day: 'numeric'
-                    })}
-                  </td>
-                  <td className="px-6 py-4">
-                    {ay.is_active ? (
-                      <span className="bg-green-100 text-green-700 text-xs font-medium px-3 py-1 rounded-full">
-                        Active
-                      </span>
-                    ) : (
-                      <span className="bg-gray-100 text-gray-500 text-xs font-medium px-3 py-1 rounded-full">
-                        Inactive
-                      </span>
-                    )}
-                  </td>
-                  <td className="px-6 py-4">
-                    <Link
-                      href={`/dashboard/academic-years/${ay.id}`}
-                      className="text-gray-600 hover:text-gray-900 underline text-xs"
-                    >
-                      Manage
-                    </Link>
-                  </td>
+        <>
+          {/* Mobile: stacked cards */}
+          <div className="md:hidden bg-white rounded-xl shadow-sm overflow-hidden">
+            {academicYears.map((ay) => (
+              <Link
+                key={ay.id}
+                href={`/dashboard/academic-years/${ay.id}`}
+                className="block px-4 py-3.5 border-b border-gray-50 last:border-0 hover:bg-gray-50 transition"
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <p className="font-medium text-gray-800 text-sm">{ay.label}</p>
+                  {ay.is_active ? (
+                    <span className="bg-green-100 text-green-700 text-xs font-medium px-3 py-1 rounded-full shrink-0">
+                      Active
+                    </span>
+                  ) : (
+                    <span className="bg-gray-100 text-gray-500 text-xs font-medium px-3 py-1 rounded-full shrink-0">
+                      Inactive
+                    </span>
+                  )}
+                </div>
+                <p className="text-xs text-gray-500 mt-1.5">
+                  {new Date(ay.start_date).toLocaleDateString('en-PH', {
+                    year: 'numeric', month: 'short', day: 'numeric'
+                  })}
+                  {' – '}
+                  {new Date(ay.end_date).toLocaleDateString('en-PH', {
+                    year: 'numeric', month: 'short', day: 'numeric'
+                  })}
+                </p>
+              </Link>
+            ))}
+          </div>
+
+          {/* Desktop: Table */}
+          <div className="hidden md:block bg-white rounded-xl shadow-sm overflow-hidden">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-gray-100">
+                  <th className="text-left px-6 py-4 text-gray-500 font-medium">Label</th>
+                  <th className="text-left px-6 py-4 text-gray-500 font-medium">Start Date</th>
+                  <th className="text-left px-6 py-4 text-gray-500 font-medium">End Date</th>
+                  <th className="text-left px-6 py-4 text-gray-500 font-medium">Status</th>
+                  <th className="text-left px-6 py-4 text-gray-500 font-medium">Actions</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {academicYears.map((ay) => (
+                  <tr key={ay.id} className="border-b border-gray-50 hover:bg-gray-50 transition">
+                    <td className="px-6 py-4 font-medium text-gray-800">{ay.label}</td>
+                    <td className="px-6 py-4 text-gray-600">
+                      {new Date(ay.start_date).toLocaleDateString('en-PH', {
+                        year: 'numeric', month: 'long', day: 'numeric'
+                      })}
+                    </td>
+                    <td className="px-6 py-4 text-gray-600">
+                      {new Date(ay.end_date).toLocaleDateString('en-PH', {
+                        year: 'numeric', month: 'long', day: 'numeric'
+                      })}
+                    </td>
+                    <td className="px-6 py-4">
+                      {ay.is_active ? (
+                        <span className="bg-green-100 text-green-700 text-xs font-medium px-3 py-1 rounded-full">
+                          Active
+                        </span>
+                      ) : (
+                        <span className="bg-gray-100 text-gray-500 text-xs font-medium px-3 py-1 rounded-full">
+                          Inactive
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-6 py-4">
+                      <Link
+                        href={`/dashboard/academic-years/${ay.id}`}
+                        className="text-gray-600 hover:text-gray-900 underline text-xs"
+                      >
+                        Manage
+                      </Link>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
       )}
     </div>
   )

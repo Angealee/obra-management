@@ -75,7 +75,7 @@ export default function NewAcademicYearPage() {
       </div>
 
       {/* Form */}
-      <div className="bg-white rounded-xl shadow-sm p-6 space-y-5">
+      <div className="bg-white rounded-xl shadow-sm p-4 sm:p-6 space-y-5">
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
             Label <span className="text-red-500">*</span>

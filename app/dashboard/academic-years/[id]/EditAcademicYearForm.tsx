@@ -60,7 +60,7 @@ export default function EditAcademicYearForm({ academicYear }: { academicYear: A
   }
 
   return (
-    <div className="mt-6 bg-white rounded-xl shadow-sm p-6">
+    <div className="mt-6 bg-white rounded-xl shadow-sm p-4 sm:p-6">
       <div className="flex items-center justify-between mb-1">
         <h2 className="text-sm font-medium text-gray-700">Edit Details</h2>
         <button

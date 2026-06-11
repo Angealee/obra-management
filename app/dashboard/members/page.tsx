@@ -40,7 +40,7 @@ export default async function MembersPage() {
 
   return (
     <div className="page-enter">
-      <div style={{ marginBottom: 24, display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
+      <div style={{ marginBottom: 24, display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
         <div>
           <h1 className="page-title">Members</h1>
           <p className="page-subtitle">All active Creative Heads and Members of Obra.</p>

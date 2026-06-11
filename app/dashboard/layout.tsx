@@ -33,9 +33,9 @@ export default async function DashboardLayout({
   }
 
   return (
-    <div style={{ display: 'flex', height: '100vh', overflow: 'hidden', background: '#F7F7F5' }}>
+    <div className="flex flex-col md:flex-row" style={{ height: '100vh', overflow: 'hidden', background: '#F7F7F5' }}>
       <Sidebar profile={profile} />
-      <main style={{ flex: 1, overflowY: 'auto' }}>
+      <main style={{ flex: 1, overflowY: 'auto', minWidth: 0 }}>
         <PageWrapper>{children}</PageWrapper>
       </main>
     </div>

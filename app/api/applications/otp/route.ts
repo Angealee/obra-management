@@ -1,22 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
-import crypto from 'crypto'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { checkRateLimit, getClientIp } from '@/lib/rate-limit'
 import { sendOtpEmail } from '@/lib/email'
 import { validateEmail } from '@/lib/applicationValidation'
+import { generateOtpCode, hashOtpCode } from '@/lib/otp'
 
 // Node runtime required (Nodemailer). This is the default for route handlers —
 // do not switch to the edge runtime.
 
 const OTP_TTL_MIN = 10
 const ACTIVE_STATUSES = ['pending', 'shortlisted', 'interviewed', 'approved']
-
-function hashCode(code: string): string {
-  return crypto
-    .createHash('sha256')
-    .update(code + (process.env.OTP_PEPPER ?? ''))
-    .digest('hex')
-}
 
 export async function POST(req: NextRequest) {
   try {
@@ -69,7 +62,7 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    const code = String(crypto.randomInt(0, 1_000_000)).padStart(6, '0')
+    const code = generateOtpCode()
     const expires_at = new Date(Date.now() + OTP_TTL_MIN * 60 * 1000).toISOString()
 
     // Invalidate any prior unconsumed codes for this email.
@@ -81,7 +74,7 @@ export async function POST(req: NextRequest) {
 
     const { error: insErr } = await supabase.from('application_otps').insert({
       email,
-      code_hash: hashCode(code),
+      code_hash: hashOtpCode(code),
       expires_at,
     })
     if (insErr) {

@@ -81,7 +81,7 @@ export default async function EventDetailPage({
       </div>
 
       {/* Event Info */}
-      <div className="bg-white rounded-xl shadow-sm p-6 mb-6">
+      <div className="bg-white rounded-xl shadow-sm p-4 sm:p-6 mb-6">
         <h2 className="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-4">Details</h2>
         {[
           ['Date', new Date(event.event_date).toLocaleDateString('en-PH', { weekday:'long', year:'numeric', month:'long', day:'numeric' })],
@@ -99,8 +99,8 @@ export default async function EventDetailPage({
       </div>
 
       {/* Duties */}
-      <div className="bg-white rounded-xl shadow-sm p-6 mb-6">
-        <div className="flex items-center justify-between mb-4">
+      <div className="bg-white rounded-xl shadow-sm p-4 sm:p-6 mb-6">
+        <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
           <div>
             <h2 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">Duties</h2>
             <p className="text-gray-400 text-xs mt-0.5">
@@ -129,7 +129,7 @@ export default async function EventDetailPage({
               <Link
                 key={duty.id}
                 href={`/dashboard/duties/${duty.id}`}
-                className="flex items-center justify-between p-3 rounded-lg border border-gray-100 hover:bg-gray-50 transition group"
+                className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 p-3 rounded-lg border border-gray-100 hover:bg-gray-50 transition group"
               >
                 <div className="flex items-center gap-3 min-w-0">
                   {/* Status dot */}
@@ -148,7 +148,7 @@ export default async function EventDetailPage({
                   </div>
                 </div>
 
-                <div className="flex items-center gap-3 shrink-0">
+                <div className="flex items-center gap-3 shrink-0 pl-5 sm:pl-0">
                   {/* Priority badge */}
                   <span className={`text-xs font-medium px-2 py-0.5 rounded-full capitalize ${
                     duty.priority === 'urgent' ? 'bg-red-100 text-red-600'    :
@@ -179,7 +179,7 @@ export default async function EventDetailPage({
 
       {/* Status Manager */}
       {canManage && (
-        <div className="bg-white rounded-xl shadow-sm p-6 mb-6">
+        <div className="bg-white rounded-xl shadow-sm p-4 sm:p-6 mb-6">
           <h2 className="text-sm font-medium text-gray-700 mb-1">Update Status</h2>
           <p className="text-gray-400 text-xs mb-4">
             Move this event through its lifecycle.

@@ -6,9 +6,10 @@ import { usePathname } from 'next/navigation'
 import {
   LayoutDashboard, Users, Calendar, CheckSquare,
   BarChart2, GraduationCap, LogOut,
-  PanelLeftClose, PanelLeftOpen, 
+  PanelLeftClose, PanelLeftOpen,
   BarChart3,
   ClipboardList,
+  Menu, X,
 } from 'lucide-react'
 
 type Profile = {
@@ -47,12 +48,24 @@ export default function Sidebar({ profile }: { profile: Profile }) {
   const pathname = usePathname()
   const [collapsed, setCollapsed] = useState(false)
   const [mounted, setMounted] = useState(false)
+  const [mobileOpen, setMobileOpen] = useState(false)
 
   useEffect(() => {
     const saved = localStorage.getItem('obra-sidebar-collapsed')
     if (saved === 'true') setCollapsed(true)
     setMounted(true)
   }, [])
+
+  // Close the mobile drawer on navigation.
+  useEffect(() => {
+    setMobileOpen(false)
+  }, [pathname])
+
+  // Lock background scroll while the mobile drawer is open.
+  useEffect(() => {
+    document.body.style.overflow = mobileOpen ? 'hidden' : ''
+    return () => { document.body.style.overflow = '' }
+  }, [mobileOpen])
 
   function toggle() {
     const next = !collapsed
@@ -79,11 +92,89 @@ export default function Sidebar({ profile }: { profile: Profile }) {
 
   const width = !mounted ? '232px' : collapsed ? '67px' : '250px'
 
+  // Inside the mobile drawer, always render as if expanded — the desktop
+  // collapsed/expanded preference shouldn't affect the mobile layout.
+  const effectiveCollapsed = collapsed && !mobileOpen
+
   return (
-    <aside
-      className={`sidebar ${collapsed ? 'collapsed' : ''} shrink-0 flex flex-col h-screen sticky top-0`}
-      style={{ width, background: '#0D0D0D', borderRight: '1px solid rgba(255,255,255,0.05)' }}
-    >
+    <>
+      {/* Mobile top bar — visible below md breakpoint only */}
+      <div
+        className="flex md:hidden"
+        style={{
+          height: '52px',
+          flexShrink: 0,
+          position: 'sticky',
+          top: 0,
+          zIndex: 30,
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          padding: '0 14px',
+          background: '#0D0D0D',
+          borderBottom: '1px solid rgba(255,255,255,0.06)',
+        }}
+      >
+        <button
+          type="button"
+          onClick={() => setMobileOpen(true)}
+          aria-label="Open menu"
+          style={{
+            width: '34px',
+            height: '34px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            borderRadius: '8px',
+            border: '1px solid rgba(255,255,255,0.08)',
+            background: 'rgba(255,255,255,0.04)',
+            color: 'rgba(255,255,255,0.85)',
+            cursor: 'pointer',
+          }}
+        >
+          <Menu size={18} strokeWidth={2.2} />
+        </button>
+
+        <img
+          src="/whiteobralogo.png"
+          alt="Obra Logo"
+          style={{ height: '30px', width: 'auto', objectFit: 'contain' }}
+        />
+
+        <Link href="/dashboard/profile" style={{ display: 'flex', alignItems: 'center' }}>
+          {profile.avatar_url ? (
+            <img
+              src={profile.avatar_url}
+              alt={profile.full_name}
+              style={{ width: '30px', height: '30px', borderRadius: '50%', objectFit: 'cover' }}
+            />
+          ) : (
+            <div style={{ width: '30px', height: '30px', borderRadius: '50%', background: '#CC0000', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', fontWeight: 700, color: '#fff' }}>
+              {initials}
+            </div>
+          )}
+        </Link>
+      </div>
+
+      {/* Backdrop for mobile drawer */}
+      <div
+        className="md:hidden"
+        onClick={() => setMobileOpen(false)}
+        aria-hidden="true"
+        style={{
+          position: 'fixed',
+          inset: 0,
+          background: 'rgba(0,0,0,0.5)',
+          zIndex: 40,
+          opacity: mobileOpen ? 1 : 0,
+          pointerEvents: mobileOpen ? 'auto' : 'none',
+          transition: 'opacity 0.25s ease',
+        }}
+      />
+
+      <aside
+        className={`sidebar ${collapsed ? 'collapsed' : ''} ${mobileOpen ? 'mobile-open' : ''} shrink-0 flex flex-col h-screen sticky top-0`}
+        style={{ width, background: '#0D0D0D', borderRight: '1px solid rgba(255,255,255,0.05)' }}
+      >
       {/* logo + collapse button */}
       <div
         style={{
@@ -91,8 +182,8 @@ export default function Sidebar({ profile }: { profile: Profile }) {
           borderBottom: '1px solid rgba(255,255,255,0.05)',
           display: 'flex',
           alignItems: 'center',
-          justifyContent: collapsed ? 'center' : 'space-between',
-          padding: collapsed ? '0 8px' : '0 10px 0 14px',
+          justifyContent: effectiveCollapsed ? 'center' : 'space-between',
+          padding: effectiveCollapsed ? '0 8px' : '0 10px 0 14px',
           flexShrink: 0,
           background: '#0D0D0D',
           gap: '8px',
@@ -100,15 +191,15 @@ export default function Sidebar({ profile }: { profile: Profile }) {
           transition: 'padding 0.25s ease, justify-content 0.25s ease',
         }}
       >
-        
+
         {/* menu hide button */}
         <button
           type="button"
-          onClick={collapsed ? toggle : undefined}
-          title={collapsed ? 'Expand sidebar' : 'Obra Logo'}
+          onClick={effectiveCollapsed ? toggle : undefined}
+          title={effectiveCollapsed ? 'Expand sidebar' : 'Obra Logo'}
           style={{
-            width: collapsed ? '40px' : '96px',
-            height: collapsed ? '40px' : '56px',
+            width: effectiveCollapsed ? '40px' : '96px',
+            height: effectiveCollapsed ? '40px' : '56px',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -117,22 +208,22 @@ export default function Sidebar({ profile }: { profile: Profile }) {
             background: 'transparent',
             border: 'none',
             padding: 0,
-            cursor: collapsed ? 'pointer' : 'default',
+            cursor: effectiveCollapsed ? 'pointer' : 'default',
             transition:
               'width 0.28s cubic-bezier(0.4, 0, 0.2, 1), height 0.28s cubic-bezier(0.4, 0, 0.2, 1), transform 0.28s cubic-bezier(0.4, 0, 0.2, 1)',
-            transform: collapsed ? 'scale(0.95)' : 'scale(1)',
+            transform: effectiveCollapsed ? 'scale(0.95)' : 'scale(1)',
           }}
         >
           <img
             src="/whiteobralogo.png"
             alt="Obra Logo"
             style={{
-              width: collapsed ? '36px' : '96px',
-              height: collapsed ? '36px' : '76px',
+              width: effectiveCollapsed ? '36px' : '96px',
+              height: effectiveCollapsed ? '36px' : '76px',
               objectFit: 'contain',
               display: 'block',
-              opacity: collapsed ? 0.95 : 1,
-              transform: collapsed
+              opacity: effectiveCollapsed ? 0.95 : 1,
+              transform: effectiveCollapsed
                 ? 'scale(0.9) rotate(-3deg)'
                 : 'scale(1) rotate(0deg)',
               transition:
@@ -141,16 +232,38 @@ export default function Sidebar({ profile }: { profile: Profile }) {
           />
         </button>
 
-        {/* Collapse toggle button */}
+        {/* Mobile drawer close button */}
+        <button
+          type="button"
+          className="flex md:hidden"
+          onClick={() => setMobileOpen(false)}
+          aria-label="Close menu"
+          style={{
+            flexShrink: 0,
+            width: '28px',
+            height: '28px',
+            alignItems: 'center',
+            justifyContent: 'center',
+            borderRadius: '6px',
+            border: '1px solid rgba(255,255,255,0.08)',
+            background: 'rgba(255,255,255,0.04)',
+            color: 'rgba(255,255,255,0.7)',
+            cursor: 'pointer',
+          }}
+        >
+          <X size={16} strokeWidth={2.2} />
+        </button>
+
+        {/* Collapse toggle button (desktop only) */}
         {!collapsed && (
           <button
             onClick={toggle}
             title="Collapse sidebar"
+            className="hidden md:flex"
             style={{
               flexShrink: 0,
               width: '28px',
               height: '28px',
-              display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
               borderRadius: '6px',
@@ -189,7 +302,7 @@ export default function Sidebar({ profile }: { profile: Profile }) {
                 className={`sidebar-nav-item ${active ? 'active' : ''}`}
               >
                 <item.icon
-                  size={ collapsed ? 18 : 16}
+                  size={effectiveCollapsed ? 18 : 16}
                   style={{ flexShrink: 0 }}
                   strokeWidth={active ? 2.2 : 1.75}
                   color={active ? '#CC0000' : 'rgba(255,255,255,0.55)'}
@@ -241,6 +354,7 @@ export default function Sidebar({ profile }: { profile: Profile }) {
             <span className="nav-tooltip">Sign out</span>
           </button>
         </form>
-    </aside>
+      </aside>
+    </>
   )
 }

@@ -204,8 +204,130 @@ export default function MembersTable({ members, userRole }: Props) {
         </p>
       </div>
 
-      {/* Table */}
-      <div className="dash-card" style={{ padding: 0, overflow: 'hidden' }}>
+      {/* Mobile: stacked cards */}
+      <div className="md:hidden dash-card" style={{ padding: 0, overflow: 'hidden' }}>
+        {filtered.length === 0 ? (
+          <div style={{
+            padding: '40px 24px',
+            textAlign: 'center',
+            fontFamily: 'DM Sans, sans-serif',
+            fontSize: 14,
+            color: '#bbb',
+          }}>
+            No members match your filters.
+          </div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column' }}>
+            {filtered.map(member => {
+              const skills = member.profile_skills
+                .map(ps => ps.member_skills?.name ?? '')
+                .filter(Boolean)
+
+              const statusStyle = STATUS_STYLE[member.member_status] ?? STATUS_STYLE.active
+              const isArchived = member.member_status === 'archived'
+
+              const headSubrole = member.system_role === 'creative_head' && member.creative_head_role
+                ? HEAD_ROLE_LABEL[member.creative_head_role] ?? ''
+                : ''
+
+              return (
+                <Link
+                  key={member.id}
+                  href={`/dashboard/members/${member.id}`}
+                  style={{
+                    textDecoration: 'none',
+                    display: 'block',
+                    borderBottom: '1px solid rgba(0,0,0,0.04)',
+                    opacity: isArchived ? 0.5 : 1,
+                  }}
+                >
+                  <div style={{ padding: '14px 16px', display: 'flex', alignItems: 'center', gap: 12 }}>
+                    {/* Avatar initials */}
+                    <div style={{
+                      width: 36,
+                      height: 36,
+                      borderRadius: '50%',
+                      background: isArchived ? '#e5e7eb' : '#111',
+                      color: '#fff',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontFamily: 'DM Sans, sans-serif',
+                      fontSize: 13,
+                      fontWeight: 600,
+                      flexShrink: 0,
+                    }}>
+                      {member.full_name.split(' ').map((n: string) => n[0]).slice(0, 2).join('').toUpperCase()}
+                    </div>
+
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                        <p style={{
+                          fontFamily: 'DM Sans, sans-serif',
+                          fontSize: 13.5,
+                          fontWeight: 600,
+                          color: '#111',
+                          margin: 0,
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap',
+                        }}>
+                          {member.full_name}
+                        </p>
+                        <span style={{
+                          flexShrink: 0,
+                          background: statusStyle.bg,
+                          color: statusStyle.color,
+                          fontFamily: 'DM Mono, monospace',
+                          fontSize: 9,
+                          fontWeight: 700,
+                          padding: '2px 8px',
+                          borderRadius: 4,
+                          textTransform: 'uppercase',
+                          letterSpacing: '0.06em',
+                        }}>
+                          {statusStyle.label}
+                        </span>
+                      </div>
+
+                      <p style={{ fontFamily: 'DM Sans, sans-serif', fontSize: 12, color: '#999', margin: '2px 0 0' }}>
+                        {ROLE_LABEL[member.system_role] ?? member.system_role}
+                        {headSubrole && ` · ${headSubrole}`}
+                        {member.year_level && ` · ${member.year_level}`}
+                      </p>
+
+                      {skills.length > 0 && (
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: 6 }}>
+                          {skills.map(skill => (
+                            <span key={skill} style={{
+                              fontFamily: 'DM Sans, sans-serif',
+                              fontSize: 11,
+                              fontWeight: 500,
+                              padding: '2px 8px',
+                              borderRadius: 999,
+                              background: '#F7F7F5',
+                              border: '1px solid rgba(0,0,0,0.08)',
+                              color: '#555',
+                              whiteSpace: 'nowrap',
+                            }}>
+                              {skill}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    <ChevronRight size={16} style={{ color: '#ccc', flexShrink: 0 }} />
+                  </div>
+                </Link>
+              )
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* Desktop: Table */}
+      <div className="hidden md:block dash-card" style={{ padding: 0, overflow: 'hidden' }}>
         {filtered.length === 0 ? (
           <div style={{
             padding: '40px 24px',

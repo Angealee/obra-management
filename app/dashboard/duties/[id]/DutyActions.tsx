@@ -50,7 +50,7 @@ export default function DutyActions({
 
       {/* ── Member actions ── */}
       {isAssignee && status === 'pending' && (
-        <div className="bg-white rounded-xl shadow-sm p-6">
+        <div className="bg-white rounded-xl shadow-sm p-4 sm:p-6">
           <h2 className="text-sm font-medium text-gray-700 mb-1">Start this duty</h2>
           <p className="text-gray-400 text-xs mb-4">Mark it as in progress when you begin working on it.</p>
           <button
@@ -64,7 +64,7 @@ export default function DutyActions({
       )}
 
       {isAssignee && status === 'in_progress' && (
-        <div className="bg-white rounded-xl shadow-sm p-6 space-y-3">
+        <div className="bg-white rounded-xl shadow-sm p-4 sm:p-6 space-y-3">
           <h2 className="text-sm font-medium text-gray-700 mb-1">Mark as Completed</h2>
           <p className="text-gray-400 text-xs mb-2">
             Submit this duty for review when you're done with all tasks.
@@ -100,7 +100,7 @@ export default function DutyActions({
 
       {/* ── Head review actions ── */}
       {isHead && status === 'completed' && (
-        <div className="bg-white rounded-xl shadow-sm p-6 space-y-4">
+        <div className="bg-white rounded-xl shadow-sm p-4 sm:p-6 space-y-4">
           <h2 className="text-sm font-medium text-gray-700 mb-1">Review Duty</h2>
           <p className="text-gray-400 text-xs">
             Review and mark this duty as done, or send it back to the member.
@@ -169,7 +169,7 @@ export default function DutyActions({
 
       {/* Reviewed — locked */}
       {status === 'reviewed' && (
-        <div className="bg-green-50 border border-green-200 rounded-xl p-6">
+        <div className="bg-green-50 border border-green-200 rounded-xl p-4 sm:p-6">
           <p className="text-green-700 text-sm font-medium">✓ This duty has been reviewed and approved.</p>
           {duty.remarks && (
             <p className="text-green-600 text-xs mt-1">Reviewer note: {duty.remarks}</p>

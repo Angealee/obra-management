@@ -48,7 +48,7 @@ export default async function AcademicYearDetailPage({
         <p className="text-gray-500 text-sm mt-1">Academic Year Details</p>
       </div>
 
-      <div className="bg-white rounded-xl shadow-sm p-6 space-y-4">
+      <div className="bg-white rounded-xl shadow-sm p-4 sm:p-6 space-y-4">
         <div className="flex justify-between items-center py-3 border-b border-gray-100">
           <span className="text-sm text-gray-500">Label</span>
           <span className="text-sm font-medium text-gray-800">{academicYear.label}</span>
@@ -88,7 +88,7 @@ export default async function AcademicYearDetailPage({
         <EditAcademicYearForm academicYear={academicYear} />
 
       {/* Active button */}
-     <div className="mt-6 bg-white rounded-xl shadow-sm p-6">
+     <div className="mt-6 bg-white rounded-xl shadow-sm p-4 sm:p-6">
         <h2 className="text-sm font-medium text-gray-700 mb-1">
           {academicYear.is_active ? 'Deactivate' : 'Set as Active'}
         </h2>
@@ -104,7 +104,7 @@ export default async function AcademicYearDetailPage({
       </div>
 
       {/* warning bago delete */}
-      <div className="mt-6 bg-white rounded-xl shadow-sm p-6">
+      <div className="mt-6 bg-white rounded-xl shadow-sm p-4 sm:p-6">
         <h2 className="text-sm font-medium text-gray-700 mb-1">Danger Zone</h2>
         <p className="text-gray-400 text-xs mb-4">
           Permanently delete this academic year from the system.

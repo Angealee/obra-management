@@ -122,7 +122,59 @@ export default async function DutiesPage() {
                   <span style={{ color: '#ccc' }}>({groupDuties.length})</span>
                 </p>
 
-                <div style={{
+                {/* Mobile: stacked cards */}
+                <div className="md:hidden" style={{
+                  background: '#fff',
+                  border: '1px solid rgba(0,0,0,0.06)',
+                  borderRadius: '10px',
+                  overflow: 'hidden',
+                  opacity: groupStatus === 'reviewed' ? 0.75 : 1,
+                }}>
+                  {groupDuties.map((duty: any, i: number) => {
+                    const mark = markMap[`${duty.assigned_to}_${duty.event_id}`] ?? null
+                    const [pbg, ptc] = priorityStyle[duty.priority] ?? ['#f3f4f6', '#6b7280']
+
+                    return (
+                      <div key={duty.id} style={{ padding: '13px 16px', borderTop: i > 0 ? '1px solid rgba(0,0,0,0.04)' : 'none' }}>
+                        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '8px' }}>
+                          <div style={{ minWidth: 0 }}>
+                            <p style={{ fontWeight: 500, color: '#111', lineHeight: 1.3, fontSize: '13.5px' }}>{duty.title}</p>
+                            <p style={{ fontSize: '11.5px', color: '#bbb', marginTop: '2px', textTransform: 'capitalize' }}>
+                              {duty.duty_type.replace(/_/g, ' ')}
+                            </p>
+                          </div>
+                          <span style={{ fontSize: '11px', fontWeight: 600, background: pbg, color: ptc, padding: '3px 9px', borderRadius: '99px', textTransform: 'capitalize', flexShrink: 0 }}>
+                            {duty.priority}
+                          </span>
+                        </div>
+
+                        <p style={{ color: '#888', fontSize: '12.5px', marginTop: '8px' }}>
+                          {duty.events?.title ?? '—'}
+                          {duty.events?.event_date && (
+                            <span style={{ color: '#bbb' }}>
+                              {' · '}
+                              {new Date(duty.events.event_date).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' })}
+                            </span>
+                          )}
+                        </p>
+
+                        {isHead && (
+                          <p style={{ color: '#888', fontSize: '12.5px', marginTop: '2px' }}>
+                            Assigned to <span style={{ color: '#555', fontWeight: 500 }}>{duty.assignee?.full_name ?? '—'}</span>
+                          </p>
+                        )}
+
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '10px' }}>
+                          <StatusCell dutyStatus={duty.status} mark={mark} />
+                          <DutyRowActions dutyId={duty.id} canManage={isHead} />
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+
+                {/* Desktop: Table */}
+                <div className="hidden md:block" style={{
                   background: '#fff',
                   border: '1px solid rgba(0,0,0,0.06)',
                   borderRadius: '10px',

@@ -66,7 +66,7 @@ export default function EditAnnouncementForm({
       </div>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-        <div style={{ background: '#fff', border: '1px solid rgba(0,0,0,0.07)', borderRadius: '10px', padding: '24px' }}>
+        <div className="p-4 sm:p-6" style={{ background: '#fff', border: '1px solid rgba(0,0,0,0.07)', borderRadius: '10px' }}>
           <p style={{ fontSize: '10.5px', fontWeight: 600, letterSpacing: '0.07em', textTransform: 'uppercase', color: '#999', marginBottom: '16px' }}>
             Content
           </p>
@@ -81,7 +81,7 @@ export default function EditAnnouncementForm({
           </div>
         </div>
 
-        <div style={{ background: '#fff', border: '1px solid rgba(0,0,0,0.07)', borderRadius: '10px', padding: '24px' }}>
+        <div className="p-4 sm:p-6" style={{ background: '#fff', border: '1px solid rgba(0,0,0,0.07)', borderRadius: '10px' }}>
           <p style={{ fontSize: '10.5px', fontWeight: 600, letterSpacing: '0.07em', textTransform: 'uppercase', color: '#999', marginBottom: '16px' }}>
             Settings
           </p>

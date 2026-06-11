@@ -190,7 +190,7 @@ export default async function DashboardPage() {
         
 
         {/* ── 4 stat cards ── */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '14px' }}>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3.5">
           <Stat label="Active Members" value={totalMembers ?? 0} accent="#3b82f6" icon={Users} href="/dashboard/members" />
           <Stat label="Events This AY" value={events?.length ?? 0} sub={`${upcoming} upcoming · ${ongoing} ongoing`} accent="#7c3aed" icon={CalendarDays} href="/dashboard/events" />
           <Stat label="Total Duties" value={total} sub={`${rev} reviewed`} accent="#0891b2" icon={ListChecks} href="/dashboard/duties" />
@@ -198,7 +198,7 @@ export default async function DashboardPage() {
         </div>
 
         {/* Expand to 3 columns on second row */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '14px' }}>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
           <Stat label="Marked Completed" value={doneMarks}  accent="#16a34a" icon={CheckCircle2} href="/dashboard/workloads" />
           <Stat label="Marked Late"      value={lateMarks}  accent="#ca8a04" icon={Clock}        href="/dashboard/workloads" />
           <Stat label="Did Not Duty"     value={dndMarks}   accent="#CC0000" icon={XCircle}      href="/dashboard/workloads" />
@@ -208,7 +208,7 @@ export default async function DashboardPage() {
         <div className={`${T.card} p-6`}>
           <SectionHead title="Duty Overview" action={{ label: 'View all →', href: '/dashboard/duties' }} />
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1px', background: 'rgba(0,0,0,0.06)', borderRadius: '8px', overflow: 'hidden', marginBottom: '20px' }}>
+          <div className="grid grid-cols-2 sm:grid-cols-4" style={{ gap: '1px', background: 'rgba(0,0,0,0.06)', borderRadius: '8px', overflow: 'hidden', marginBottom: '20px' }}>
             {[
               { label: 'Pending',     val: pending, color: '#555' },
               { label: 'In Progress', val: inProg,  color: '#3b82f6' },
@@ -348,14 +348,14 @@ export default async function DashboardPage() {
           </div>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '14px' }}>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3.5">
           <Stat label="My Pending"       value={myPending}            accent="#64748b" icon={Clock}          href="/dashboard/duties" />
           <Stat label="In Progress"      value={myInProg}             accent="#3b82f6" icon={Activity}       href="/dashboard/duties" />
           <Stat label="Awaiting Review"  value={pendingReview.length} accent="#ca8a04" icon={ClipboardCheck} href="/dashboard/duties" />
           <Stat label="Upcoming Events"  value={events?.length ?? 0}  accent="#7c3aed" icon={CalendarDays}   href="/dashboard/events" />
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-3.5">
           <div className={`${T.card} p-6`}>
             <div className="flex items-center justify-between mb-4">
               <p style={T.label}>Needs Review</p>
@@ -452,7 +452,7 @@ export default async function DashboardPage() {
         <p style={{ fontSize: '13px', color: '#999', marginTop: '5px' }}>{activeAY?.label ?? 'No active academic year'}</p>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '14px' }}>
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3.5">
         <Stat label="Pending"     value={mPend} accent="#64748b" icon={Clock}        href="/dashboard/duties" />
         <Stat label="In Progress" value={mProg} accent="#3b82f6" icon={Activity}     href="/dashboard/duties" />
         <Stat label="Completed"   value={mComp} accent="#ca8a04" icon={CheckCircle2} href="/dashboard/duties" />
@@ -482,7 +482,7 @@ export default async function DashboardPage() {
         </div>
       )}
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3.5">
         <div className={`${T.card} p-6`}>
           <SectionHead title="My Active Duties" action={{ label: 'View all →', href: '/dashboard/duties' }} />
           {active.length === 0 ? (

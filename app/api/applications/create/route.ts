@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
-import crypto from 'crypto'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { checkRateLimit, getClientIp } from '@/lib/rate-limit'
 import { validateApplication } from '@/lib/applicationValidation'
+import { hashOtpCode } from '@/lib/otp'
 
 // This endpoint is now the ONLY way to create a member application.
 // Anonymous INSERT on member_applications is revoked at the DB level
@@ -12,13 +12,6 @@ import { validateApplication } from '@/lib/applicationValidation'
 
 const ACTIVE_STATUSES = ['pending', 'shortlisted', 'interviewed', 'approved']
 const MAX_OTP_ATTEMPTS = 5
-
-function hashCode(code: string): string {
-  return crypto
-    .createHash('sha256')
-    .update(code + (process.env.OTP_PEPPER ?? ''))
-    .digest('hex')
-}
 
 export async function POST(req: NextRequest) {
   try {
@@ -84,7 +77,7 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    if (hashCode(code) !== otp.code_hash) {
+    if (hashOtpCode(code) !== otp.code_hash) {
       await supabase
         .from('application_otps')
         .update({ attempts: otp.attempts + 1 })

@@ -118,7 +118,7 @@ export default async function MemberDetailPage({
       </Link>
 
       {/* Header card */}
-      <div style={{ background: '#fff', border: '1px solid rgba(0,0,0,0.07)', borderRadius: '12px', padding: '24px', marginBottom: '14px' }}>
+      <div className="p-4 sm:p-6" style={{ background: '#fff', border: '1px solid rgba(0,0,0,0.07)', borderRadius: '12px', marginBottom: '14px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '18px', flexWrap: 'wrap' }}>
           {/* Avatar */}
           {member.avatar_url ? (
@@ -151,7 +151,7 @@ export default async function MemberDetailPage({
         </div>
 
         {/* Quick stats row */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1px', background: 'rgba(0,0,0,0.06)', borderRadius: '8px', overflow: 'hidden', marginTop: '20px' }}>
+        <div className="grid grid-cols-2 sm:grid-cols-4" style={{ gap: '1px', background: 'rgba(0,0,0,0.06)', borderRadius: '8px', overflow: 'hidden', marginTop: '20px' }}>
           {[
             { label: 'Total Duties',  value: totalDuties,   color: '#111' },
             { label: 'Reviewed',      value: reviewedCount, color: '#16a34a' },
@@ -167,7 +167,7 @@ export default async function MemberDetailPage({
       </div>
 
       {/* Profile info */}
-      <div style={{ background: '#fff', border: '1px solid rgba(0,0,0,0.07)', borderRadius: '12px', padding: '24px', marginBottom: '14px' }}>
+      <div className="p-4 sm:p-6" style={{ background: '#fff', border: '1px solid rgba(0,0,0,0.07)', borderRadius: '12px', marginBottom: '14px' }}>
         <p style={{ fontSize: '10.5px', fontWeight: 600, letterSpacing: '0.07em', textTransform: 'uppercase', color: '#999', marginBottom: '14px' }}>
           Profile
         </p>
@@ -197,7 +197,7 @@ export default async function MemberDetailPage({
       </div>
 
       {/* Event History */}
-      <div style={{ background: '#fff', border: '1px solid rgba(0,0,0,0.07)', borderRadius: '12px', padding: '24px', marginBottom: '14px' }}>
+      <div className="p-4 sm:p-6" style={{ background: '#fff', border: '1px solid rgba(0,0,0,0.07)', borderRadius: '12px', marginBottom: '14px' }}>
         <p style={{ fontSize: '10.5px', fontWeight: 600, letterSpacing: '0.07em', textTransform: 'uppercase', color: '#999', marginBottom: '16px' }}>
           Event History &amp; Duties
         </p>
@@ -254,7 +254,7 @@ export default async function MemberDetailPage({
 
       {/* Account Status — consultant only */}
       {viewer.system_role === 'consultant' && (
-        <div style={{ background: '#fff', border: '1px solid rgba(0,0,0,0.07)', borderRadius: '12px', padding: '24px' }}>
+        <div className="p-4 sm:p-6" style={{ background: '#fff', border: '1px solid rgba(0,0,0,0.07)', borderRadius: '12px' }}>
           <p style={{ fontSize: '10.5px', fontWeight: 600, letterSpacing: '0.07em', textTransform: 'uppercase', color: '#999', marginBottom: '8px' }}>
             Account Status
           </p>
