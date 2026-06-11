@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { CheckCircle, ArrowLeft, ArrowRight, Pencil } from 'lucide-react'
+import { CheckCircle, ArrowLeft, ArrowRight, Pencil, Mail } from 'lucide-react'
 
 const POSITIONS = [
   { value: 'photographer',    label: 'Photographer' },
@@ -100,6 +100,15 @@ export default function JoinForm() {
   const [touched, setTouched]         = useState<Record<string, boolean>>({})
   const [draftRestored, setDraftRestored] = useState(false)
 
+  // Email verification (OTP). At final submit we send a code, then the
+  // applicant enters it before the application is actually created.
+  const [otpSent, setOtpSent]     = useState(false)
+  const [code, setCode]           = useState('')
+  const [otpError, setOtpError]   = useState<string | null>(null)
+  const [verifying, setVerifying] = useState(false)
+  const [resendIn, setResendIn]   = useState(0)
+  const [honeypot, setHoneypot]   = useState('')
+
   const isFirstRender = useRef(true)
   const skipSaveRef   = useRef(true)
 
@@ -133,6 +142,13 @@ export default function JoinForm() {
     if (isFirstRender.current) { isFirstRender.current = false; return }
     document.getElementById('join-scroll-panel')?.scrollTo({ top: 0, behavior: 'smooth' })
   }, [step])
+
+  // Resend cooldown countdown
+  useEffect(() => {
+    if (resendIn <= 0) return
+    const id = setTimeout(() => setResendIn(s => Math.max(0, s - 1)), 1000)
+    return () => clearTimeout(id)
+  }, [resendIn])
 
   function togglePosition(value: string) {
     setForm(prev => ({
@@ -209,28 +225,77 @@ export default function JoinForm() {
     try { localStorage.removeItem(DRAFT_KEY) } catch {}
   }
 
-  async function handleSubmit(e: React.FormEvent) {
+  // Step 4 "Submit": validate everything, then send a verification code.
+  async function handleSendCode(e: React.FormEvent) {
     e.preventDefault()
 
     for (let s = 1; s <= 3; s++) {
       if (!validateStep(s)) { setStep(s); return }
     }
+    if (form.positions.length === 0) {
+      setStep(2); setError('Please select at least one position.'); return
+    }
 
     setLoading(true)
+    setError(null)
     try {
-      const res  = await fetch('/api/applications/create', {
+      const res = await fetch('/api/applications/otp', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(form),
+        body: JSON.stringify({ email: form.email, website: honeypot }),
       })
       const data = await res.json()
-      if (!res.ok) { setError(data.error || 'Something went wrong.'); return }
-      setSubmitted(true)
-      try { localStorage.removeItem(DRAFT_KEY) } catch {}
+      if (!res.ok) { setError(data.error || 'Could not send the verification code.'); return }
+      setOtpSent(true)
+      setCode('')
+      setOtpError(null)
+      setResendIn(60)
     } catch {
       setError('Network error. Please try again.')
     } finally {
       setLoading(false)
+    }
+  }
+
+  // Verify the entered code and create the application.
+  async function handleVerify(e: React.FormEvent) {
+    e.preventDefault()
+    if (!/^\d{6}$/.test(code)) { setOtpError('Enter the 6-digit code we emailed you.'); return }
+
+    setVerifying(true)
+    setOtpError(null)
+    try {
+      const res = await fetch('/api/applications/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...form, code, website: honeypot }),
+      })
+      const data = await res.json()
+      if (!res.ok) { setOtpError(data.error || 'Verification failed. Please try again.'); return }
+      setSubmitted(true)
+      try { localStorage.removeItem(DRAFT_KEY) } catch {}
+    } catch {
+      setOtpError('Network error. Please try again.')
+    } finally {
+      setVerifying(false)
+    }
+  }
+
+  // Resend a fresh code (respects the cooldown).
+  async function handleResend() {
+    if (resendIn > 0) return
+    setOtpError(null)
+    try {
+      const res = await fetch('/api/applications/otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: form.email, website: honeypot }),
+      })
+      const data = await res.json()
+      if (!res.ok) { setOtpError(data.error || 'Could not resend the code.'); return }
+      setResendIn(60)
+    } catch {
+      setOtpError('Network error. Please try again.')
     }
   }
 
@@ -311,6 +376,70 @@ export default function JoinForm() {
     )
   }
 
+  // ── EMAIL VERIFICATION (OTP) ──
+  if (otpSent) {
+    return (
+      <div className="step-content flex flex-col">
+        <button type="button" onClick={() => { setOtpSent(false); setOtpError(null) }}
+          className="mb-5 inline-flex items-center gap-1.5 self-start"
+          style={{ fontSize: 12.5, fontWeight: 500, color: '#888', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
+          <ArrowLeft size={14} /> Back to application
+        </button>
+
+        <div className="flex h-12 w-12 items-center justify-center rounded-full" style={{ background: '#FFF1F1' }}>
+          <Mail size={22} style={{ color: '#CC0000' }} />
+        </div>
+
+        <h3 style={{ fontSize: 20, fontWeight: 700, color: '#111', margin: '14px 0 8px' }}>
+          Verify your email
+        </h3>
+        <p style={{ fontSize: 13.5, color: '#666', lineHeight: 1.6, margin: '0 0 22px' }}>
+          We sent a 6-digit code to <strong style={{ color: '#111' }}>{form.email}</strong>.
+          Enter it below to submit your application. The code expires in 10 minutes.
+        </p>
+
+        <form onSubmit={handleVerify} className="flex flex-col gap-4">
+          <div className="flex flex-col gap-1.5">
+            <label className="obra-label">Verification Code</label>
+            <input
+              className="obra-input"
+              type="text"
+              inputMode="numeric"
+              autoComplete="one-time-code"
+              maxLength={6}
+              placeholder="000000"
+              value={code}
+              autoFocus
+              onChange={e => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+              style={{ letterSpacing: '0.4em', fontSize: 20, textAlign: 'center', fontFamily: "'DM Mono', monospace" }}
+            />
+            {otpError && (
+              <p className="text-[11.5px]" style={{ color: '#CC0000', marginTop: 2 }}>{otpError}</p>
+            )}
+          </div>
+
+          <button type="submit" disabled={verifying || code.length !== 6}
+            className="btn-primary justify-center py-3 text-[14px]"
+            style={{ opacity: verifying || code.length !== 6 ? 0.7 : 1 }}>
+            {verifying ? 'Verifying…' : 'Verify & Submit'}
+          </button>
+        </form>
+
+        <div className="mt-4 text-center">
+          <span style={{ fontSize: 12.5, color: '#999' }}>Didn&apos;t get the code? </span>
+          <button type="button" onClick={handleResend} disabled={resendIn > 0}
+            style={{ fontSize: 12.5, fontWeight: 600, color: resendIn > 0 ? '#bbb' : '#CC0000', background: 'none', border: 'none', cursor: resendIn > 0 ? 'default' : 'pointer', padding: 0 }}>
+            {resendIn > 0 ? `Resend in ${resendIn}s` : 'Resend code'}
+          </button>
+        </div>
+
+        <p className="mt-3 text-center" style={{ fontSize: 11.5, color: '#bbb', lineHeight: 1.5 }}>
+          Wrong email? Tap &ldquo;Back to application&rdquo; to fix it, then resend.
+        </p>
+      </div>
+    )
+  }
+
   return (
     <div>
       {/* ── DRAFT RESTORED NOTICE ── */}
@@ -380,7 +509,21 @@ export default function JoinForm() {
         </div>
       </div>
 
-      <form onSubmit={handleSubmit} className="flex flex-col gap-5">
+      <form onSubmit={handleSendCode} className="flex flex-col gap-5">
+
+        {/* ── HONEYPOT (anti-bot): hidden from humans, bots fill it ── */}
+        <div aria-hidden="true" style={{ position: 'absolute', left: '-9999px', top: 'auto', width: 1, height: 1, overflow: 'hidden' }}>
+          <label htmlFor="website">Website</label>
+          <input
+            id="website"
+            name="website"
+            type="text"
+            tabIndex={-1}
+            autoComplete="off"
+            value={honeypot}
+            onChange={e => setHoneypot(e.target.value)}
+          />
+        </div>
 
         {/* ── STEP 1: PERSONAL INFO ── */}
         {step === 1 && (
@@ -546,7 +689,7 @@ export default function JoinForm() {
             <button type="submit" disabled={loading}
               className="btn-primary flex-1 justify-center py-3 text-[14px]"
               style={{ opacity: loading ? 0.7 : 1 }}>
-              {loading ? 'Submitting…' : 'Submit Application →'}
+              {loading ? 'Sending code…' : 'Continue to Verification →'}
             </button>
           )}
         </div>
