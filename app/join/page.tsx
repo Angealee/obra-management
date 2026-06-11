@@ -4,6 +4,23 @@ import { createAdminClient } from '@/lib/supabase/admin'
 
 export const metadata = {
   title: 'Obra Online Application Form',
+  description: 'Apply for a position in Obra Creative Media Productions.',
+  openGraph: {
+    title: 'Join Obra Creative Media Productions',
+    description: 'Apply for a position in Obra CMP — Photography, Videography, Graphic Design, Animation, and more.',
+    url: 'https://your-vercel-domain.vercel.app/join',
+    siteName: 'Obra Online Application Form',
+    images: [
+      {
+        url: 'https://ccs-obra.vercel.app/join',
+        width: 1200,
+        height: 630,
+        alt: 'Obra Creative Media Productions — Join Us',
+      },
+    ],
+    locale: 'en_PH',
+    type: 'website',
+  },
 }
 
 async function getMemberCount(): Promise<number> {
