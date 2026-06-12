@@ -1,10 +1,13 @@
-import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
-import type { Profile } from '@/types/database'
+import { requireProfile } from '@/lib/auth'
 import WorkloadBadge from '@/components/WorkLoadBadge'
 import DutyRowActions from './DutyRowActions'
 import { getAcademicYearContext } from '@/lib/academicYear'
+
+// Valid-format UUID that matches no row — used so "no year selected" yields an
+// empty result instead of an unscoped query.
+const NONE_UUID = '00000000-0000-0000-0000-000000000000'
 
 const statusStyle: Record<string, [string, string]> = {
   pending:     ['#f3f4f6', '#6b7280'],
@@ -34,41 +37,30 @@ function StatusCell({ dutyStatus, mark }: { dutyStatus: string; mark: string | n
 }
 
 export default async function DutiesPage() {
+  const { user, profile } = await requireProfile()
   const supabase = await createClient()
-
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) redirect('/login')
-
-  const { data: profile } = await supabase
-    .from('profiles').select('*').eq('id', user.id).single() as { data: Profile | null }
-  if (!profile) redirect('/login')
 
   const isHead = profile.system_role === 'consultant' || profile.system_role === 'creative_head'
 
   const { viewYearId } = await getAcademicYearContext()
 
-  // Duties belong to a year through their event. Resolve the chosen year's
-  // event ids first, then scope duties to them.
-  const { data: yearEvents } = viewYearId
-    ? await supabase.from('events').select('id').eq('academic_year_id', viewYearId)
-    : { data: [] as { id: string }[] }
-  const yearEventIds = (yearEvents ?? []).map(e => e.id)
-
+  // Duties belong to a year through their event. Scope them in a single query
+  // via an inner join on the event (events!inner + event's academic_year_id),
+  // instead of fetching the year's event ids in a separate round-trip.
   const dutiesQuery = supabase
     .from('duties')
     .select(`
       id, title, duty_type, status, priority, created_at,
       event_id, assigned_to,
-      events ( id, title, event_date ),
+      events!inner ( id, title, event_date ),
       assignee:profiles!duties_assigned_to_fkey ( full_name )
     `)
+    .eq('events.academic_year_id', viewYearId ?? NONE_UUID)
     .order('created_at', { ascending: false })
 
   if (!isHead) dutiesQuery.eq('assigned_to', user.id)
-  if (yearEventIds.length > 0) dutiesQuery.in('event_id', yearEventIds)
 
-  // No events for this year → no duties to show.
-  const { data: duties } = yearEventIds.length > 0 ? await dutiesQuery : { data: [] }
+  const { data: duties } = await dutiesQuery
 
   // Fetch workload marks
   const eventIds  = [...new Set((duties ?? []).map((d: any) => d.event_id).filter(Boolean))]

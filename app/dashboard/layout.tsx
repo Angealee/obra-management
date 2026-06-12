@@ -1,25 +1,19 @@
 import { redirect } from 'next/navigation'
-import { createClient } from '@/lib/supabase/server'
 import Sidebar from '@/components/Sidebar'
 import PageWrapper from '@/components/PageWrapper'
 import YearPicker from '@/components/YearPicker'
 import { getAcademicYearContext } from '@/lib/academicYear'
+import { getSessionProfile } from '@/lib/auth'
 
 export default async function DashboardLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
-  const supabase = await createClient()
-
-  const { data: { user } } = await supabase.auth.getUser()
+  // Shared (cached) per-request fetch — the page rendered into {children} reuses
+  // this same auth + profile lookup instead of repeating it.
+  const { user, profile } = await getSessionProfile()
   if (!user) redirect('/login')
-
-  const { data: profile, error: profileError } = await supabase
-    .from('profiles')
-    .select('*')
-    .eq('id', user.id)
-    .single()
 
   if (!profile) {
     return (
@@ -28,7 +22,6 @@ export default async function DashboardLayout({
           <h2 style={{ fontSize: '16px', fontWeight: 600, color: '#CC0000', marginBottom: '8px' }}>Profile Not Found</h2>
           <p style={{ fontSize: '13px', color: '#666', marginBottom: '12px' }}>Your account exists but has no profile record.</p>
           <p style={{ fontSize: '11px', color: '#999', fontFamily: 'monospace' }}>ID: {user.id}</p>
-          {profileError && <p style={{ fontSize: '12px', color: '#CC0000', marginTop: '8px' }}>{profileError.message}</p>}
         </div>
       </div>
     )

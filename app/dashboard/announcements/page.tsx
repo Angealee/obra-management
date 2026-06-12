@@ -1,7 +1,7 @@
-import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
-import type { Profile, AnnouncementWithPoster } from '@/types/database'
+import type { AnnouncementWithPoster } from '@/types/database'
+import { requireProfile } from '@/lib/auth'
 import { getAcademicYearContext } from '@/lib/academicYear'
 
 const visibilityStyle: Record<string, [string, string]> = {
@@ -17,14 +17,8 @@ const visibilityLabel: Record<string, string> = {
 }
 
 export default async function AnnouncementsPage() {
+  const { profile } = await requireProfile()
   const supabase = await createClient()
-
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) redirect('/login')
-
-  const { data: profile } = await supabase
-    .from('profiles').select('*').eq('id', user.id).single() as { data: Profile | null }
-  if (!profile) redirect('/login')
 
   const isHead = profile.system_role === 'consultant' || profile.system_role === 'creative_head'
 

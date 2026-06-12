@@ -1,23 +1,14 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
-import type { Profile } from '@/types/database'
+import { requireProfile } from '@/lib/auth'
 import WorkloadMatrix from './WorkLoadMatrix'
 import { getAcademicYearContext } from '@/lib/academicYear'
 
 export default async function WorkloadsPage() {
-  const supabase = await createClient()
-
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) redirect('/login')
-
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('*')
-    .eq('id', user.id)
-    .single() as { data: Profile | null }
-
-  if (!profile) redirect('/login')
+  const { profile } = await requireProfile()
   if (profile.system_role === 'member') redirect('/dashboard')
+
+  const supabase = await createClient()
 
   const canManage = profile.system_role === 'consultant' || profile.system_role === 'creative_head'
 

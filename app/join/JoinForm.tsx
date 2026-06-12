@@ -444,7 +444,7 @@ export default function JoinForm() {
     <div>
       {/* ── DRAFT RESTORED NOTICE ── */}
       {draftRestored && (
-        <div className="mb-4 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-black/[0.06] px-4 py-2.5" style={{ background: '#FAFAF9' }}>
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-black/6 px-4 py-2.5" style={{ background: '#FAFAF9' }}>
           <span className="text-[12.5px]" style={{ color: '#666' }}>We restored your previous draft.</span>
           <div className="flex items-center gap-3">
             <button type="button" onClick={() => setDraftRestored(false)}

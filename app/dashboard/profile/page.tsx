@@ -1,6 +1,6 @@
-import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
-import type { Profile, MemberSkill } from '@/types/database'
+import type { MemberSkill } from '@/types/database'
+import { requireProfile } from '@/lib/auth'
 import AvatarUpload from './AvatarUpload'
 import ProfileForm from './ProfileForm'
 import PasswordForm from './PasswordForm'
@@ -8,14 +8,8 @@ import SkillsEditor from './SkillsEditor'
 import { memberRoleLabel } from '@/lib/memberRole'
 
 export default async function ProfilePage() {
+  const { profile } = await requireProfile()
   const supabase = await createClient()
-
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) redirect('/login')
-
-  const { data: profile } = await supabase
-    .from('profiles').select('*').eq('id', user.id).single() as { data: Profile | null }
-  if (!profile) redirect('/login')
 
   const { data: allSkills } = await supabase
     .from('member_skills').select('*').order('name', { ascending: true }) as { data: MemberSkill[] | null }

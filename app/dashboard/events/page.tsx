@@ -1,7 +1,8 @@
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
-import type { Profile, ObraEventWithDetails } from '@/types/database'
+import type { ObraEventWithDetails } from '@/types/database'
+import { requireProfile } from '@/lib/auth'
 import { getAcademicYearContext } from '@/lib/academicYear'
 
 const statusStyles: Record<string, string> = {
@@ -27,19 +28,10 @@ function StatusBadge({ status }: { status: string }) {
 }
 
 export default async function EventsPage() {
-  const supabase = await createClient()
-
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) redirect('/login')
-
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('*')
-    .eq('id', user.id)
-    .single() as { data: Profile | null }
-
-  if (!profile) redirect('/login')
+  const { profile } = await requireProfile()
   if (profile.system_role === 'member') redirect('/dashboard')
+
+  const supabase = await createClient()
 
   const { viewYear, viewYearId } = await getAcademicYearContext()
 

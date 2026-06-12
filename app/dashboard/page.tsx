@@ -1,7 +1,6 @@
-import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
-import type { Profile } from '@/types/database'
+import { requireProfile } from '@/lib/auth'
 import { getAcademicYearContext } from '@/lib/academicYear'
 import {
   Users, CalendarDays, ListChecks, FileText, CheckCircle2, Clock, XCircle,
@@ -105,13 +104,8 @@ function Avatar({ name, size = 28, bg = '#111' }: { name: string; size?: number;
 }
 
 export default async function DashboardPage() {
+  const { user, profile } = await requireProfile()
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) redirect('/login')
-
-  const { data: profile } = await supabase
-    .from('profiles').select('*').eq('id', user.id).single() as { data: Profile | null }
-  if (!profile) redirect('/login')
 
   // "Year in focus" follows the system-wide picker (cookie), defaulting to the
   // active year. Kept under the name `activeAY` so the rest of this page — which
@@ -333,17 +327,17 @@ export default async function DashboardPage() {
   if (profile.system_role === 'creative_head') {
     const yearId = activeAY?.id ?? NONE_UUID
 
-    const { data: yearEvents } = await supabase.from('events').select('id').eq('academic_year_id', yearId)
-    const eventFilter = (yearEvents?.length ?? 0) > 0 ? yearEvents!.map(e => e.id) : [NONE_UUID]
-
+    // Duties are scoped to the year through their event via an inner join
+    // (events!inner + filter on events.academic_year_id) — no separate
+    // "fetch event ids first" round-trip needed.
     const [
       { data: events },
       { data: myDuties },
       { data: allDuties },
     ] = await Promise.all([
       supabase.from('events').select('id, title, event_date, status').eq('academic_year_id', yearId).in('status', ['upcoming','ongoing']).order('event_date', { ascending: true }).limit(6),
-      supabase.from('duties').select('id, title, status, event_id, events(title)').eq('assigned_to', user.id).neq('status', 'reviewed').in('event_id', eventFilter).order('created_at', { ascending: false }).limit(8),
-      supabase.from('duties').select('id, title, status, assigned_to, event_id, assignee:profiles!duties_assigned_to_fkey(full_name), events(title)').eq('assigned_by', user.id).in('event_id', eventFilter).order('created_at', { ascending: false }).limit(50),
+      supabase.from('duties').select('id, title, status, event_id, events!inner(title)').eq('assigned_to', user.id).neq('status', 'reviewed').eq('events.academic_year_id', yearId).order('created_at', { ascending: false }).limit(8),
+      supabase.from('duties').select('id, title, status, assigned_to, event_id, assignee:profiles!duties_assigned_to_fkey(full_name), events!inner(title)').eq('assigned_by', user.id).eq('events.academic_year_id', yearId).order('created_at', { ascending: false }).limit(50),
     ])
 
     const pendingReview = allDuties?.filter(d => d.status === 'completed') ?? []
@@ -448,12 +442,11 @@ export default async function DashboardPage() {
   //  MEMBER
   // ══════════════════════════════════════════
   const yearId = activeAY?.id ?? NONE_UUID
-  const { data: memberYearEvents } = await supabase.from('events').select('id').eq('academic_year_id', yearId)
-  const memberEventFilter = (memberYearEvents?.length ?? 0) > 0 ? memberYearEvents!.map(e => e.id) : [NONE_UUID]
 
+  // Year scoping via inner join on the duty's event (no pre-fetch of event ids).
   const [{ data: myDuties }, { data: myEvents }] = await Promise.all([
-    supabase.from('duties').select('id, title, status, duty_type, priority, due_date, events(id, title, event_date)')
-      .eq('assigned_to', user.id).in('event_id', memberEventFilter).order('created_at', { ascending: false }),
+    supabase.from('duties').select('id, title, status, duty_type, priority, due_date, events!inner(id, title, event_date)')
+      .eq('assigned_to', user.id).eq('events.academic_year_id', yearId).order('created_at', { ascending: false }),
     supabase.from('events').select('id, title, event_date, status')
       .eq('academic_year_id', yearId).in('status', ['upcoming','ongoing'])
       .order('event_date', { ascending: true }).limit(5),

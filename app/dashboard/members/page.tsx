@@ -1,21 +1,11 @@
 import { createClient } from '@/lib/supabase/server'
-import { redirect } from 'next/navigation'
+import { requireProfile } from '@/lib/auth'
 import MembersTable from './MembersTable'
 import { getAcademicYearContext } from '@/lib/academicYear'
 
 export default async function MembersPage() {
+  const { profile } = await requireProfile()
   const supabase = await createClient()
-
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) redirect('/login')
-
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('system_role')
-    .eq('id', user.id)
-    .single()
-
-  if (!profile) redirect('/login')
 
   const { viewYear, viewYearId } = await getAcademicYearContext()
 

@@ -2,23 +2,16 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import ApplicationsClient from './ApplicationsClient'
 import { enrichApplications } from './utils'
+import { requireProfile } from '@/lib/auth'
 import { getAcademicYearContext } from '@/lib/academicYear'
 
 export default async function ApplicationsPage() {
-  const supabase = await createClient()
-
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) redirect('/login')
-
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('system_role')
-    .eq('id', user.id)
-    .single()
-
-  if (!profile || !['consultant', 'creative_head'].includes(profile.system_role)) {
+  const { user, profile } = await requireProfile()
+  if (!['consultant', 'creative_head'].includes(profile.system_role)) {
     redirect('/dashboard')
   }
+
+  const supabase = await createClient()
 
   const { viewYearId } = await getAcademicYearContext()
 
