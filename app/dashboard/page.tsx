@@ -244,7 +244,7 @@ export default async function DashboardPage() {
               </div>
             </div>
           ) : (
-            <p style={{ fontSize: '13px', color: '#bbb' }}>No duties assigned yet.</p>
+            <p style={{ fontSize: '13px', color: '#bbb' }}>No duties assigned for this academic year yet.</p>
           )}
         </div>
 
@@ -252,7 +252,7 @@ export default async function DashboardPage() {
         <div className={`${T.card} p-6`}>
           <SectionHead title="Top Contributors" />
           {topMembers.length === 0 ? (
-            <p style={{ fontSize: '13px', color: '#bbb' }}>No reviewed duties yet.</p>
+            <p style={{ fontSize: '13px', color: '#bbb' }}>Members rank here once their duties start getting reviewed.</p>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
               {topMembers.map(([id, data], i) => {

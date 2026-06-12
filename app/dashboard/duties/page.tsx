@@ -2,6 +2,8 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { requireProfile } from '@/lib/auth'
 import WorkloadBadge from '@/components/WorkLoadBadge'
+import EmptyState from '@/components/EmptyState'
+import { ListChecks } from 'lucide-react'
 import DutyRowActions from './DutyRowActions'
 import { getAcademicYearContext } from '@/lib/academicYear'
 
@@ -110,11 +112,16 @@ export default async function DutiesPage() {
       </div>
 
       {!duties || duties.length === 0 ? (
-        <div style={{ background: '#fff', border: '1px solid rgba(0,0,0,0.06)', borderRadius: '10px', padding: '48px', textAlign: 'center' }}>
-          <p style={{ fontSize: '13px', color: '#bbb' }}>
-            {isHead ? 'No duties assigned yet.' : 'You have no duties assigned yet.'}
-          </p>
-        </div>
+        <EmptyState
+          icon={ListChecks}
+          title={isHead ? 'No duties for this academic year yet' : 'You have no duties yet'}
+          description={
+            isHead
+              ? 'Assign a duty to a member for one of this year’s events. Pending, in-progress, and reviewed duties are grouped here as they come in.'
+              : 'When a creative head assigns you a duty for this year, it shows up here so you can mark it in progress and complete.'
+          }
+          action={isHead ? { label: '+ Assign a duty', href: '/dashboard/duties/new' } : undefined}
+        />
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
           {Object.entries(groups).map(([groupStatus, groupDuties]) => {

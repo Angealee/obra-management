@@ -2,6 +2,8 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import type { AnnouncementWithPoster } from '@/types/database'
 import { requireProfile } from '@/lib/auth'
+import EmptyState from '@/components/EmptyState'
+import { Megaphone } from 'lucide-react'
 import { getAcademicYearContext } from '@/lib/academicYear'
 
 const visibilityStyle: Record<string, [string, string]> = {
@@ -63,15 +65,16 @@ export default async function AnnouncementsPage() {
 
       {/* List */}
       {!announcements || announcements.length === 0 ? (
-        <div style={{ background: '#fff', border: '1px solid rgba(0,0,0,0.06)', borderRadius: '10px', padding: '48px', textAlign: 'center' }}>
-          <p style={{ fontSize: '13px', color: '#bbb' }}>No announcements yet.</p>
-          {isHead && (
-            <Link href="/dashboard/announcements/new"
-              style={{ display: 'inline-block', marginTop: '12px', fontSize: '13px', color: '#999', textDecoration: 'underline' }}>
-              Post the first announcement
-            </Link>
-          )}
-        </div>
+        <EmptyState
+          icon={Megaphone}
+          title="Nothing posted yet"
+          description={
+            isHead
+              ? 'Post an announcement to reach members and creative heads. It shows up here and on their dashboards.'
+              : 'Announcements from your creative heads will appear here once they’re posted.'
+          }
+          action={isHead ? { label: '+ Post an announcement', href: '/dashboard/announcements/new' } : undefined}
+        />
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
           {announcements.map(a => {

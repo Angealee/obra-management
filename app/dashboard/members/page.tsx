@@ -1,6 +1,8 @@
 import { createClient } from '@/lib/supabase/server'
 import { requireProfile } from '@/lib/auth'
 import MembersTable from './MembersTable'
+import EmptyState from '@/components/EmptyState'
+import { CalendarRange, Users } from 'lucide-react'
 import { getAcademicYearContext } from '@/lib/academicYear'
 
 export default async function MembersPage() {
@@ -62,22 +64,23 @@ export default async function MembersPage() {
       </div>
 
       {!viewYearId ? (
-        <div className="dash-card" style={{ padding: '48px 24px', textAlign: 'center' }}>
-          <p style={{ fontSize: 14, color: '#999' }}>
-            No academic year exists yet. Create one to start building a roster.
-          </p>
-        </div>
+        <EmptyState
+          icon={CalendarRange}
+          title="No academic year to show members for"
+          description="Create an academic year and set it active — then the roster for that year appears here."
+          action={canManage ? { label: 'Go to Academic Years', href: '/dashboard/academic-years' } : undefined}
+        />
       ) : members.length === 0 ? (
-        <div className="dash-card" style={{ padding: '48px 24px', textAlign: 'center' }}>
-          <p style={{ fontSize: 14, color: '#999' }}>
-            No members are active for <strong>{viewYear?.label}</strong> yet.
-          </p>
-          {canManage && (
-            <p style={{ fontSize: 13, color: '#bbb', marginTop: 6 }}>
-              Members added while this year is active will appear here.
-            </p>
-          )}
-        </div>
+        <EmptyState
+          icon={Users}
+          title={`No one is active for ${viewYear?.label} yet`}
+          description={
+            canManage
+              ? 'Add a member while this year is active, or mark an existing member active for this year from their profile.'
+              : 'The roster for this academic year hasn’t been set up yet. Check back once members are added.'
+          }
+          action={canManage ? { label: '+ Add a member', href: '/dashboard/members/new' } : undefined}
+        />
       ) : (
         <MembersTable
           members={members}

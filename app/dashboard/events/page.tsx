@@ -3,6 +3,8 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import type { ObraEventWithDetails } from '@/types/database'
 import { requireProfile } from '@/lib/auth'
+import EmptyState from '@/components/EmptyState'
+import { CalendarDays } from 'lucide-react'
 import { getAcademicYearContext } from '@/lib/academicYear'
 
 const statusStyles: Record<string, string> = {
@@ -57,22 +59,22 @@ export default async function EventsPage() {
 
   const canManage = profile.system_role === 'consultant' || profile.system_role === 'creative_head'
 
+  const eventCount = events?.length ?? 0
+
   return (
-    <div>
+    <div className="page-enter">
       {/* Header */}
-      <div className="flex items-start justify-between flex-wrap gap-3 mb-8">
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '28px', gap: '16px', flexWrap: 'wrap' }}>
         <div>
-          <h1 className="text-2xl font-bold text-gray-800">Events</h1>
-          <p className="text-gray-500 text-sm mt-1">
-            {events?.length ?? 0} event{(events?.length ?? 0) !== 1 ? 's' : ''}
-            {viewYear ? ` · ${viewYear.label}` : ''}
+          <h1 className="page-title">Events</h1>
+          <p className="page-subtitle">
+            {eventCount === 0
+              ? (viewYear ? `No events for ${viewYear.label} yet.` : 'Shoots, deadlines, and org activities — grouped by status.')
+              : `${eventCount} event${eventCount !== 1 ? 's' : ''}${viewYear ? ` for ${viewYear.label}` : ''} · ongoing and upcoming first`}
           </p>
         </div>
         {canManage && (
-          <Link
-            href="/dashboard/events/new"
-            className="bg-gray-900 text-white px-4 py-2 rounded-lg text-sm hover:bg-gray-700 transition"
-          >
+          <Link href="/dashboard/events/new" className="btn-primary">
             + Add Event
           </Link>
         )}
@@ -80,14 +82,16 @@ export default async function EventsPage() {
 
       {/* Empty state */}
       {!events || events.length === 0 ? (
-        <div className="bg-white rounded-xl p-12 text-center shadow-sm">
-          <p className="text-gray-400 text-sm">No events yet.</p>
-          {canManage && (
-            <Link href="/dashboard/events/new" className="mt-4 inline-block text-sm text-gray-600 underline">
-              Create your first event
-            </Link>
-          )}
-        </div>
+        <EmptyState
+          icon={CalendarDays}
+          title={viewYear ? `Nothing scheduled for ${viewYear.label}` : 'No events yet'}
+          description={
+            canManage
+              ? 'Add an event to start assigning duties for it. Events are grouped by status — ongoing, upcoming, completed, then cancelled.'
+              : 'Events scheduled for this academic year will appear here, with the soonest ones first.'
+          }
+          action={canManage ? { label: '+ Add an event', href: '/dashboard/events/new' } : undefined}
+        />
       ) : (
         <div className="space-y-8">
 
@@ -132,7 +136,7 @@ function EventSection({
         {title}
       </h2>
       {/* Mobile: stacked cards */}
-      <div className={`md:hidden bg-white rounded-xl shadow-sm overflow-hidden ${muted ? 'opacity-60' : ''}`}>
+      <div className={`md:hidden bg-white rounded-xl border border-black/[0.06] overflow-hidden ${muted ? 'opacity-60' : ''}`}>
         {events.map((event) => (
           <Link
             key={event.id}
@@ -161,7 +165,7 @@ function EventSection({
       </div>
 
       {/* Desktop: Table */}
-      <div className={`hidden md:block bg-white rounded-xl shadow-sm overflow-hidden ${muted ? 'opacity-60' : ''}`}>
+      <div className={`hidden md:block bg-white rounded-xl border border-black/[0.06] overflow-hidden ${muted ? 'opacity-60' : ''}`}>
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-gray-100">

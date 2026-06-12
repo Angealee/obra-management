@@ -2,6 +2,8 @@ import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import type { AcademicYear, Profile } from '@/types/database'
+import EmptyState from '@/components/EmptyState'
+import { CalendarRange } from 'lucide-react'
 
 export default async function AcademicYearsPage() {
   const supabase = await createClient()
@@ -30,38 +32,32 @@ export default async function AcademicYearsPage() {
     .order('created_at', { ascending: false }) as { data: AcademicYear[] | null }
 
   return (
-    <div>
+    <div className="page-enter">
       {/* Page header */}
-      <div className="flex items-start justify-between flex-wrap gap-3 mb-8">
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '28px', gap: '16px', flexWrap: 'wrap' }}>
         <div>
-          <h1 className="text-2xl font-bold text-gray-800">Academic Years</h1>
-          <p className="text-gray-500 text-sm mt-1">
-            Manage academic years and set the active one.
+          <h1 className="page-title">Academic Years</h1>
+          <p className="page-subtitle">
+            Each year keeps its own roster, events, and duties. The active year is what new records attach to.
           </p>
         </div>
-        <Link
-          href="/dashboard/academic-years/new"
-          className="bg-gray-900 text-white px-4 py-2 rounded-lg text-sm hover:bg-gray-700 transition"
-        >
+        <Link href="/dashboard/academic-years/new" className="btn-primary">
           + Add Academic Year
         </Link>
       </div>
 
       {/* Table */}
       {!academicYears || academicYears.length === 0 ? (
-        <div className="bg-white rounded-xl p-12 text-center shadow-sm">
-          <p className="text-gray-400 text-sm">No academic years yet.</p>
-          <Link
-            href="/dashboard/academic-years/new"
-            className="mt-4 inline-block text-sm text-gray-600 underline"
-          >
-            Create your first academic year
-          </Link>
-        </div>
+        <EmptyState
+          icon={CalendarRange}
+          title="No academic years set up yet"
+          description="Create your first academic year — for example “A.Y. 2026–2027” — then set it active so members, events, and duties have a year to attach to."
+          action={{ label: '+ Add your first academic year', href: '/dashboard/academic-years/new' }}
+        />
       ) : (
         <>
           {/* Mobile: stacked cards */}
-          <div className="md:hidden bg-white rounded-xl shadow-sm overflow-hidden">
+          <div className="md:hidden bg-white rounded-xl border border-black/[0.06] overflow-hidden">
             {academicYears.map((ay) => (
               <Link
                 key={ay.id}
@@ -94,7 +90,7 @@ export default async function AcademicYearsPage() {
           </div>
 
           {/* Desktop: Table */}
-          <div className="hidden md:block bg-white rounded-xl shadow-sm overflow-hidden">
+          <div className="hidden md:block bg-white rounded-xl border border-black/[0.06] overflow-hidden">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-gray-100">
