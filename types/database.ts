@@ -182,6 +182,11 @@ export type MemberApplication = {
   reviewed_at: string | null
   academic_year_id: string | null
   created_at: string
+  // forensic fields (captured server-side at submission)
+  submit_ip?: string | null
+  user_agent?: string | null
+  submit_meta?: Record<string, any> | null
+  canonical_email?: string | null
   // joined fields
   reviewer?: { full_name: string } | null
   academic_year?: { label: string } | null

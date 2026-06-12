@@ -1,15 +1,18 @@
 import type { NextConfig } from "next";
 
 // ---------------------------------------------------------------------------
-// Content-Security-Policy — shipped in REPORT-ONLY mode first.
-// It does NOT block anything yet; violations are only logged to the browser
-// console. Once you've confirmed the app reports no breakage in production,
-// rename the header below from "Content-Security-Policy-Report-Only" to
-// "Content-Security-Policy" to start enforcing it.
+// Content-Security-Policy — now ENFORCED.
+// Violations are blocked by the browser (no longer report-only). The policy is
+// deliberately permissive enough for this app's known sources:
+//   - 'unsafe-inline' / 'unsafe-eval' for scripts: Next.js inline hydration.
+//   - 'unsafe-inline' for styles: the app uses inline styles throughout.
+//   - Google Fonts (googleapis/gstatic), Supabase REST + Realtime, and https:
+//     images (Supabase Storage avatars) are whitelisted below.
 //
-// 'unsafe-inline' is required because the app uses inline styles throughout
-// and Next.js injects inline hydration scripts. Tightening this later means
-// adopting nonces.
+// If a legitimate feature breaks after deploy, switch the header key back to
+// "Content-Security-Policy-Report-Only" (see securityHeaders) to un-block while
+// you add the missing source — the violation is logged in the browser console.
+// Hardening later means replacing 'unsafe-inline' for scripts with nonces.
 // ---------------------------------------------------------------------------
 const csp = [
   "default-src 'self'",
@@ -25,7 +28,7 @@ const csp = [
 ].join('; ')
 
 const securityHeaders = [
-  { key: 'Content-Security-Policy-Report-Only', value: csp },
+  { key: 'Content-Security-Policy', value: csp },
   { key: 'Strict-Transport-Security', value: 'max-age=63072000; includeSubDomains; preload' },
   { key: 'X-Frame-Options', value: 'DENY' },
   { key: 'X-Content-Type-Options', value: 'nosniff' },

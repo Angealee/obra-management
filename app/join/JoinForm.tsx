@@ -27,6 +27,27 @@ const STEP_FIELDS: Record<number, string[]> = {
 
 const DRAFT_KEY = 'obra-join-draft'
 
+// Best-effort device/environment signal sent with the final submission. Used
+// server-side only, to detect and correlate abuse of the public form (e.g. one
+// device farming many applications). Never blocks a real applicant by itself.
+function collectClientMeta() {
+  try {
+    const n = navigator as any
+    return {
+      ua: n.userAgent,
+      lang: n.language,
+      langs: Array.isArray(n.languages) ? n.languages.slice(0, 10) : undefined,
+      platform: n.platform,
+      tz: Intl.DateTimeFormat().resolvedOptions().timeZone,
+      screen: { w: screen.width, h: screen.height, dpr: window.devicePixelRatio },
+      cores: n.hardwareConcurrency,
+      mem: n.deviceMemory,
+    }
+  } catch {
+    return {}
+  }
+}
+
 const INITIAL_FORM = {
   full_name: '',
   email: '',
@@ -268,7 +289,7 @@ export default function JoinForm() {
       const res = await fetch('/api/applications/create', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...form, code, website: honeypot }),
+        body: JSON.stringify({ ...form, code, website: honeypot, client_meta: collectClientMeta() }),
       })
       const data = await res.json()
       if (!res.ok) { setOtpError(data.error || 'Verification failed. Please try again.'); return }
@@ -435,6 +456,11 @@ export default function JoinForm() {
 
         <p className="mt-3 text-center" style={{ fontSize: 11.5, color: '#bbb', lineHeight: 1.5 }}>
           Wrong email? Tap &ldquo;Back to application&rdquo; to fix it, then resend.
+        </p>
+
+        <p className="mt-4 text-center" style={{ fontSize: 10.5, color: '#ccc', lineHeight: 1.5 }}>
+          For security, we record basic technical details of this submission
+          (such as IP address and device/browser info) to prevent abuse of this form.
         </p>
       </div>
     )

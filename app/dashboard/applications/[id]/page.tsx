@@ -5,6 +5,7 @@ import ApplicationActions from './ApplicationActions'
 import ApplicationMenu from './ApplicationMenu'
 import ScoreCard from './ScoreCard'
 import StickyHeader from './StickyHeader'
+import ForensicsPanel from './ForensicsPanel'
 import { enrichApplications, getInitials, getAvatarColor, STATUS_ACCENTS } from '../utils'
 import { ApplicationStatus } from '@/types/database'
 import { Mail, Phone, GraduationCap, BookOpen, AlertTriangle, Star, ClipboardCheck, User } from 'lucide-react'
@@ -76,6 +77,40 @@ export default async function ApplicationDetailPage({
     .from('application_scores')
     .select('id, scored_by, score, scorer:scored_by ( full_name )')
     .eq('application_id', id)
+
+  // ── Forensics: correlate this submission with others, and read block state ──
+  const app = application as any
+  const submitIp: string | null = app.submit_ip ?? null
+  const canonicalEmail: string | null = app.canonical_email ?? null
+  const deviceHash: string | null = app.submit_meta?.device_hash ?? null
+  const emailDomain: string | null =
+    String(canonicalEmail ?? application.email ?? '').split('@')[1] || null
+
+  const countWhere = async (col: string, val: string | null, isJson = false) => {
+    if (!val) return 0
+    const q = supabase
+      .from('member_applications')
+      .select('id', { count: 'exact', head: true })
+      .neq('id', id)
+    const { count } = isJson
+      ? await q.filter(col, 'eq', val)
+      : await q.eq(col, val)
+    return count ?? 0
+  }
+
+  const [relatedIp, relatedEmail, relatedDevice] = await Promise.all([
+    countWhere('submit_ip', submitIp),
+    countWhere('canonical_email', canonicalEmail),
+    countWhere('submit_meta->>device_hash', deviceHash, true),
+  ])
+
+  const blockValues = [submitIp, application.email?.toLowerCase(), canonicalEmail, emailDomain]
+    .filter(Boolean) as string[]
+  const { data: blocks } = blockValues.length
+    ? await supabase.from('application_blocks').select('block_type, value').in('value', blockValues)
+    : { data: [] as { block_type: string; value: string }[] }
+  const isBlocked = (type: string, val: string | null) =>
+    !!val && (blocks ?? []).some(b => b.block_type === type && b.value === val.toLowerCase())
 
   const status = application.status as ApplicationStatus
   const s = STATUS_COLORS[status]
@@ -290,6 +325,23 @@ export default async function ApplicationDetailPage({
               userRole={profile.system_role}
             />
           </div>
+
+          {/* Security & forensics */}
+          <ForensicsPanel
+            isConsultant={profile.system_role === 'consultant'}
+            ip={submitIp}
+            userAgent={app.user_agent ?? null}
+            email={application.email}
+            canonicalEmail={canonicalEmail}
+            domain={emailDomain}
+            meta={app.submit_meta ?? null}
+            related={{ ip: relatedIp, email: relatedEmail, device: relatedDevice }}
+            blocked={{
+              ip: isBlocked('ip', submitIp),
+              email: isBlocked('email', canonicalEmail ?? application.email),
+              domain: isBlocked('domain', emailDomain),
+            }}
+          />
 
         </div>
       </ApplicationsClient>

@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { checkRateLimit, getClientIp } from '@/lib/rate-limit'
 import { sendOtpEmail } from '@/lib/email'
-import { validateEmail } from '@/lib/applicationValidation'
+import { assessEmail } from '@/lib/emailSecurity'
+import { isRequestBlocked } from '@/lib/applicationBlocks'
 import { generateOtpCode, hashOtpCode } from '@/lib/otp'
 
 // Node runtime required (Nodemailer). This is the default for route handlers —
@@ -14,18 +15,30 @@ const ACTIVE_STATUSES = ['pending', 'shortlisted', 'interviewed', 'approved']
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json()
-    const email = String(body?.email ?? '').trim().toLowerCase()
+    const rawEmail = String(body?.email ?? '')
     const honeypot = String(body?.website ?? '')
 
     // Honeypot — a real user never fills this hidden field. Pretend success
     // so bots can't tell they were caught; do nothing.
     if (honeypot) return NextResponse.json({ success: true })
 
-    if (!validateEmail(email)) {
-      return NextResponse.json({ error: 'Enter a valid email address.' }, { status: 400 })
+    // Trust gate: disposable / non-allowlisted / invalid addresses are refused
+    // BEFORE any code is sent. This is the layer the perpetrator's temp-mail
+    // was slipping past (OTP alone only proves inbox access).
+    const assessment = await assessEmail(rawEmail)
+    if (!assessment.ok) {
+      return NextResponse.json({ error: assessment.message ?? 'Enter a valid email address.' }, { status: 400 })
     }
+    const { normalized: email, canonical, domain } = assessment
 
     const ip = getClientIp(req)
+
+    // Manual block list — banned IP / email / domain. Stealth: behave like a
+    // success and send nothing, so a blocked perpetrator keeps using the same
+    // identifiers (which keeps building the forensic trail) instead of adapting.
+    if (await isRequestBlocked({ ip, email, canonical, domain })) {
+      return NextResponse.json({ success: true })
+    }
 
     // Per-IP cap (blocks scripted floods from one source)…
     const ipLimit = await checkRateLimit(`otp_send_ip:${ip}`, 6, 15 * 60)
@@ -35,8 +48,9 @@ export async function POST(req: NextRequest) {
         { status: 429 },
       )
     }
-    // …and per-email cap (stops someone email-bombing a victim's inbox).
-    const emailLimit = await checkRateLimit(`otp_send_email:${email}`, 3, 10 * 60)
+    // …and per-CANONICAL-email cap (so +tag / dot aliases of one inbox share the
+    // same limit and can't be used to email-bomb or to farm many applications).
+    const emailLimit = await checkRateLimit(`otp_send_email:${canonical}`, 3, 10 * 60)
     if (!emailLimit.allowed) {
       return NextResponse.json(
         { error: 'Too many codes sent to this email. Please wait a few minutes.' },
@@ -46,11 +60,12 @@ export async function POST(req: NextRequest) {
 
     const supabase = createAdminClient()
 
-    // Don't even send a code if an application already exists for this email.
+    // Don't even send a code if an application already exists for this inbox —
+    // checked against BOTH the raw email and its canonical form.
     const { data: existing } = await supabase
       .from('member_applications')
       .select('id')
-      .eq('email', email)
+      .or(`email.eq.${email},canonical_email.eq.${canonical}`)
       .in('status', ACTIVE_STATUSES)
       .limit(1)
       .maybeSingle()

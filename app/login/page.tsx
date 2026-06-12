@@ -40,12 +40,44 @@ export default function LoginPage() {
       }
     }
 
+    // Pre-gate: refuse if this account has too many recent failed attempts.
+    // Keyed on the account (not IP) so the shared campus network is never
+    // collectively locked out.
+    try {
+      const guard = await fetch('/api/auth/login-guard', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ identifier: loginEmail }),
+      })
+      if (guard.status === 429) {
+        const g = await guard.json().catch(() => ({}))
+        setError(g?.error ?? 'Too many attempts. Please wait and try again.')
+        setLoading(false)
+        return
+      }
+    } catch {
+      // Network hiccup on the gate — fail open and let sign-in proceed.
+    }
+
     const { data, error } = await supabase.auth.signInWithPassword({ email: loginEmail, password })
     if (error) {
+      // Record the failed attempt against this account's counter.
+      fetch('/api/auth/login-guard', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ identifier: loginEmail, action: 'fail' }),
+      }).catch(() => {})
       setError(error.message)
       setLoading(false)
       return
     }
+
+    // Success — clear the failure counter for this account.
+    fetch('/api/auth/login-guard', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ identifier: loginEmail, action: 'success' }),
+    }).catch(() => {})
 
     // Block archived/deactivated accounts even if the password is correct.
     const { data: profile } = await supabase
