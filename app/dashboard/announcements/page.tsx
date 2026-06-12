@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import type { Profile, AnnouncementWithPoster } from '@/types/database'
+import { getAcademicYearContext } from '@/lib/academicYear'
 
 const visibilityStyle: Record<string, [string, string]> = {
   all:            ['#f0fdf4', '#16a34a'],
@@ -27,14 +28,25 @@ export default async function AnnouncementsPage() {
 
   const isHead = profile.system_role === 'consultant' || profile.system_role === 'creative_head'
 
-  const { data: announcements } = await supabase
+  const { viewYearId } = await getAcademicYearContext()
+
+  // Show announcements tagged to the chosen year, plus untagged/global ones.
+  let announcementsQuery = supabase
     .from('announcements')
     .select(`
       *,
       academic_years ( label ),
       poster:profiles!announcements_posted_by_fkey ( full_name )
     `)
-    .order('created_at', { ascending: false }) as { data: AnnouncementWithPoster[] | null }
+    .order('created_at', { ascending: false })
+
+  if (viewYearId) {
+    announcementsQuery = announcementsQuery.or(
+      `academic_year_id.eq.${viewYearId},academic_year_id.is.null`
+    )
+  }
+
+  const { data: announcements } = await announcementsQuery as { data: AnnouncementWithPoster[] | null }
 
   return (
     <div>

@@ -2,10 +2,15 @@ import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import type { Profile } from '@/types/database'
+import { getAcademicYearContext } from '@/lib/academicYear'
 import {
   Users, CalendarDays, ListChecks, FileText, CheckCircle2, Clock, XCircle,
   Activity, ClipboardCheck, Trophy, Medal, type LucideIcon,
 } from 'lucide-react'
+
+// Valid-format UUID that matches no row — used to force an empty result set when
+// a year has no events (keeps every query uniformly a Supabase query for typing).
+const NONE_UUID = '00000000-0000-0000-0000-000000000000'
 
 // ─── Design tokens ───────────────────────────────────────
 const T = {
@@ -108,30 +113,38 @@ export default async function DashboardPage() {
     .from('profiles').select('*').eq('id', user.id).single() as { data: Profile | null }
   if (!profile) redirect('/login')
 
-  const { data: activeAY } = await supabase
-    .from('academic_years').select('*').eq('is_active', true).single()
+  // "Year in focus" follows the system-wide picker (cookie), defaulting to the
+  // active year. Kept under the name `activeAY` so the rest of this page — which
+  // already scopes events + workload stats to it — needs no other change.
+  const { viewYear: activeAY } = await getAcademicYearContext()
 
   // ══════════════════════════════════════════
   //  CONSULTANT
   // ══════════════════════════════════════════
   if (profile.system_role === 'consultant') {
+    const yearId = activeAY?.id ?? NONE_UUID
+
+    // Events for the year in focus — their ids scope duties + workload marks.
+    const { data: events } = await supabase
+      .from('events')
+      .select('id, title, event_date, status')
+      .eq('academic_year_id', yearId)
+      .order('event_date', { ascending: false })
+
+    const ayEventIds = events?.map(e => e.id) ?? []
+    const eventFilter = ayEventIds.length > 0 ? ayEventIds : [NONE_UUID]
+
     const [
       { count: totalMembers },
-      { data: events },
       { data: duties },
       { count: pendingApplications },
+      { data: allMarks },
     ] = await Promise.all([
-      supabase.from('profiles').select('*', { count: 'exact', head: true }).in('system_role', ['member', 'creative_head']).eq('is_active', true),
-      supabase.from('events').select('id, title, event_date, status').eq('academic_year_id', activeAY?.id ?? '').order('event_date', { ascending: false }),
-      supabase.from('duties').select('id, title, status, assigned_to, event_id, events(title), assignee:profiles!duties_assigned_to_fkey(full_name)').order('created_at', { ascending: false }).limit(100),
+      supabase.from('academic_year_members').select('*', { count: 'exact', head: true }).eq('academic_year_id', yearId),
+      supabase.from('duties').select('id, title, status, assigned_to, event_id, events(title), assignee:profiles!duties_assigned_to_fkey(full_name)').in('event_id', eventFilter).order('created_at', { ascending: false }).limit(200),
       supabase.from('member_applications').select('*', { count: 'exact', head: true }).eq('status', 'pending'),
+      supabase.from('workload_marks').select('mark').in('event_id', eventFilter),
     ])
-
-    // Fetch workload mark stats for this AY
-    const ayEventIds = events?.map(e => e.id) ?? []
-    const { data: allMarks } = ayEventIds.length > 0
-      ? await supabase.from('workload_marks').select('mark').in('event_id', ayEventIds)
-      : { data: [] }
 
     const lateMarks  = allMarks?.filter(m => m.mark === 'late').length ?? 0
     const dndMarks   = allMarks?.filter(m => m.mark === 'did_not_duty').length ?? 0
@@ -318,14 +331,19 @@ export default async function DashboardPage() {
   //  CREATIVE HEAD
   // ══════════════════════════════════════════
   if (profile.system_role === 'creative_head') {
+    const yearId = activeAY?.id ?? NONE_UUID
+
+    const { data: yearEvents } = await supabase.from('events').select('id').eq('academic_year_id', yearId)
+    const eventFilter = (yearEvents?.length ?? 0) > 0 ? yearEvents!.map(e => e.id) : [NONE_UUID]
+
     const [
       { data: events },
       { data: myDuties },
       { data: allDuties },
     ] = await Promise.all([
-      supabase.from('events').select('id, title, event_date, status').eq('academic_year_id', activeAY?.id ?? '').in('status', ['upcoming','ongoing']).order('event_date', { ascending: true }).limit(6),
-      supabase.from('duties').select('id, title, status, events(title)').eq('assigned_to', user.id).neq('status', 'reviewed').order('created_at', { ascending: false }).limit(8),
-      supabase.from('duties').select('id, title, status, assigned_to, assignee:profiles!duties_assigned_to_fkey(full_name), events(title)').eq('assigned_by', user.id).order('created_at', { ascending: false }).limit(50),
+      supabase.from('events').select('id, title, event_date, status').eq('academic_year_id', yearId).in('status', ['upcoming','ongoing']).order('event_date', { ascending: true }).limit(6),
+      supabase.from('duties').select('id, title, status, event_id, events(title)').eq('assigned_to', user.id).neq('status', 'reviewed').in('event_id', eventFilter).order('created_at', { ascending: false }).limit(8),
+      supabase.from('duties').select('id, title, status, assigned_to, event_id, assignee:profiles!duties_assigned_to_fkey(full_name), events(title)').eq('assigned_by', user.id).in('event_id', eventFilter).order('created_at', { ascending: false }).limit(50),
     ])
 
     const pendingReview = allDuties?.filter(d => d.status === 'completed') ?? []
@@ -429,11 +447,15 @@ export default async function DashboardPage() {
   // ══════════════════════════════════════════
   //  MEMBER
   // ══════════════════════════════════════════
+  const yearId = activeAY?.id ?? NONE_UUID
+  const { data: memberYearEvents } = await supabase.from('events').select('id').eq('academic_year_id', yearId)
+  const memberEventFilter = (memberYearEvents?.length ?? 0) > 0 ? memberYearEvents!.map(e => e.id) : [NONE_UUID]
+
   const [{ data: myDuties }, { data: myEvents }] = await Promise.all([
     supabase.from('duties').select('id, title, status, duty_type, priority, due_date, events(id, title, event_date)')
-      .eq('assigned_to', user.id).order('created_at', { ascending: false }),
+      .eq('assigned_to', user.id).in('event_id', memberEventFilter).order('created_at', { ascending: false }),
     supabase.from('events').select('id, title, event_date, status')
-      .eq('academic_year_id', activeAY?.id ?? '').in('status', ['upcoming','ongoing'])
+      .eq('academic_year_id', yearId).in('status', ['upcoming','ongoing'])
       .order('event_date', { ascending: true }).limit(5),
   ])
 

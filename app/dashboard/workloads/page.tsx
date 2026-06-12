@@ -1,15 +1,10 @@
 import { redirect } from 'next/navigation'
-import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import type { Profile } from '@/types/database'
 import WorkloadMatrix from './WorkLoadMatrix'
+import { getAcademicYearContext } from '@/lib/academicYear'
 
-export default async function WorkloadsPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ ay?: string }>
-}) {
-  const { ay } = await searchParams
+export default async function WorkloadsPage() {
   const supabase = await createClient()
 
   const { data: { user } } = await supabase.auth.getUser()
@@ -26,20 +21,18 @@ export default async function WorkloadsPage({
 
   const canManage = profile.system_role === 'consultant' || profile.system_role === 'creative_head'
 
-  const { data: academicYears } = await supabase
-    .from('academic_years')
-    .select('*')
-    .order('start_date', { ascending: false })
+  // Year comes from the system-wide picker (cookie), defaulting to the active year.
+  const { viewYear, viewYearId } = await getAcademicYearContext()
+  const selectedAYId = viewYearId
 
-  const activeAY = academicYears?.find(a => a.is_active)
-  const selectedAYId = ay ?? activeAY?.id ?? academicYears?.[0]?.id
-
-  const { data: events } = await supabase
-    .from('events')
-    .select('id, title, event_date, status')
-    .eq('academic_year_id', selectedAYId)
-    .neq('status', 'cancelled')
-    .order('event_date', { ascending: true })
+  const { data: events } = selectedAYId
+    ? await supabase
+        .from('events')
+        .select('id, title, event_date, status')
+        .eq('academic_year_id', selectedAYId)
+        .neq('status', 'cancelled')
+        .order('event_date', { ascending: true })
+    : { data: [] as { id: string; title: string; event_date: string; status: string }[] }
 
   const { data: members } = await supabase
     .from('profiles')
@@ -95,32 +88,11 @@ export default async function WorkloadsPage({
       <div className="flex items-start justify-between mb-6 flex-wrap gap-4">
         <div>
           <h1 className="page-title">Workload Matrix</h1>
-          <p className="page-subtitle">Track member assignments and balance duties across events.</p>
+          <p className="page-subtitle">
+            Track member assignments and balance duties across events
+            {viewYear ? ` · ${viewYear.label}` : ''}.
+          </p>
         </div>
-
-        {/* AY Filter */}
-        {academicYears && academicYears.length > 0 && (
-          <div className="flex items-center gap-2 flex-wrap">
-            {academicYears.map(year => {
-              const active = year.id === selectedAYId
-              return (
-                <Link
-                  key={year.id}
-                  href={`/dashboard/workloads?ay=${year.id}`}
-                  style={{
-                    padding: '7px 14px', borderRadius: 999, fontSize: 12.5, fontWeight: 500,
-                    textDecoration: 'none', whiteSpace: 'nowrap', transition: 'all 0.15s ease',
-                    background: active ? '#111' : '#fff',
-                    color: active ? '#fff' : '#888',
-                    border: active ? '1px solid #111' : '1px solid rgba(0,0,0,0.08)',
-                  }}
-                >
-                  {year.label}
-                </Link>
-              )
-            })}
-          </div>
-        )}
       </div>
 
       <WorkloadMatrix

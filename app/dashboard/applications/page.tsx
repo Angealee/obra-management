@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import ApplicationsClient from './ApplicationsClient'
 import { enrichApplications } from './utils'
+import { getAcademicYearContext } from '@/lib/academicYear'
 
 export default async function ApplicationsPage() {
   const supabase = await createClient()
@@ -19,10 +20,21 @@ export default async function ApplicationsPage() {
     redirect('/dashboard')
   }
 
-  const { data: applications } = await supabase
+  const { viewYearId } = await getAcademicYearContext()
+
+  // Applications for the chosen year, plus legacy/untagged ones.
+  let applicationsQuery = supabase
     .from('member_applications')
     .select('*')
     .order('created_at', { ascending: false })
+
+  if (viewYearId) {
+    applicationsQuery = applicationsQuery.or(
+      `academic_year_id.eq.${viewYearId},academic_year_id.is.null`
+    )
+  }
+
+  const { data: applications } = await applicationsQuery
 
   const enriched = await enrichApplications(supabase, (applications as any[]) || [])
 

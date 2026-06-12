@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import type { Profile } from '@/types/database'
 import WorkloadBadge from '@/components/WorkLoadBadge'
 import DutyRowActions from './DutyRowActions'
+import { getAcademicYearContext } from '@/lib/academicYear'
 
 const statusStyle: Record<string, [string, string]> = {
   pending:     ['#f3f4f6', '#6b7280'],
@@ -44,6 +45,15 @@ export default async function DutiesPage() {
 
   const isHead = profile.system_role === 'consultant' || profile.system_role === 'creative_head'
 
+  const { viewYearId } = await getAcademicYearContext()
+
+  // Duties belong to a year through their event. Resolve the chosen year's
+  // event ids first, then scope duties to them.
+  const { data: yearEvents } = viewYearId
+    ? await supabase.from('events').select('id').eq('academic_year_id', viewYearId)
+    : { data: [] as { id: string }[] }
+  const yearEventIds = (yearEvents ?? []).map(e => e.id)
+
   const dutiesQuery = supabase
     .from('duties')
     .select(`
@@ -55,8 +65,10 @@ export default async function DutiesPage() {
     .order('created_at', { ascending: false })
 
   if (!isHead) dutiesQuery.eq('assigned_to', user.id)
+  if (yearEventIds.length > 0) dutiesQuery.in('event_id', yearEventIds)
 
-  const { data: duties } = await dutiesQuery
+  // No events for this year → no duties to show.
+  const { data: duties } = yearEventIds.length > 0 ? await dutiesQuery : { data: [] }
 
   // Fetch workload marks
   const eventIds  = [...new Set((duties ?? []).map((d: any) => d.event_id).filter(Boolean))]

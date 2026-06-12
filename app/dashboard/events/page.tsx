@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import type { Profile, ObraEventWithDetails } from '@/types/database'
+import { getAcademicYearContext } from '@/lib/academicYear'
 
 const statusStyles: Record<string, string> = {
   upcoming:  'bg-blue-100 text-blue-700',
@@ -40,15 +41,20 @@ export default async function EventsPage() {
   if (!profile) redirect('/login')
   if (profile.system_role === 'member') redirect('/dashboard')
 
-  // Fetch events with academic year and creator info
-  const { data: events } = await supabase
-    .from('events')
-    .select(`
-      *,
-      academic_years ( label ),
-      profiles ( full_name )
-    `)
-    .order('event_date', { ascending: false }) as { data: ObraEventWithDetails[] | null }
+  const { viewYear, viewYearId } = await getAcademicYearContext()
+
+  // Fetch events for the chosen academic year only
+  const { data: events } = viewYearId
+    ? await supabase
+        .from('events')
+        .select(`
+          *,
+          academic_years ( label ),
+          profiles ( full_name )
+        `)
+        .eq('academic_year_id', viewYearId)
+        .order('event_date', { ascending: false }) as { data: ObraEventWithDetails[] | null }
+    : { data: [] as ObraEventWithDetails[] }
 
   const grouped = {
     upcoming:  events?.filter(e => e.status === 'upcoming')  ?? [],
@@ -66,7 +72,8 @@ export default async function EventsPage() {
         <div>
           <h1 className="text-2xl font-bold text-gray-800">Events</h1>
           <p className="text-gray-500 text-sm mt-1">
-            {events?.length ?? 0} total event{(events?.length ?? 0) !== 1 ? 's' : ''}
+            {events?.length ?? 0} event{(events?.length ?? 0) !== 1 ? 's' : ''}
+            {viewYear ? ` · ${viewYear.label}` : ''}
           </p>
         </div>
         {canManage && (

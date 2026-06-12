@@ -1,9 +1,11 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
-import type { Profile } from '@/types/database'
+import type { Profile, MemberSkill } from '@/types/database'
 import AvatarUpload from './AvatarUpload'
 import ProfileForm from './ProfileForm'
 import PasswordForm from './PasswordForm'
+import SkillsEditor from './SkillsEditor'
+import { memberRoleLabel } from '@/lib/memberRole'
 
 export default async function ProfilePage() {
   const supabase = await createClient()
@@ -14,6 +16,14 @@ export default async function ProfilePage() {
   const { data: profile } = await supabase
     .from('profiles').select('*').eq('id', user.id).single() as { data: Profile | null }
   if (!profile) redirect('/login')
+
+  const { data: allSkills } = await supabase
+    .from('member_skills').select('*').order('name', { ascending: true }) as { data: MemberSkill[] | null }
+
+  const { data: mySkills } = await supabase
+    .from('profile_skills').select('skill_id').eq('profile_id', profile.id)
+
+  const mySkillIds = (mySkills ?? []).map(s => s.skill_id)
 
   const roleLabel: Record<string, string> = {
     consultant:    'Consultant',
@@ -64,6 +74,11 @@ export default async function ProfilePage() {
                 <span style={{ fontSize: '11px', fontWeight: 600, background: '#f1f5f9', color: '#475569', padding: '3px 10px', borderRadius: '99px' }}>
                   {displayRole}
                 </span>
+                {profile.system_role === 'member' && profile.member_role && profile.member_role !== 'none' && (
+                  <span style={{ fontSize: '11px', fontWeight: 600, background: '#111', color: '#fff', padding: '3px 10px', borderRadius: '99px' }}>
+                    {memberRoleLabel(profile.member_role)}
+                  </span>
+                )}
                 <span style={{ fontSize: '11px', color: '#bbb' }}>{profile.email}</span>
               </div>
             </div>
@@ -72,6 +87,9 @@ export default async function ProfilePage() {
 
         {/* Editable info */}
         <ProfileForm profile={profile} />
+
+        {/* Skills (self-managed) */}
+        <SkillsEditor profileId={profile.id} allSkills={allSkills ?? []} initialSkillIds={mySkillIds} />
 
         {/* Password change */}
         <PasswordForm email={profile.email} />

@@ -5,6 +5,8 @@ import type { Profile } from '@/types/database'
 import ToggleActiveButton from './ToggleActiveButton'
 import WorkloadBadge from '@/components/WorkLoadBadge'
 import ArchiveMemberButton from './ArchiveMemberButton'
+import MemberYearsPanel from './MemberYearsPanel'
+import { memberRoleLabel } from '@/lib/memberRole'
 
 const dutyStatusStyle: Record<string, [string, string]> = {
   pending:     ['#f3f4f6', '#6b7280'],
@@ -58,6 +60,31 @@ export default async function MemberDetailPage({
     .from('workload_marks')
     .select('event_id, mark')
     .eq('member_id', id)
+
+  // Academic years this member is active for (+ all years, for the panel)
+  const [{ data: memberYearRows }, { data: allYearRows }] = await Promise.all([
+    supabase
+      .from('academic_year_members')
+      .select('academic_year_id, academic_years ( label, is_active, start_date )')
+      .eq('profile_id', id),
+    supabase
+      .from('academic_years')
+      .select('id, label, is_active, start_date')
+      .order('start_date', { ascending: false }),
+  ])
+
+  const memberYears = ((memberYearRows ?? []) as any[])
+    .map(r => ({
+      id: r.academic_year_id,
+      label: r.academic_years?.label ?? '—',
+      is_active: r.academic_years?.is_active ?? false,
+      start_date: r.academic_years?.start_date ?? '',
+    }))
+    .sort((a, b) => new Date(b.start_date).getTime() - new Date(a.start_date).getTime())
+
+  const allYears = ((allYearRows ?? []) as any[]).map(y => ({
+    id: y.id, label: y.label, is_active: y.is_active,
+  }))
 
   // Build mark lookup: event_id -> mark
   const markMap: Record<string, string> = {}
@@ -145,9 +172,25 @@ export default async function MemberDetailPage({
               <span style={{ fontSize: '12px', fontWeight: 600, background: '#f1f5f9', color: '#475569', padding: '3px 10px', borderRadius: '99px' }}>
                 {displayRole}
               </span>
+              {member.system_role === 'member' && member.member_role && member.member_role !== 'none' && (
+                <span style={{ fontSize: '12px', fontWeight: 600, background: '#111', color: '#fff', padding: '3px 10px', borderRadius: '99px' }}>
+                  {memberRoleLabel(member.member_role)}
+                </span>
+              )}
               <span style={{ fontSize: '12px', color: '#bbb' }}>{member.email}</span>
             </div>
           </div>
+
+          {/* Edit — consultant only */}
+          {viewer.system_role === 'consultant' && (
+            <Link
+              href={`/dashboard/members/${member.id}/edit`}
+              className="btn-secondary"
+              style={{ flexShrink: 0, whiteSpace: 'nowrap' }}
+            >
+              Edit Member
+            </Link>
+          )}
         </div>
 
         {/* Quick stats row */}
@@ -176,6 +219,9 @@ export default async function MemberDetailPage({
           ['Course & Section', member.course_section ?? '—'],
           ['Year Level', member.year_level ?? '—'],
           ['Contact Number', member.contact_number ?? '—'],
+          ['Birthday', member.birthday
+            ? new Date(member.birthday).toLocaleDateString('en-PH', { year: 'numeric', month: 'long', day: 'numeric' })
+            : '—'],
         ].map(([label, value]) => (
           <div key={label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 0', borderBottom: '1px solid rgba(0,0,0,0.04)' }}
             className="last:border-0">
@@ -183,6 +229,18 @@ export default async function MemberDetailPage({
             <span style={{ fontSize: '13px', color: '#333', fontWeight: 500 }}>{value}</span>
           </div>
         ))}
+
+        {member.portfolio_url && (
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 0', borderBottom: '1px solid rgba(0,0,0,0.04)' }}
+            className="last:border-0">
+            <span style={{ fontSize: '13px', color: '#999' }}>Portfolio / Social</span>
+            <a href={member.portfolio_url} target="_blank" rel="noopener noreferrer"
+              style={{ fontSize: '13px', color: '#3b82f6', fontWeight: 500, textDecoration: 'none', wordBreak: 'break-all' }}
+              className="hover:underline">
+              {member.portfolio_url}
+            </a>
+          </div>
+        )}
 
         {/* Skills */}
         {skills.length > 0 && (
@@ -251,6 +309,18 @@ export default async function MemberDetailPage({
           </div>
         )}
       </div>
+
+      {/* Academic-year membership — consultant only */}
+      {viewer.system_role === 'consultant' && (
+        <div style={{ marginBottom: '14px' }}>
+          <MemberYearsPanel
+            profileId={member.id}
+            profileMemberRole={member.member_role ?? 'none'}
+            memberYears={memberYears.map(y => ({ id: y.id, label: y.label, is_active: y.is_active }))}
+            allYears={allYears}
+          />
+        </div>
+      )}
 
       {/* Account Status — consultant only */}
       {viewer.system_role === 'consultant' && (

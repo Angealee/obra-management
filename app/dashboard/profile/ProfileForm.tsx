@@ -12,6 +12,8 @@ export default function ProfileForm({ profile }: { profile: Profile }) {
   const [fullName, setFullName]       = useState(profile.full_name)
   const [username, setUsername]       = useState(profile.username ?? '')
   const [contactNumber, setContact]   = useState(profile.contact_number ?? '')
+  const [birthday, setBirthday]       = useState(profile.birthday ?? '')
+  const [portfolioUrl, setPortfolioUrl] = useState(profile.portfolio_url ?? '')
   const [loading, setLoading]         = useState(false)
   const [error, setError]             = useState('')
   const [success, setSuccess]         = useState(false)
@@ -24,6 +26,10 @@ export default function ProfileForm({ profile }: { profile: Profile }) {
       return setError('Username must be 3–20 characters: lowercase letters, numbers, underscores only.')
     }
 
+    if (portfolioUrl && !/^https?:\/\/.+/i.test(portfolioUrl.trim())) {
+      return setError('Portfolio/social link must start with http:// or https://')
+    }
+
     setLoading(true)
     setError('')
     setSuccess(false)
@@ -34,6 +40,8 @@ export default function ProfileForm({ profile }: { profile: Profile }) {
         full_name:      fullName.trim(),
         username:       username.trim() || null,
         contact_number: contactNumber.trim() || null,
+        birthday:       birthday || null,
+        portfolio_url:  portfolioUrl.trim() || null,
       })
       .eq('id', profile.id)
 
@@ -97,6 +105,27 @@ export default function ProfileForm({ profile }: { profile: Profile }) {
             value={contactNumber}
             onChange={e => { setContact(e.target.value); setSuccess(false) }}
             placeholder="09XX XXX XXXX"
+            className="obra-input"
+          />
+        </div>
+
+        <div>
+          <label className="obra-label">Birthday</label>
+          <input
+            type="date"
+            value={birthday}
+            onChange={e => { setBirthday(e.target.value); setSuccess(false) }}
+            className="obra-input"
+          />
+        </div>
+
+        <div>
+          <label className="obra-label">Portfolio / Social Link</label>
+          <input
+            type="url"
+            value={portfolioUrl}
+            onChange={e => { setPortfolioUrl(e.target.value); setSuccess(false) }}
+            placeholder="https://instagram.com/yourname"
             className="obra-input"
           />
         </div>

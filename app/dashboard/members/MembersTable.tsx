@@ -3,6 +3,7 @@
 import { useState, useMemo } from 'react'
 import Link from 'next/link'
 import { Search, ChevronRight } from 'lucide-react'
+import { memberRoleLabel, MEMBER_ROLE_OPTIONS } from '@/lib/memberRole'
 
 const ROLE_LABEL: Record<string, string> = {
   creative_head: 'Creative Head',
@@ -45,6 +46,7 @@ type Member = {
   year_level: string | null
   system_role: string
   creative_head_role: string | null
+  member_role: string | null
   is_active: boolean
   member_status: string
   created_at: string
@@ -59,6 +61,7 @@ type Props = {
 export default function MembersTable({ members, userRole }: Props) {
   const [search, setSearch] = useState('')
   const [filterRole, setFilterRole] = useState('all')
+  const [filterPosition, setFilterPosition] = useState('all')
   const [filterYear, setFilterYear] = useState('all')
   const [filterSkill, setFilterSkill] = useState('all')
   const [filterStatus, setFilterStatus] = useState('all')
@@ -79,12 +82,13 @@ export default function MembersTable({ members, userRole }: Props) {
           (m.email ?? '').toLowerCase().includes(search.toLowerCase()) ||
           (m.student_number ?? '').toLowerCase().includes(search.toLowerCase())
 
-        const matchRole   = filterRole   === 'all' || m.system_role === filterRole
-        const matchYear   = filterYear   === 'all' || m.year_level === filterYear
-        const matchSkill  = filterSkill  === 'all' || skills.includes(filterSkill)
-        const matchStatus = filterStatus === 'all' || m.member_status === filterStatus
+        const matchRole     = filterRole     === 'all' || m.system_role === filterRole
+        const matchPosition = filterPosition === 'all' || (m.member_role ?? 'none') === filterPosition
+        const matchYear     = filterYear     === 'all' || m.year_level === filterYear
+        const matchSkill    = filterSkill    === 'all' || skills.includes(filterSkill)
+        const matchStatus   = filterStatus   === 'all' || m.member_status === filterStatus
 
-        return matchSearch && matchRole && matchYear && matchSkill && matchStatus
+        return matchSearch && matchRole && matchPosition && matchYear && matchSkill && matchStatus
       })
       .sort((a, b) => {
         // Primary: role order
@@ -94,7 +98,7 @@ export default function MembersTable({ members, userRole }: Props) {
         // Secondary: alphabetical
         return a.full_name.localeCompare(b.full_name)
       })
-  }, [members, search, filterRole, filterYear, filterSkill, filterStatus, showArchived])
+  }, [members, search, filterRole, filterPosition, filterYear, filterSkill, filterStatus, showArchived])
 
   const selectStyle: React.CSSProperties = {
     fontFamily: 'DM Sans, sans-serif',
@@ -150,6 +154,14 @@ export default function MembersTable({ members, userRole }: Props) {
             <option value="all">All Roles</option>
             <option value="creative_head">Creative Head</option>
             <option value="member">Member</option>
+          </select>
+
+          <select style={selectStyle} value={filterPosition} onChange={e => setFilterPosition(e.target.value)}>
+            <option value="all">All Positions</option>
+            {MEMBER_ROLE_OPTIONS.map(opt => (
+              <option key={opt.value} value={opt.value}>{opt.label}</option>
+            ))}
+            <option value="none">Unassigned</option>
           </select>
 
           <select style={selectStyle} value={filterYear} onChange={e => setFilterYear(e.target.value)}>
@@ -230,6 +242,10 @@ export default function MembersTable({ members, userRole }: Props) {
                 ? HEAD_ROLE_LABEL[member.creative_head_role] ?? ''
                 : ''
 
+              const positionLabel = member.system_role === 'member' && member.member_role && member.member_role !== 'none'
+                ? memberRoleLabel(member.member_role)
+                : ''
+
               return (
                 <Link
                   key={member.id}
@@ -293,6 +309,7 @@ export default function MembersTable({ members, userRole }: Props) {
                       <p style={{ fontFamily: 'DM Sans, sans-serif', fontSize: 12, color: '#999', margin: '2px 0 0' }}>
                         {ROLE_LABEL[member.system_role] ?? member.system_role}
                         {headSubrole && ` · ${headSubrole}`}
+                        {positionLabel && ` · ${positionLabel}`}
                         {member.year_level && ` · ${member.year_level}`}
                       </p>
 
@@ -363,6 +380,10 @@ export default function MembersTable({ members, userRole }: Props) {
                   ? HEAD_ROLE_LABEL[member.creative_head_role] ?? ''
                   : ''
 
+                const positionLabel = member.system_role === 'member' && member.member_role && member.member_role !== 'none'
+                  ? memberRoleLabel(member.member_role)
+                  : ''
+
                 return (
                   <tr key={member.id} style={{ opacity: isArchived ? 0.5 : 1 }}>
 
@@ -413,9 +434,9 @@ export default function MembersTable({ members, userRole }: Props) {
                       <p style={{ fontFamily: 'DM Sans, sans-serif', fontSize: 13, color: '#333', margin: 0, fontWeight: 500 }}>
                         {ROLE_LABEL[member.system_role] ?? member.system_role}
                       </p>
-                      {headSubrole && (
+                      {(headSubrole || positionLabel) && (
                         <p style={{ fontFamily: 'DM Sans, sans-serif', fontSize: 12, color: '#999', margin: 0 }}>
-                          {headSubrole}
+                          {headSubrole || positionLabel}
                         </p>
                       )}
                     </td>

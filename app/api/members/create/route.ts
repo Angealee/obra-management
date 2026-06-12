@@ -29,6 +29,7 @@ export async function POST(request: Request) {
       password,
       systemRole,
       creativeHeadRole,
+      memberRole,
       studentNumber,
       courseSection,
       yearLevel,
@@ -60,6 +61,7 @@ export async function POST(request: Request) {
         email,
         system_role: systemRole,
         creative_head_role: creativeHeadRole,
+        member_role: systemRole === 'member' ? (memberRole || 'none') : 'none',
         student_number: studentNumber,
         course_section: courseSection,
         year_level: yearLevel,
@@ -87,6 +89,30 @@ export async function POST(request: Request) {
       if (skillsError) {
         console.error('Skills insert error:', skillsError.message)
         // Non-fatal — member is created, skills just didn't save
+      }
+    }
+
+    // Make the new member active for the current (active) academic year, so they
+    // show up in the year-scoped members list. Non-fatal if no year is active.
+    const { data: activeYear } = await adminSupabase
+      .from('academic_years')
+      .select('id')
+      .eq('is_active', true)
+      .maybeSingle()
+
+    if (activeYear) {
+      const { error: ayMemberError } = await adminSupabase
+        .from('academic_year_members')
+        .insert({
+          academic_year_id: activeYear.id,
+          profile_id: newUserId,
+          member_role: systemRole === 'member' ? (memberRole || 'none') : 'none',
+          status: 'active',
+        })
+
+      if (ayMemberError) {
+        console.error('Academic-year membership insert error:', ayMemberError.message)
+        // Non-fatal — member exists; they just aren't tagged to the year yet.
       }
     }
 

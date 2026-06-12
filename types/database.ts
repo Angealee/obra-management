@@ -6,6 +6,17 @@ export type CreativeHeadRole =
   | 'creative_director'
   | 'none'
 
+// A member's single primary creative position. Distinct from member_skills
+// (which lists secondary capabilities). Only meaningful for system_role = 'member'.
+export type MemberRole =
+  | 'photographer'
+  | 'videographer'
+  | 'video_editor'
+  | 'photo_editor'
+  | 'graphic_designer'
+  | 'animator'
+  | 'none'
+
 export type Profile = {
   id: string
   full_name: string
@@ -14,10 +25,13 @@ export type Profile = {
   avatar_url: string | null
   system_role: SystemRole
   creative_head_role: CreativeHeadRole
+  member_role: MemberRole
   student_number: string | null
   course_section: string | null
   year_level: string | null
   contact_number: string | null
+  birthday: string | null
+  portfolio_url: string | null
   is_active: boolean
   created_at: string
 }
@@ -28,6 +42,18 @@ export type AcademicYear = {
   start_date: string
   end_date: string
   is_active: boolean
+  created_at: string
+}
+
+// One row per (academic year × member). Records which members are "active for"
+// a given year, plus their creative position + status that year. system_role is
+// NOT here — it stays global on the profile. See db/2026-academic-year-members.sql.
+export type AcademicYearMember = {
+  id: string
+  academic_year_id: string
+  profile_id: string
+  member_role: MemberRole
+  status: 'active' | 'inactive' | 'archived'
   created_at: string
 }
 

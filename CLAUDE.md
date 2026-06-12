@@ -151,6 +151,7 @@ username text unique (nullable)
 avatar_url text (nullable)
 system_role text CHECK ('consultant','creative_head','member')
 creative_head_role text CHECK ('creative_producer','creative_writer','creative_director','none')
+member_role text CHECK ('photographer','videographer','video_editor','photo_editor','graphic_designer','animator','none') default 'none'
 student_number text
 course_section text
 year_level text
@@ -162,6 +163,10 @@ created_at timestamptz
 Notes:
 - is_active is kept for RLS compatibility and duty assignment exclusions
 - member_status is the UI source of truth for members list
+- member_role is the member's single primary creative position (photographer,
+  videographer, etc.) — distinct from member_skills (secondary capabilities).
+  Only meaningful for system_role='member'; written only via service-role API
+  routes (create/update member). Labels live in lib/memberRole.ts.
 - When archiving: set member_status='archived' AND is_active=false
 - When unarchiving: set member_status='active' AND is_active=true
 - First consultant account is created manually in Supabase dashboard
@@ -189,6 +194,25 @@ start_date date
 end_date date
 is_active boolean default false
 created_at timestamptz
+
+### public.academic_year_members
+id uuid
+academic_year_id uuid (FK → academic_years, CASCADE DELETE)
+profile_id uuid (FK → profiles, CASCADE DELETE)
+member_role text CHECK ('photographer','videographer','video_editor','photo_editor','graphic_designer','animator','none') default 'none'
+status text CHECK ('active','inactive','archived') default 'active'
+created_at timestamptz
+UNIQUE(academic_year_id, profile_id)
+
+Notes:
+- Records which members are "active for" a given academic year (UI vocabulary:
+  "active for [year]" — never enroll/join/apply).
+- One profile = one login across all years; system_role stays GLOBAL on profiles
+  (it governs login permissions/RLS). This table holds the member's per-year
+  creative position (member_role) and participation status.
+- Written only by consultants (RLS) / service-role API routes.
+- Migration + backfill: db/2026-academic-year-members.sql (Phase 1).
+- Part of the system-wide academic-year scoping work; see [[academic-year-scoping]].
 
 ### public.events
 id uuid
@@ -513,10 +537,37 @@ Do not use URLSearchParams — it causes TypeScript JSX prop conflicts.
 - Phase 11: Members + Duties Workload Integration
 - Phase 12: Member Inquiry Module (/join + applications panel)
 - Phase 13: Members List Rebuild (table, filters, archive)
+- Phase 14: System-wide Academic Year Scoping
 
 ### Not Yet Built
 - Activity Logs — activity_logs table exists, UI not built
 - Final UI Polish — loading states, skeleton screens, error states, mobile
+
+---
+
+## ACADEMIC YEAR SCOPING (Phase 14)
+
+The whole dashboard is scoped to a chosen academic year.
+
+- **Year picker**: a cookie (`obra_view_year`) selects the "viewing year",
+  defaulting to the Active year. Server helper: `lib/academicYear.ts`
+  (`getAcademicYearContext()` → `{ years, viewYear, viewYearId, activeYear }`,
+  wrapped in React `cache()`). Client control: `components/YearPicker.tsx`,
+  rendered in the dashboard top bar for consultant + creative_head only.
+  Cookie name constant lives in `lib/viewYearCookie.ts` (no server imports, so
+  it is safe to import from the client component).
+- **Members ↔ year**: `academic_year_members` (see schema). The members list,
+  member create, and the per-member "Active for [year]" panel
+  (`app/dashboard/members/[id]/MemberYearsPanel.tsx`) use it. The roster decides
+  WHO appears for a year; display fields (status/role/skills) still come from the
+  profile, so Archive/Edit remain the source of truth. UI vocabulary is
+  "active for [year]" — never enroll/join/apply.
+- **Scoped reads**: events (`academic_year_id`), announcements (year OR null),
+  applications (year OR null), duties (via the year's event ids), workloads, and
+  the dashboard (events, workload marks, duty counts, top contributors, member
+  count) all filter by the viewing year.
+- **Migration**: `db/2026-academic-year-members.sql` MUST be run before these
+  pages work (members list + create query the table).
 
 ---
 

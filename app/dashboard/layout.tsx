@@ -2,6 +2,8 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import Sidebar from '@/components/Sidebar'
 import PageWrapper from '@/components/PageWrapper'
+import YearPicker from '@/components/YearPicker'
+import { getAcademicYearContext } from '@/lib/academicYear'
 
 export default async function DashboardLayout({
   children,
@@ -32,10 +34,37 @@ export default async function DashboardLayout({
     )
   }
 
+  // System-wide academic-year picker — shown to the admins who manage data
+  // across years. Members always see the active year (no picker).
+  const showYearPicker =
+    profile.system_role === 'consultant' || profile.system_role === 'creative_head'
+  const { years, viewYearId } = showYearPicker
+    ? await getAcademicYearContext()
+    : { years: [], viewYearId: null }
+
   return (
     <div className="flex flex-col md:flex-row" style={{ height: '100vh', overflow: 'hidden', background: '#F7F7F5' }}>
       <Sidebar profile={profile} />
       <main style={{ flex: 1, overflowY: 'auto', minWidth: 0 }}>
+        {showYearPicker && years.length > 0 && (
+          <div
+            style={{
+              position: 'sticky',
+              top: 0,
+              zIndex: 20,
+              display: 'flex',
+              justifyContent: 'flex-end',
+              alignItems: 'center',
+              gap: 12,
+              padding: '10px 20px',
+              background: 'rgba(247,247,245,0.85)',
+              backdropFilter: 'blur(8px)',
+              borderBottom: '1px solid rgba(0,0,0,0.05)',
+            }}
+          >
+            <YearPicker years={years} viewYearId={viewYearId} />
+          </div>
+        )}
         <PageWrapper>{children}</PageWrapper>
       </main>
     </div>
