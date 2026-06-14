@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { requireProfile } from '@/lib/auth'
 import { getAcademicYearContext } from '@/lib/academicYear'
+import { dutyDisplayStatus } from '@/lib/dutyStatus'
 import {
   Users, CalendarDays, ListChecks, FileText, CheckCircle2, Clock, XCircle,
   Activity, ClipboardCheck, Trophy, Medal, type LucideIcon,
@@ -51,16 +52,18 @@ function Stat({ label, value, sub, href, accent, icon: Icon }: {
 // ─── Status badge ─────────────────────────────────────────
 function Badge({ status }: { status: string }) {
   const map: Record<string, [string, string]> = {
-    pending:     ['#f3f4f6', '#6b7280'],
-    in_progress: ['#eff6ff', '#3b82f6'],
-    completed:   ['#fefce8', '#ca8a04'],
-    reviewed:    ['#f0fdf4', '#16a34a'],
-    upcoming:    ['#eff6ff', '#3b82f6'],
-    ongoing:     ['#fefce8', '#ca8a04'],
-    cancelled:   ['#f3f4f6', '#9ca3af'],
+    pending:         ['#f3f4f6', '#6b7280'],
+    in_progress:     ['#eff6ff', '#3b82f6'],
+    completed:       ['#fefce8', '#ca8a04'],
+    awaiting_review: ['#fefce8', '#ca8a04'],
+    reviewed:        ['#f0fdf4', '#16a34a'],
+    upcoming:        ['#eff6ff', '#3b82f6'],
+    ongoing:         ['#fefce8', '#ca8a04'],
+    cancelled:       ['#f3f4f6', '#9ca3af'],
   }
   const labels: Record<string, string> = {
     pending: 'Pending', in_progress: 'In Progress', completed: 'Completed',
+    awaiting_review: 'Awaiting Review',
     reviewed: 'Reviewed', upcoming: 'Upcoming', ongoing: 'Ongoing', cancelled: 'Cancelled',
   }
   const [bg, color] = map[status] ?? ['#f3f4f6', '#6b7280']
@@ -133,23 +136,31 @@ export default async function DashboardPage() {
       { data: duties },
       { count: pendingApplications },
       { data: allMarks },
+      { data: activeMembers },
     ] = await Promise.all([
       supabase.from('academic_year_members').select('*', { count: 'exact', head: true }).eq('academic_year_id', yearId),
-      supabase.from('duties').select('id, title, status, assigned_to, event_id, events(title), assignee:profiles!duties_assigned_to_fkey(full_name)').in('event_id', eventFilter).order('created_at', { ascending: false }).limit(200),
+      supabase.from('duties').select('id, title, status, reviewed_by, assigned_to, event_id, events(title), assignee:profiles!duties_assigned_to_fkey(full_name)').in('event_id', eventFilter).order('created_at', { ascending: false }).limit(200),
       supabase.from('member_applications').select('*', { count: 'exact', head: true }).eq('status', 'pending'),
-      supabase.from('workload_marks').select('mark').in('event_id', eventFilter),
+      supabase.from('workload_marks').select('mark, member_id').in('event_id', eventFilter),
+      supabase.from('profiles').select('id').eq('is_active', true).neq('system_role', 'consultant'),
     ])
 
-    const lateMarks  = allMarks?.filter(m => m.mark === 'late').length ?? 0
-    const dndMarks   = allMarks?.filter(m => m.mark === 'did_not_duty').length ?? 0
-    const doneMarks  = allMarks?.filter(m => m.mark === 'completed').length ?? 0
+    // Only count marks for members who actually appear in the Workload Matrix
+    // (active, non-consultant). This keeps the dashboard's mark stats in sync
+    // with the matrix, which hides inactive members — otherwise a stale mark
+    // left on a since-deactivated member shows on the dashboard but nowhere else.
+    const activeMemberIds = new Set((activeMembers ?? []).map(m => m.id))
+    const visibleMarks = (allMarks ?? []).filter(m => activeMemberIds.has(m.member_id))
+    const lateMarks  = visibleMarks.filter(m => m.mark === 'late').length
+    const dndMarks   = visibleMarks.filter(m => m.mark === 'did_not_duty').length
+    const doneMarks  = visibleMarks.filter(m => m.mark === 'completed').length
 
-    const byStatus = (s: string) => duties?.filter(d => d.status === s).length ?? 0
+    const displayIs = (s: string) => duties?.filter(d => dutyDisplayStatus(d) === s).length ?? 0
     const total = duties?.length ?? 0
-    const pending = byStatus('pending')
-    const inProg  = byStatus('in_progress')
-    const compl   = byStatus('completed')
-    const rev     = byStatus('reviewed')
+    const pending = duties?.filter(d => d.status === 'pending').length ?? 0
+    const inProg  = duties?.filter(d => d.status === 'in_progress').length ?? 0
+    const compl   = displayIs('awaiting_review')
+    const rev     = displayIs('reviewed')
 
     type MemberStats = { name: string; total: number; reviewed: number; events: Set<string> }
     const memberStats: Record<string, MemberStats> = {}
@@ -159,7 +170,7 @@ export default async function DashboardPage() {
       if (!memberStats[d.assigned_to]) memberStats[d.assigned_to] = { name, total: 0, reviewed: 0, events: new Set() }
       const m = memberStats[d.assigned_to]
       m.total++
-      if (d.status === 'reviewed') m.reviewed++
+      if (dutyDisplayStatus(d) === 'reviewed') m.reviewed++
       if (d.event_id) m.events.add(d.event_id)
     }
     const topMembers = Object.entries(memberStats)
@@ -336,13 +347,17 @@ export default async function DashboardPage() {
       { data: allDuties },
     ] = await Promise.all([
       supabase.from('events').select('id, title, event_date, status').eq('academic_year_id', yearId).in('status', ['upcoming','ongoing']).order('event_date', { ascending: true }).limit(6),
-      supabase.from('duties').select('id, title, status, event_id, events!inner(title)').eq('assigned_to', user.id).neq('status', 'reviewed').eq('events.academic_year_id', yearId).order('created_at', { ascending: false }).limit(8),
-      supabase.from('duties').select('id, title, status, assigned_to, event_id, assignee:profiles!duties_assigned_to_fkey(full_name), events!inner(title)').eq('assigned_by', user.id).eq('events.academic_year_id', yearId).order('created_at', { ascending: false }).limit(50),
+      supabase.from('duties').select('id, title, status, reviewed_by, event_id, events!inner(title)').eq('assigned_to', user.id).eq('events.academic_year_id', yearId).order('created_at', { ascending: false }).limit(20),
+      supabase.from('duties').select('id, title, status, reviewed_by, assigned_to, event_id, assignee:profiles!duties_assigned_to_fkey(full_name), events!inner(title)').eq('assigned_by', user.id).eq('events.academic_year_id', yearId).order('created_at', { ascending: false }).limit(50),
     ])
 
-    const pendingReview = allDuties?.filter(d => d.status === 'completed') ?? []
-    const myPending  = myDuties?.filter(d => d.status === 'pending').length ?? 0
-    const myInProg   = myDuties?.filter(d => d.status === 'in_progress').length ?? 0
+    // "Awaiting review" = completed but not yet reviewed (reviewed_by unset).
+    const pendingReview = allDuties?.filter(d => dutyDisplayStatus(d) === 'awaiting_review') ?? []
+    // Drop reviewed duties from the head's own active list (can't express
+    // "completed + reviewed_by null" as a DB filter, so filter in JS).
+    const myActiveDuties = (myDuties?.filter(d => dutyDisplayStatus(d) !== 'reviewed') ?? []).slice(0, 8)
+    const myPending  = myActiveDuties.filter(d => d.status === 'pending').length
+    const myInProg   = myActiveDuties.filter(d => d.status === 'in_progress').length
 
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: '28px' }}>
@@ -418,17 +433,17 @@ export default async function DashboardPage() {
           </div>
         </div>
 
-        {myDuties && myDuties.length > 0 && (
+        {myActiveDuties.length > 0 && (
           <div className={`${T.card} p-6`}>
             <SectionHead title="My Active Duties" action={{ label: 'View all →', href: '/dashboard/duties' }} />
             <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-              {myDuties.map(d => (
+              {myActiveDuties.map(d => (
                 <Link key={d.id} href={`/dashboard/duties/${d.id}`} className={T.row} style={{ textDecoration: 'none' }}>
                   <div>
                     <p style={{ fontSize: '13.5px', fontWeight: 500, color: '#111' }}>{d.title}</p>
                     <p style={{ fontSize: '11.5px', color: '#aaa', marginTop: '2px' }}>{(d as any).events?.title}</p>
                   </div>
-                  <Badge status={d.status} />
+                  <Badge status={dutyDisplayStatus(d)} />
                 </Link>
               ))}
             </div>
@@ -445,16 +460,17 @@ export default async function DashboardPage() {
 
   // Year scoping via inner join on the duty's event (no pre-fetch of event ids).
   const [{ data: myDuties }, { data: myEvents }] = await Promise.all([
-    supabase.from('duties').select('id, title, status, duty_type, priority, due_date, events!inner(id, title, event_date)')
+    supabase.from('duties').select('id, title, status, reviewed_by, duty_type, priority, due_date, events!inner(id, title, event_date)')
       .eq('assigned_to', user.id).eq('events.academic_year_id', yearId).order('created_at', { ascending: false }),
     supabase.from('events').select('id, title, event_date, status')
       .eq('academic_year_id', yearId).in('status', ['upcoming','ongoing'])
       .order('event_date', { ascending: true }).limit(5),
   ])
 
-  const byS = (s: string) => myDuties?.filter(d => d.status === s).length ?? 0
-  const mPend = byS('pending'), mProg = byS('in_progress')
-  const mComp = byS('completed'), mRev = byS('reviewed')
+  const mPend = myDuties?.filter(d => d.status === 'pending').length ?? 0
+  const mProg = myDuties?.filter(d => d.status === 'in_progress').length ?? 0
+  const mComp = myDuties?.filter(d => dutyDisplayStatus(d) === 'awaiting_review').length ?? 0
+  const mRev  = myDuties?.filter(d => dutyDisplayStatus(d) === 'reviewed').length ?? 0
   const mTotal = myDuties?.length ?? 0
   const active = myDuties?.filter(d => d.status === 'pending' || d.status === 'in_progress') ?? []
 
@@ -470,7 +486,7 @@ export default async function DashboardPage() {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3.5">
         <Stat label="Pending"     value={mPend} accent="#64748b" icon={Clock}        href="/dashboard/duties" />
         <Stat label="In Progress" value={mProg} accent="#3b82f6" icon={Activity}     href="/dashboard/duties" />
-        <Stat label="Completed"   value={mComp} accent="#ca8a04" icon={CheckCircle2} href="/dashboard/duties" />
+        <Stat label="Awaiting Review" value={mComp} accent="#ca8a04" icon={CheckCircle2} href="/dashboard/duties" />
         <Stat label="Reviewed"    value={mRev}  accent="#16a34a" icon={Trophy}       href="/dashboard/duties" />
       </div>
 
@@ -487,7 +503,7 @@ export default async function DashboardPage() {
             <div style={{ background: '#4ade80', width: `${(mRev  / mTotal) * 100}%` }} />
           </div>
           <div style={{ display: 'flex', gap: '16px' }}>
-            {[['#d1d5db','Pending'],['#93c5fd','In Progress'],['#fde047','Completed'],['#4ade80','Reviewed']].map(([c,l]) => (
+            {[['#d1d5db','Pending'],['#93c5fd','In Progress'],['#fde047','Awaiting Review'],['#4ade80','Reviewed']].map(([c,l]) => (
               <div key={l} style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
                 <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: c, flexShrink: 0 }} />
                 <span style={{ fontSize: '11px', color: '#bbb' }}>{l}</span>
@@ -513,7 +529,7 @@ export default async function DashboardPage() {
                       {d.due_date && ` · Due ${new Date(d.due_date).toLocaleDateString('en-PH', { month: 'short', day: 'numeric' })}`}
                     </p>
                   </div>
-                  <div style={{ flexShrink: 0, marginLeft: '8px' }}><Badge status={d.status} /></div>
+                  <div style={{ flexShrink: 0, marginLeft: '8px' }}><Badge status={dutyDisplayStatus(d)} /></div>
                 </Link>
               ))}
             </div>
@@ -546,7 +562,7 @@ export default async function DashboardPage() {
         <div className={`${T.card} p-6`}>
           <SectionHead title="Reviewed Accomplishments" />
           <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-            {myDuties?.filter(d => d.status === 'reviewed').slice(0, 5).map(d => (
+            {myDuties?.filter(d => dutyDisplayStatus(d) === 'reviewed').slice(0, 5).map(d => (
               <Link key={d.id} href={`/dashboard/duties/${d.id}`} className={T.row} style={{ textDecoration: 'none' }}>
                 <div>
                   <p style={{ fontSize: '13.5px', fontWeight: 500, color: '#111' }}>{d.title}</p>

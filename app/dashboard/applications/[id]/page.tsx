@@ -1,12 +1,11 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect, notFound } from 'next/navigation'
-import ApplicationsClient from '../ApplicationsClient'
 import ApplicationActions from './ApplicationActions'
 import ApplicationMenu from './ApplicationMenu'
 import ScoreCard from './ScoreCard'
 import StickyHeader from './StickyHeader'
 import ForensicsPanel from './ForensicsPanel'
-import { enrichApplications, getInitials, getAvatarColor, STATUS_ACCENTS } from '../utils'
+import { getInitials, getAvatarColor, STATUS_ACCENTS } from '../utils'
 import { ApplicationStatus } from '@/types/database'
 import { Mail, Phone, GraduationCap, BookOpen, AlertTriangle, Star, ClipboardCheck, User } from 'lucide-react'
 
@@ -53,13 +52,6 @@ export default async function ApplicationDetailPage({
   if (!profile || !['consultant', 'creative_head'].includes(profile.system_role)) {
     redirect('/dashboard')
   }
-
-  const { data: applications } = await supabase
-    .from('member_applications')
-    .select('*')
-    .order('created_at', { ascending: false })
-
-  const enriched = await enrichApplications(supabase, (applications as any[]) || [])
 
   const { data: application } = await supabase
     .from('member_applications')
@@ -116,29 +108,26 @@ export default async function ApplicationDetailPage({
   const s = STATUS_COLORS[status]
   const reviewerName = (application.reviewer as any)?.full_name ?? null
   const ayLabel = (application.academic_year as any)?.label ?? null
-  const isDuplicate = enriched.find(a => a.id === id)?.isDuplicate ?? false
+
+  // Duplicate = same email (case-insensitive) appears on more than one
+  // application. ilike with no wildcards is a case-insensitive exact match,
+  // mirroring enrichApplications' email-based detection without re-enriching
+  // the whole list on this route.
+  const { count: sameEmailCount } = await supabase
+    .from('member_applications')
+    .select('id', { count: 'exact', head: true })
+    .ilike('email', application.email)
+  const isDuplicate = (sameEmailCount ?? 0) > 1
 
   const appliedDate = new Date(application.created_at).toLocaleDateString('en-PH', {
     year: 'numeric', month: 'long', day: 'numeric',
   })
 
   return (
-    <div className="page-enter">
-      <div style={{ marginBottom: 24 }}>
-        <h1 className="page-title">Membership Applications</h1>
-        <p className="page-subtitle">Review and evaluate applicants for Obra Creative Media Productions.</p>
-      </div>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
 
-      <ApplicationsClient
-        applications={enriched}
-        selectedId={id}
-        userRole={profile.system_role}
-        userId={user.id}
-      >
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-
-          {/* Page header */}
-          <StickyHeader accentColor={STATUS_ACCENTS[status]}>
+      {/* Page header */}
+      <StickyHeader accentColor={STATUS_ACCENTS[status]}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
               <div style={{
                 width: 44, height: 44, borderRadius: '50%', flexShrink: 0,
@@ -157,10 +146,10 @@ export default async function ApplicationDetailPage({
                     <span title="Possible duplicate application" style={{
                       display: 'inline-flex', alignItems: 'center', gap: 4,
                       background: '#fffbeb', color: '#ca8a04',
-                      fontFamily: 'DM Mono, monospace', fontSize: 9, fontWeight: 700,
-                      padding: '2px 8px', borderRadius: 999, textTransform: 'uppercase', letterSpacing: '0.06em',
+                      fontFamily: 'DM Mono, monospace', fontSize: 10, fontWeight: 700,
+                      padding: '3px 9px', borderRadius: 999, textTransform: 'uppercase', letterSpacing: '0.06em',
                     }}>
-                      <AlertTriangle size={10} /> Duplicate
+                      <AlertTriangle size={11} /> Duplicate
                     </span>
                   )}
                 </div>
@@ -214,8 +203,8 @@ export default async function ApplicationDetailPage({
                 <div key={item.label} style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
                   <item.icon size={15} style={{ color: '#bbb', marginTop: 2, flexShrink: 0 }} />
                   <div>
-                    <p className="section-label" style={{ marginBottom: 3 }}>{item.label}</p>
-                    <p style={{ fontFamily: 'DM Sans, sans-serif', fontSize: 13.5, color: '#111', fontWeight: 500, margin: 0, wordBreak: 'break-word' }}>
+                    <p className="section-label" style={{ marginBottom: 4, color: '#6b6b6b' }}>{item.label}</p>
+                    <p style={{ fontFamily: 'DM Sans, sans-serif', fontSize: 14, color: '#111', fontWeight: 500, margin: 0, wordBreak: 'break-word' }}>
                       {item.value}
                     </p>
                   </div>
@@ -288,8 +277,8 @@ export default async function ApplicationDetailPage({
             {/* Reviewer */}
             {application.reviewed_by && reviewerName && (
               <div style={{ borderTop: '1px solid rgba(0,0,0,0.06)', paddingTop: 14 }}>
-                <p style={{ fontFamily: 'DM Sans, sans-serif', fontSize: 12, color: '#999', margin: 0 }}>
-                  Last reviewed by <strong style={{ color: '#555' }}>{reviewerName}</strong>
+                <p style={{ fontFamily: 'DM Sans, sans-serif', fontSize: 12.5, color: '#777', margin: 0 }}>
+                  Last reviewed by <strong style={{ color: '#444' }}>{reviewerName}</strong>
                   {application.reviewed_at && (
                     <> on {new Date(application.reviewed_at).toLocaleDateString('en-PH', {
                       year: 'numeric', month: 'short', day: 'numeric',
@@ -343,8 +332,6 @@ export default async function ApplicationDetailPage({
             }}
           />
 
-        </div>
-      </ApplicationsClient>
     </div>
   )
 }

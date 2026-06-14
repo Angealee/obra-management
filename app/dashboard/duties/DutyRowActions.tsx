@@ -65,13 +65,6 @@ export default function DutyRowActions({
       >
         View
       </Link>
-      <Link
-        href={`/dashboard/duties/${dutyId}/edit`}
-        style={{ fontSize: '12px', color: '#bbb', textDecoration: 'none' }}
-        className="hover:text-gray-700 transition-colors"
-      >
-        Edit
-      </Link>
       <button
         onClick={() => setConfirming(true)}
         style={{ fontSize: '12px', color: '#bbb', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}

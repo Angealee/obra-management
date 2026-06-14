@@ -6,21 +6,13 @@ import EmptyState from '@/components/EmptyState'
 import { ListChecks } from 'lucide-react'
 import DutyRowActions from './DutyRowActions'
 import { getAcademicYearContext } from '@/lib/academicYear'
+import { dutyTypeLabel } from '@/lib/memberRole'
+import { dutyDisplayStatus, DUTY_DISPLAY_LABELS, DUTY_DISPLAY_STYLE, type DutyDisplayStatus } from '@/lib/dutyStatus'
 
 // Valid-format UUID that matches no row — used so "no year selected" yields an
 // empty result instead of an unscoped query.
 const NONE_UUID = '00000000-0000-0000-0000-000000000000'
 
-const statusStyle: Record<string, [string, string]> = {
-  pending:     ['#f3f4f6', '#6b7280'],
-  in_progress: ['#eff6ff', '#3b82f6'],
-  completed:   ['#fefce8', '#ca8a04'],
-  reviewed:    ['#f0fdf4', '#16a34a'],
-}
-const statusLabel: Record<string, string> = {
-  pending: 'Pending', in_progress: 'In Progress',
-  completed: 'Completed', reviewed: 'Reviewed',
-}
 const priorityStyle: Record<string, [string, string]> = {
   low:    ['#f9fafb', '#9ca3af'],
   normal: ['#f3f4f6', '#6b7280'],
@@ -28,12 +20,12 @@ const priorityStyle: Record<string, [string, string]> = {
   urgent: ['#fff1f2', '#CC0000'],
 }
 
-function StatusCell({ dutyStatus, mark }: { dutyStatus: string; mark: string | null }) {
+function StatusCell({ display, mark }: { display: DutyDisplayStatus; mark: string | null }) {
   if (mark) return <WorkloadBadge mark={mark} />
-  const [bg, tc] = statusStyle[dutyStatus] ?? ['#f3f4f6', '#6b7280']
+  const [bg, tc] = DUTY_DISPLAY_STYLE[display]
   return (
     <span style={{ fontSize: '11px', fontWeight: 600, background: bg, color: tc, padding: '3px 10px', borderRadius: '99px' }}>
-      {statusLabel[dutyStatus] ?? dutyStatus}
+      {DUTY_DISPLAY_LABELS[display]}
     </span>
   )
 }
@@ -52,7 +44,7 @@ export default async function DutiesPage() {
   const dutiesQuery = supabase
     .from('duties')
     .select(`
-      id, title, duty_type, status, priority, created_at,
+      id, title, duty_type, status, reviewed_by, priority, created_at,
       event_id, assigned_to,
       events!inner ( id, title, event_date ),
       assignee:profiles!duties_assigned_to_fkey ( full_name )
@@ -81,16 +73,16 @@ export default async function DutiesPage() {
     markMap[`${m.member_id}_${m.event_id}`] = m.mark
   }
 
-  const groups: Record<string, any[]> = {
-    pending:     (duties ?? []).filter((d: any) => d.status === 'pending'),
-    in_progress: (duties ?? []).filter((d: any) => d.status === 'in_progress'),
-    completed:   (duties ?? []).filter((d: any) => d.status === 'completed'),
-    reviewed:    (duties ?? []).filter((d: any) => d.status === 'reviewed'),
+  const groups: Record<DutyDisplayStatus, any[]> = {
+    pending:         (duties ?? []).filter((d: any) => dutyDisplayStatus(d) === 'pending'),
+    in_progress:     (duties ?? []).filter((d: any) => dutyDisplayStatus(d) === 'in_progress'),
+    awaiting_review: (duties ?? []).filter((d: any) => dutyDisplayStatus(d) === 'awaiting_review'),
+    reviewed:        (duties ?? []).filter((d: any) => dutyDisplayStatus(d) === 'reviewed'),
   }
 
-  const groupTitles: Record<string, string> = {
+  const groupTitles: Record<DutyDisplayStatus, string> = {
     pending: 'Pending', in_progress: 'In Progress',
-    completed: 'Completed — Awaiting Review', reviewed: 'Reviewed',
+    awaiting_review: 'Awaiting Review', reviewed: 'Reviewed',
   }
 
   return (
@@ -101,7 +93,7 @@ export default async function DutiesPage() {
             {isHead ? 'All Duties' : 'My Duties'}
           </h1>
           <p style={{ fontSize: '13px', color: '#999', marginTop: '5px' }}>
-            {groups.pending.length} pending · {groups.in_progress.length} in progress · {groups.completed.length} awaiting review · {groups.reviewed.length} reviewed
+            {groups.pending.length} pending · {groups.in_progress.length} in progress · {groups.awaiting_review.length} awaiting review · {groups.reviewed.length} reviewed
           </p>
         </div>
         {isHead && (
@@ -124,7 +116,7 @@ export default async function DutiesPage() {
         />
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-          {Object.entries(groups).map(([groupStatus, groupDuties]) => {
+          {(Object.entries(groups) as [DutyDisplayStatus, any[]][]).map(([groupStatus, groupDuties]) => {
             if (groupDuties.length === 0) return null
             return (
               <div key={groupStatus}>
@@ -150,8 +142,8 @@ export default async function DutiesPage() {
                         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '8px' }}>
                           <div style={{ minWidth: 0 }}>
                             <p style={{ fontWeight: 500, color: '#111', lineHeight: 1.3, fontSize: '13.5px' }}>{duty.title}</p>
-                            <p style={{ fontSize: '11.5px', color: '#bbb', marginTop: '2px', textTransform: 'capitalize' }}>
-                              {duty.duty_type.replace(/_/g, ' ')}
+                            <p style={{ fontSize: '11.5px', color: '#bbb', marginTop: '2px' }}>
+                              {dutyTypeLabel(duty.duty_type)}
                             </p>
                           </div>
                           <span style={{ fontSize: '11px', fontWeight: 600, background: pbg, color: ptc, padding: '3px 9px', borderRadius: '99px', textTransform: 'capitalize', flexShrink: 0 }}>
@@ -176,7 +168,7 @@ export default async function DutiesPage() {
                         )}
 
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '10px' }}>
-                          <StatusCell dutyStatus={duty.status} mark={mark} />
+                          <StatusCell display={dutyDisplayStatus(duty)} mark={mark} />
                           <DutyRowActions dutyId={duty.id} canManage={isHead} />
                         </div>
                       </div>
@@ -223,8 +215,8 @@ export default async function DutiesPage() {
                             {/* Duty */}
                             <td style={{ padding: '13px 20px', maxWidth: '240px' }}>
                               <p style={{ fontWeight: 500, color: '#111', lineHeight: 1.3 }}>{duty.title}</p>
-                              <p style={{ fontSize: '11.5px', color: '#bbb', marginTop: '2px', textTransform: 'capitalize' }}>
-                                {duty.duty_type.replace(/_/g, ' ')}
+                              <p style={{ fontSize: '11.5px', color: '#bbb', marginTop: '2px' }}>
+                                {dutyTypeLabel(duty.duty_type)}
                               </p>
                             </td>
 
@@ -254,7 +246,7 @@ export default async function DutiesPage() {
 
                             {/* Status — shows workload mark if set, otherwise duty status */}
                             <td style={{ padding: '13px 20px' }}>
-                              <StatusCell dutyStatus={duty.status} mark={mark} />
+                              <StatusCell display={dutyDisplayStatus(duty)} mark={mark} />
                             </td>
 
                             {/* Actions */}

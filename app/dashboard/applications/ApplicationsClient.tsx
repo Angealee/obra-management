@@ -1,10 +1,10 @@
 'use client'
 
 import { useState, useMemo, useTransition } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, usePathname } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { MemberApplication, ApplicationStatus } from '@/types/database'
-import { Search, ArrowLeft, Loader2, AlertTriangle, Star, Trash2, XCircle, SlidersHorizontal } from 'lucide-react'
+import { Search, ArrowLeft, Loader2, AlertTriangle, Star, Trash2, XCircle, SlidersHorizontal, X } from 'lucide-react'
 import { getInitials, getAvatarColor, STATUS_ACCENTS } from './utils'
 
 const STATUS_COLORS: Record<ApplicationStatus, { bg: string; color: string; label: string }> = {
@@ -45,27 +45,35 @@ const MIN_SCORE_OPTIONS = [
 
 type Props = {
   applications: MemberApplication[]
-  selectedId: string | null
   userRole: string
   userId: string
   children: React.ReactNode
 }
 
-export default function ApplicationsClient({ applications, selectedId, userRole, userId, children }: Props) {
+export default function ApplicationsClient({ applications, userRole, userId, children }: Props) {
   const router = useRouter()
+  const pathname = usePathname()
   const supabase = createClient()
   const isConsultant = userRole === 'consultant'
+
+  // The selected applicant is derived from the URL, not held in state — so the
+  // list/filter state in this component (which now lives in the persistent
+  // layout) survives navigation between applicants.
+  const selectedId = useMemo(() => {
+    const m = pathname?.match(/\/dashboard\/applications\/([^/?#]+)/)
+    return m ? m[1] : null
+  }, [pathname])
 
   const [isPending, startTransition] = useTransition()
   const [pendingId, setPendingId] = useState<string | null>(null)
 
-  const [filtersOpen, setFiltersOpen]     = useState(false)
-  const [search, setSearch]               = useState('')
-  const [filterStatus, setFilterStatus]   = useState('all')
+  const [filtersOpen, setFiltersOpen]       = useState(false)
+  const [search, setSearch]                 = useState('')
+  const [filterStatus, setFilterStatus]     = useState('all')
   const [filterPosition, setFilterPosition] = useState('all')
-  const [filterYear, setFilterYear]       = useState('all')
-  const [sortBy, setSortBy]               = useState('name')
-  const [minScore, setMinScore]           = useState('0')
+  const [filterYear, setFilterYear]         = useState('all')
+  const [sortBy, setSortBy]                 = useState('name')
+  const [minScore, setMinScore]             = useState('0')
 
   const [selectedIds, setSelectedIds]     = useState<Set<string>>(new Set())
   const [confirmAction, setConfirmAction] = useState<'reject' | 'delete' | null>(null)
@@ -92,12 +100,13 @@ export default function ApplicationsClient({ applications, selectedId, userRole,
       })
   }, [applications, search, filterStatus, filterPosition, filterYear, sortBy, minScore])
 
-  const activeFilterCount = [
-    filterStatus !== 'all',
-    filterPosition !== 'all',
-    filterYear !== 'all',
-    minScore !== '0',
-  ].filter(Boolean).length
+  // Active non-default filters, rendered as removable chips.
+  const activeChips: { key: string; label: string; onRemove: () => void }[] = []
+  if (filterStatus !== 'all')   activeChips.push({ key: 'status',   label: STATUS_COLORS[filterStatus as ApplicationStatus]?.label ?? filterStatus, onRemove: () => setFilterStatus('all') })
+  if (filterPosition !== 'all') activeChips.push({ key: 'position', label: POSITION_LABELS[filterPosition] ?? filterPosition, onRemove: () => setFilterPosition('all') })
+  if (filterYear !== 'all')     activeChips.push({ key: 'year',     label: filterYear, onRemove: () => setFilterYear('all') })
+  if (minScore !== '0')         activeChips.push({ key: 'score',    label: `Score ${minScore}+`, onRemove: () => setMinScore('0') })
+  const activeFilterCount = activeChips.length
 
   function clearFilters() {
     setFilterStatus('all')
@@ -157,26 +166,35 @@ export default function ApplicationsClient({ applications, selectedId, userRole,
   const selectStyle: React.CSSProperties = {
     width: '100%',
     fontFamily: 'DM Sans, sans-serif',
-    fontSize: 12.5,
-    padding: '7px 8px',
+    fontSize: 13,
+    padding: '8px 10px',
     borderRadius: 8,
-    border: '1px solid rgba(0,0,0,0.12)',
+    border: '1px solid rgba(0,0,0,0.14)',
     background: '#fff',
     color: '#333',
     cursor: 'pointer',
     outline: 'none',
   }
 
+  const fieldLabelStyle: React.CSSProperties = {
+    fontFamily: 'DM Sans, sans-serif',
+    fontSize: 11,
+    fontWeight: 600,
+    color: '#777',
+    textTransform: 'uppercase',
+    letterSpacing: '0.05em',
+  }
+
   const iconBtnStyle: React.CSSProperties = {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    width: 24,
-    height: 24,
-    borderRadius: 6,
-    border: '1px solid rgba(0,0,0,0.08)',
+    width: 28,
+    height: 28,
+    borderRadius: 7,
+    border: '1px solid rgba(0,0,0,0.10)',
     background: '#fff',
-    color: '#888',
+    color: '#777',
     cursor: 'pointer',
   }
 
@@ -185,40 +203,41 @@ export default function ApplicationsClient({ applications, selectedId, userRole,
 
       {/* LEFT — list panel */}
       <div
-        className={`${selectedId ? 'hidden lg:flex' : 'flex'} h-[calc(100vh-260px)] min-h-[420px] w-full flex-col lg:h-full lg:w-[300px] lg:flex-shrink-0`}
+        className={`${selectedId ? 'hidden lg:flex' : 'flex'} h-[calc(100vh-260px)] min-h-[420px] w-full flex-col lg:h-full lg:w-[330px] lg:flex-shrink-0`}
         style={{
           background: '#fff',
           border: '1px solid rgba(0,0,0,0.06)',
           borderRadius: 12,
           overflow: 'hidden',
+          boxShadow: '0 1px 3px rgba(0,0,0,0.03)',
         }}
       >
 
         {/* Filter header */}
-        <div style={{ padding: '14px 14px 10px', borderBottom: '1px solid rgba(0,0,0,0.06)' }}>
+        <div style={{ padding: '16px 16px 12px', borderBottom: '1px solid rgba(0,0,0,0.07)' }}>
 
           {/* Search + filter toggle */}
-          <div style={{ display: 'flex', gap: 8, marginBottom: filtersOpen ? 10 : 0 }}>
+          <div style={{ display: 'flex', gap: 8 }}>
             <div style={{ position: 'relative', flex: 1 }}>
-              <Search size={13} style={{
-                position: 'absolute', left: 9, top: '50%',
-                transform: 'translateY(-50%)', color: '#bbb',
+              <Search size={15} style={{
+                position: 'absolute', left: 11, top: '50%',
+                transform: 'translateY(-50%)', color: '#aaa',
               }} />
               <input
                 type="text"
-                placeholder="Search name or email..."
+                placeholder="Search name or email…"
                 value={search}
                 onChange={e => setSearch(e.target.value)}
                 style={{
                   width: '100%',
-                  paddingLeft: 28,
-                  paddingRight: 10,
-                  paddingTop: 7,
-                  paddingBottom: 7,
-                  borderRadius: 8,
+                  paddingLeft: 34,
+                  paddingRight: 12,
+                  paddingTop: 9,
+                  paddingBottom: 9,
+                  borderRadius: 9,
                   border: '1px solid rgba(0,0,0,0.10)',
                   fontFamily: 'DM Sans, sans-serif',
-                  fontSize: 13,
+                  fontSize: 13.5,
                   color: '#111',
                   background: '#F7F7F5',
                   outline: 'none',
@@ -233,22 +252,23 @@ export default function ApplicationsClient({ applications, selectedId, userRole,
               style={{
                 position: 'relative',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                width: 34, height: 34, flexShrink: 0,
-                borderRadius: 8,
+                width: 38, height: 38, flexShrink: 0,
+                borderRadius: 9,
                 border: filtersOpen ? '1px solid #CC0000' : '1px solid rgba(0,0,0,0.10)',
                 background: filtersOpen ? '#fef2f2' : '#F7F7F5',
-                color: filtersOpen ? '#CC0000' : '#666',
+                color: filtersOpen ? '#CC0000' : '#555',
                 cursor: 'pointer',
+                transition: 'background 0.13s ease, border-color 0.13s ease, color 0.13s ease',
               }}
             >
-              <SlidersHorizontal size={14} />
+              <SlidersHorizontal size={15} />
               {activeFilterCount > 0 && (
                 <span style={{
-                  position: 'absolute', top: -4, right: -4,
-                  minWidth: 15, height: 15, padding: '0 3px',
+                  position: 'absolute', top: -5, right: -5,
+                  minWidth: 16, height: 16, padding: '0 4px',
                   borderRadius: 999,
                   background: '#CC0000', color: '#fff',
-                  fontFamily: 'DM Mono, monospace', fontSize: 9, fontWeight: 700,
+                  fontFamily: 'DM Mono, monospace', fontSize: 9.5, fontWeight: 700,
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                 }}>
                   {activeFilterCount}
@@ -259,81 +279,104 @@ export default function ApplicationsClient({ applications, selectedId, userRole,
 
           {/* Filter / sort dropdowns */}
           {filtersOpen && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 6 }}>
-              <div className="grid grid-cols-2 gap-1.5">
-                <select style={selectStyle} value={filterStatus} onChange={e => setFilterStatus(e.target.value)}>
-                  {STATUS_OPTIONS.map(s => (
-                    <option key={s} value={s}>
-                      {s === 'all' ? 'All Statuses' : STATUS_COLORS[s as ApplicationStatus]?.label ?? s}
-                    </option>
-                  ))}
-                </select>
-                <select style={selectStyle} value={filterPosition} onChange={e => setFilterPosition(e.target.value)}>
-                  {POSITION_OPTIONS.map(p => (
-                    <option key={p} value={p}>
-                      {p === 'all' ? 'All Positions' : POSITION_LABELS[p]}
-                    </option>
-                  ))}
-                </select>
+            <div className="panel-reveal" style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 12 }}>
+              <div className="grid grid-cols-2 gap-2.5">
+                <label style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+                  <span style={fieldLabelStyle}>Status</span>
+                  <select style={selectStyle} value={filterStatus} onChange={e => setFilterStatus(e.target.value)}>
+                    {STATUS_OPTIONS.map(s => (
+                      <option key={s} value={s}>
+                        {s === 'all' ? 'All' : STATUS_COLORS[s as ApplicationStatus]?.label ?? s}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+                  <span style={fieldLabelStyle}>Position</span>
+                  <select style={selectStyle} value={filterPosition} onChange={e => setFilterPosition(e.target.value)}>
+                    {POSITION_OPTIONS.map(p => (
+                      <option key={p} value={p}>
+                        {p === 'all' ? 'All' : POSITION_LABELS[p]}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+                  <span style={fieldLabelStyle}>Year Level</span>
+                  <select style={selectStyle} value={filterYear} onChange={e => setFilterYear(e.target.value)}>
+                    {YEAR_OPTIONS.map(y => (
+                      <option key={y} value={y}>
+                        {y === 'all' ? 'All' : y}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+                  <span style={fieldLabelStyle}>Min Score</span>
+                  <select style={selectStyle} value={minScore} onChange={e => setMinScore(e.target.value)}>
+                    {MIN_SCORE_OPTIONS.map(o => (
+                      <option key={o.value} value={o.value}>{o.label}</option>
+                    ))}
+                  </select>
+                </label>
               </div>
-              <div className="grid grid-cols-2 gap-1.5">
-                <select style={selectStyle} value={filterYear} onChange={e => setFilterYear(e.target.value)}>
-                  {YEAR_OPTIONS.map(y => (
-                    <option key={y} value={y}>
-                      {y === 'all' ? 'All Year Levels' : y}
-                    </option>
-                  ))}
-                </select>
+              <label style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+                <span style={fieldLabelStyle}>Sort By</span>
                 <select style={selectStyle} value={sortBy} onChange={e => setSortBy(e.target.value)}>
                   {SORT_OPTIONS.map(o => (
                     <option key={o.value} value={o.value}>{o.label}</option>
                   ))}
                 </select>
-              </div>
-              <select style={selectStyle} value={minScore} onChange={e => setMinScore(e.target.value)}>
-                {MIN_SCORE_OPTIONS.map(o => (
-                  <option key={o.value} value={o.value}>{o.label}</option>
-                ))}
-              </select>
-              {activeFilterCount > 0 && (
-                <button
-                  type="button"
-                  onClick={clearFilters}
-                  style={{
-                    alignSelf: 'flex-start',
-                    background: 'none', border: 'none', padding: 0,
-                    fontFamily: 'DM Sans, sans-serif', fontSize: 11.5,
-                    color: '#CC0000', textDecoration: 'underline', cursor: 'pointer',
-                  }}
-                >
-                  Clear filters
-                </button>
-              )}
+              </label>
             </div>
           )}
 
-          <div className="mt-2 flex items-center justify-between">
+          {/* Active filter chips */}
+          {activeFilterCount > 0 && (
+            <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 6, marginTop: 12 }}>
+              {activeChips.map(c => (
+                <button key={c.key} type="button" className="filter-chip" onClick={c.onRemove} title={`Remove ${c.label}`}>
+                  {c.label}
+                  <X size={12} className="chip-x" />
+                </button>
+              ))}
+              <button
+                type="button"
+                onClick={clearFilters}
+                style={{
+                  background: 'none', border: 'none', padding: '2px 4px',
+                  fontFamily: 'DM Sans, sans-serif', fontSize: 12, fontWeight: 500,
+                  color: '#CC0000', cursor: 'pointer',
+                }}
+              >
+                Clear all
+              </button>
+            </div>
+          )}
+
+          {/* Result count + bulk actions */}
+          <div className="mt-3 flex items-center justify-between" style={{ minHeight: 24 }}>
             <p style={{
-              fontFamily: 'DM Mono, monospace',
-              fontSize: 10,
-              color: '#bbb',
-              letterSpacing: '0.05em',
+              fontFamily: 'DM Sans, sans-serif',
+              fontSize: 12.5,
+              fontWeight: 500,
+              color: '#888',
             }}>
-              {filtered.length} RESULT{filtered.length !== 1 ? 'S' : ''}
+              {filtered.length} applicant{filtered.length !== 1 ? 's' : ''}
             </p>
 
             {isConsultant && selectedIds.size > 0 && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <span style={{ fontSize: 11, color: '#999', fontFamily: 'DM Sans, sans-serif' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ fontSize: 12, color: '#777', fontFamily: 'DM Sans, sans-serif', fontWeight: 500 }}>
                   {selectedIds.size} selected
                 </span>
                 <button type="button" title="Reject selected" style={iconBtnStyle}
                   onClick={() => setConfirmAction('reject')}>
-                  <XCircle size={13} />
+                  <XCircle size={14} />
                 </button>
-                <button type="button" title="Delete selected" style={{ ...iconBtnStyle, color: '#CC0000', borderColor: 'rgba(204,0,0,0.2)' }}
+                <button type="button" title="Delete selected" style={{ ...iconBtnStyle, color: '#CC0000', borderColor: 'rgba(204,0,0,0.22)' }}
                   onClick={() => setConfirmAction('delete')}>
-                  <Trash2 size={13} />
+                  <Trash2 size={14} />
                 </button>
               </div>
             )}
@@ -344,13 +387,14 @@ export default function ApplicationsClient({ applications, selectedId, userRole,
         <div style={{ flex: 1, overflowY: 'auto' }}>
           {filtered.length === 0 ? (
             <div style={{
-              padding: 24,
+              padding: '32px 24px',
               textAlign: 'center',
               fontFamily: 'DM Sans, sans-serif',
-              fontSize: 13,
-              color: '#bbb',
+              fontSize: 13.5,
+              color: '#999',
+              lineHeight: 1.6,
             }}>
-              No applications found.
+              No applicants match your filters.
             </div>
           ) : (
             filtered.map(app => {
@@ -369,16 +413,17 @@ export default function ApplicationsClient({ applications, selectedId, userRole,
                   style={{
                     width: '100%',
                     textAlign: 'left',
-                    padding: '12px 14px',
-                    borderBottom: '1px solid rgba(0,0,0,0.04)',
+                    padding: '14px 16px',
+                    borderBottom: '1px solid rgba(0,0,0,0.05)',
                     background: isSelected ? `${accent}14` : 'transparent',
                     borderLeft: isSelected
-                      ? `2.5px solid ${accent}`
-                      : '2.5px solid transparent',
+                      ? `3px solid ${accent}`
+                      : '3px solid transparent',
                     cursor: 'pointer',
                     display: 'flex',
-                    gap: 10,
+                    gap: 11,
                     alignItems: 'flex-start',
+                    transition: 'background 0.13s ease',
                   }}
                 >
                   {isConsultant && (
@@ -387,15 +432,15 @@ export default function ApplicationsClient({ applications, selectedId, userRole,
                       checked={checked}
                       onClick={e => e.stopPropagation()}
                       onChange={() => toggleSelect(app.id)}
-                      style={{ marginTop: 4, flexShrink: 0, cursor: 'pointer' }}
+                      style={{ marginTop: 5, flexShrink: 0, cursor: 'pointer', width: 14, height: 14 }}
                     />
                   )}
 
                   <div style={{
-                    width: 32, height: 32, borderRadius: '50%', flexShrink: 0,
+                    width: 36, height: 36, borderRadius: '50%', flexShrink: 0,
                     background: getAvatarColor(app.full_name),
                     color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    fontFamily: 'DM Sans, sans-serif', fontSize: 11, fontWeight: 700,
+                    fontFamily: 'DM Sans, sans-serif', fontSize: 12.5, fontWeight: 700,
                   }}>
                     {getInitials(app.full_name)}
                   </div>
@@ -404,7 +449,7 @@ export default function ApplicationsClient({ applications, selectedId, userRole,
                     <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
                       <p style={{
                         fontFamily: 'DM Sans, sans-serif',
-                        fontSize: 13.5,
+                        fontSize: 14,
                         fontWeight: 600,
                         color: '#111',
                         margin: '0 0 2px',
@@ -415,14 +460,14 @@ export default function ApplicationsClient({ applications, selectedId, userRole,
                         {app.full_name}
                       </p>
                       {app.isDuplicate && (
-                        <AlertTriangle size={12} style={{ color: '#ca8a04', flexShrink: 0, marginBottom: 2 }} />
+                        <AlertTriangle size={13} style={{ color: '#ca8a04', flexShrink: 0, marginBottom: 2 }} />
                       )}
                     </div>
                     <p style={{
                       fontFamily: 'DM Sans, sans-serif',
-                      fontSize: 12,
-                      color: '#999',
-                      margin: '0 0 6px',
+                      fontSize: 12.5,
+                      color: '#666',
+                      margin: '0 0 7px',
                       whiteSpace: 'nowrap',
                       overflow: 'hidden',
                       textOverflow: 'ellipsis',
@@ -434,13 +479,13 @@ export default function ApplicationsClient({ applications, selectedId, userRole,
                         display: 'inline-block',
                         background: s.bg,
                         color: s.color,
-                        fontFamily: 'DM Mono, monospace',
-                        fontSize: 9,
+                        fontFamily: 'DM Sans, sans-serif',
+                        fontSize: 10.5,
                         fontWeight: 700,
-                        padding: '2px 7px',
-                        borderRadius: 4,
+                        padding: '3px 8px',
+                        borderRadius: 5,
                         textTransform: 'uppercase',
-                        letterSpacing: '0.06em',
+                        letterSpacing: '0.04em',
                       }}>
                         {s.label}
                       </span>
@@ -448,11 +493,11 @@ export default function ApplicationsClient({ applications, selectedId, userRole,
                         <span style={{
                           display: 'inline-flex', alignItems: 'center', gap: 3,
                           background: '#fff7ed', color: '#9a3412',
-                          fontFamily: 'DM Mono, monospace',
-                          fontSize: 9, fontWeight: 700,
-                          padding: '2px 7px', borderRadius: 4,
+                          fontFamily: 'DM Sans, sans-serif',
+                          fontSize: 11, fontWeight: 700,
+                          padding: '3px 8px', borderRadius: 5,
                         }}>
-                          <Star size={9} fill="currentColor" />
+                          <Star size={10} fill="currentColor" />
                           {app.avgScore!.toFixed(1)}
                         </span>
                       )}
@@ -460,7 +505,7 @@ export default function ApplicationsClient({ applications, selectedId, userRole,
                   </div>
 
                   {isItemPending && (
-                    <Loader2 size={14} className="animate-spin" style={{ color: '#CC0000', flexShrink: 0, marginTop: 8 }} />
+                    <Loader2 size={15} className="animate-spin" style={{ color: '#CC0000', flexShrink: 0, marginTop: 9 }} />
                   )}
                 </div>
               )
@@ -510,7 +555,7 @@ export default function ApplicationsClient({ applications, selectedId, userRole,
             <h3 style={{ fontFamily: 'DM Sans, sans-serif', fontSize: 16, fontWeight: 700, color: '#111', margin: '0 0 8px' }}>
               {confirmAction === 'delete' ? 'Delete applications?' : 'Reject applications?'}
             </h3>
-            <p style={{ fontFamily: 'DM Sans, sans-serif', fontSize: 13, color: '#666', lineHeight: 1.6, margin: 0 }}>
+            <p style={{ fontFamily: 'DM Sans, sans-serif', fontSize: 13.5, color: '#555', lineHeight: 1.6, margin: 0 }}>
               {confirmAction === 'delete'
                 ? `This will permanently delete ${selectedIds.size} application${selectedIds.size !== 1 ? 's' : ''}. This cannot be undone.`
                 : `This will mark ${selectedIds.size} application${selectedIds.size !== 1 ? 's' : ''} as rejected.`}

@@ -4,9 +4,15 @@ import { requireProfile } from '@/lib/auth'
 import WorkloadMatrix from './WorkLoadMatrix'
 import { getAcademicYearContext } from '@/lib/academicYear'
 
-export default async function WorkloadsPage() {
+export default async function WorkloadsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ member?: string; event?: string }>
+}) {
   const { profile } = await requireProfile()
   if (profile.system_role === 'member') redirect('/dashboard')
+
+  const { member: highlightMember, event: highlightEvent } = await searchParams
 
   const supabase = await createClient()
 
@@ -41,7 +47,7 @@ export default async function WorkloadsPage() {
   const { data: duties } = eventIds.length > 0
     ? await supabase
         .from('duties')
-        .select('id, event_id, assigned_to, duty_type, status, title')
+        .select('id, event_id, assigned_to, duty_type, status, reviewed_by, title')
         .in('event_id', eventIds)
     : { data: [] }
 
@@ -53,7 +59,7 @@ export default async function WorkloadsPage() {
     : { data: [] }
 
   // Build matrix
-  type DutyCell = { id: string; status: string; duty_type: string; title: string }
+  type DutyCell = { id: string; status: string; duty_type: string; reviewed_by: string | null; title: string }
   const matrix: Record<string, Record<string, DutyCell[]>> = {}
   for (const member of members ?? []) {
     matrix[member.id] = {}
@@ -92,6 +98,8 @@ export default async function WorkloadsPage() {
         matrix={matrix}
         initialMarksMap={marksMap}
         canManage={canManage}
+        highlightMember={highlightMember ?? null}
+        highlightEvent={highlightEvent ?? null}
       />
     </div>
   )

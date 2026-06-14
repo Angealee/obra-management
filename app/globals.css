@@ -172,7 +172,7 @@ body {
 }
 
 .obra-table thead tr {
-  border-bottom: 1px solid rgba(0,0,0,0.06);
+  border-bottom: 1px solid rgba(0,0,0,0.09);
 }
 
 .obra-table thead th {
@@ -186,12 +186,13 @@ body {
 }
 
 .obra-table tbody tr {
-  border-bottom: 1px solid rgba(0,0,0,0.04);
-  transition: background 0.1s ease;
+  border-bottom: 1px solid rgba(0,0,0,0.05);
+  transition: background 0.13s ease;
 }
 
+.obra-table tbody tr:nth-child(even) { background: #FCFCFB; }
 .obra-table tbody tr:last-child { border-bottom: none; }
-.obra-table tbody tr:hover { background: #FAFAF9; }
+.obra-table tbody tr:hover { background: #F4F6F8; }
 
 .obra-table tbody td {
   padding: 13px 20px;
@@ -530,6 +531,67 @@ a:focus-visible {
 .fade-rise {
   animation: fadeRise 0.4s cubic-bezier(0.16, 1, 0.3, 1) backwards;
 }
+
+/* ── Reusable hover lift (cards, list rows) ─────────────────── */
+.lift-hover {
+  transition: box-shadow 0.2s ease, transform 0.2s ease, border-color 0.2s ease;
+}
+.lift-hover:hover {
+  box-shadow: 0 4px 16px rgba(0,0,0,0.06);
+  transform: translateY(-1px);
+  border-color: rgba(0,0,0,0.10);
+}
+
+/* ── Workload Matrix ────────────────────────────────────────── */
+/* Zebra striping + hover, mirrored onto the sticky Member column so it stays
+   opaque (and in sync) while the grid scrolls horizontally. Column/row lines
+   themselves are set inline on the cells (emphasized vertical separators). */
+.matrix-row { transition: background 0.13s ease; }
+.matrix-row:nth-child(even) { background: #FCFCFB; }
+.matrix-row:hover { background: #F4F6F8; }
+
+.matrix-sticky { background: #fff; transition: background 0.13s ease; }
+.matrix-row:nth-child(even) .matrix-sticky { background: #FCFCFB; }
+.matrix-row:hover .matrix-sticky { background: #F4F6F8; }
+
+/* Keyboard focus ring for matrix cell buttons. */
+.matrix-cell-btn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(59,130,246,0.38);
+}
+
+/* State-change motion: save bar rising in, panels revealing. */
+@keyframes matrixBarRise {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.matrix-savebar { animation: matrixBarRise 0.28s cubic-bezier(0.16, 1, 0.3, 1); }
+
+@keyframes panelReveal {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.panel-reveal { animation: panelReveal 0.22s ease; }
+
+/* ── Removable filter chip ──────────────────────────────────── */
+.filter-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: #F1F1EF;
+  color: #3f3f3c;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 12px;
+  font-weight: 500;
+  padding: 4px 9px;
+  border-radius: 999px;
+  border: 1px solid rgba(0,0,0,0.06);
+  cursor: pointer;
+  transition: background 0.13s ease, color 0.13s ease, border-color 0.13s ease;
+}
+.filter-chip:hover { background: #E9E9E6; color: #111; border-color: rgba(0,0,0,0.12); }
+.filter-chip .chip-x { opacity: 0.5; transition: opacity 0.13s ease; }
+.filter-chip:hover .chip-x { opacity: 0.95; }
 
 /* ── Respect users who prefer reduced motion (accessibility) ── */
 @media (prefers-reduced-motion: reduce) {

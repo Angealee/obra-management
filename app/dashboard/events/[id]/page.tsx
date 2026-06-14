@@ -4,6 +4,8 @@ import { createClient } from '@/lib/supabase/server'
 import type { Profile } from '@/types/database'
 import EventStatusManager from './EventStatusManager'
 import DeleteEventButton from './DeleteEventButton'
+import { dutyTypeLabel } from '@/lib/memberRole'
+import { dutyDisplayStatus, DUTY_DISPLAY_LABELS, DUTY_DISPLAY_STYLE } from '@/lib/dutyStatus'
 
 export default async function EventDetailPage({
   params,
@@ -40,13 +42,22 @@ export default async function EventDetailPage({
     const { data: duties } = await supabase
     .from('duties')
     .select(`
-      id, title, duty_type, priority, status,
+      id, title, duty_type, priority, status, reviewed_by,
       assignee:profiles!duties_assigned_to_fkey ( full_name )
     `)
     .eq('event_id', id)
     .order('created_at', { ascending: true })
 
   const canManage = profile.system_role === 'consultant' || profile.system_role === 'creative_head'
+
+  // Duty-outcome summary, derived from the merged display status.
+  const dutyList = (duties ?? []) as any[]
+  const outcomeCounts = {
+    pending:         dutyList.filter(d => dutyDisplayStatus(d) === 'pending').length,
+    in_progress:     dutyList.filter(d => dutyDisplayStatus(d) === 'in_progress').length,
+    awaiting_review: dutyList.filter(d => dutyDisplayStatus(d) === 'awaiting_review').length,
+    reviewed:        dutyList.filter(d => dutyDisplayStatus(d) === 'reviewed').length,
+  }
 
   const statusStyles: Record<string, string> = {
     upcoming:  'bg-blue-100 text-blue-700',
@@ -71,9 +82,19 @@ export default async function EventDetailPage({
         </Link>
         <div className="flex items-start justify-between gap-4">
           <h1 className="text-2xl font-bold text-gray-800">{event.title}</h1>
-          <span className={`shrink-0 text-xs font-medium px-3 py-1 rounded-full ${statusStyles[event.status]}`}>
-            {statusLabels[event.status]}
-          </span>
+          <div className="flex items-center gap-3 shrink-0">
+            {canManage && (
+              <Link
+                href={`/dashboard/events/${event.id}/edit`}
+                className="text-xs text-gray-500 hover:text-gray-800 underline transition"
+              >
+                Edit Event
+              </Link>
+            )}
+            <span className={`text-xs font-medium px-3 py-1 rounded-full ${statusStyles[event.status]}`}>
+              {statusLabels[event.status]}
+            </span>
+          </div>
         </div>
         {event.description && (
           <p className="text-gray-500 text-sm mt-2">{event.description}</p>
@@ -104,8 +125,8 @@ export default async function EventDetailPage({
           <div>
             <h2 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">Duties</h2>
             <p className="text-gray-400 text-xs mt-0.5">
-              {duties && duties.length > 0
-                ? `${duties.length} assigned · ${duties.filter(d => d.status === 'reviewed').length} reviewed`
+              {dutyList.length > 0
+                ? `${dutyList.length} assigned · ${outcomeCounts.pending} pending · ${outcomeCounts.in_progress} in progress · ${outcomeCounts.awaiting_review} awaiting review · ${outcomeCounts.reviewed} reviewed`
                 : 'No duties assigned yet'}
             </p>
           </div>
@@ -125,54 +146,54 @@ export default async function EventDetailPage({
           </p>
         ) : (
           <div className="space-y-2">
-            {duties.map(duty => (
-              <Link
-                key={duty.id}
-                href={`/dashboard/duties/${duty.id}`}
-                className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 p-3 rounded-lg border border-gray-100 hover:bg-gray-50 transition group"
-              >
-                <div className="flex items-center gap-3 min-w-0">
-                  {/* Status dot */}
-                  <span className={`w-2 h-2 rounded-full shrink-0 ${
-                    duty.status === 'reviewed'    ? 'bg-green-500'  :
-                    duty.status === 'completed'   ? 'bg-yellow-500' :
-                    duty.status === 'in_progress' ? 'bg-blue-500'   :
-                    'bg-gray-300'
-                  }`} />
+            {dutyList.map(duty => {
+              const display = dutyDisplayStatus(duty)
+              const [sbg, stc] = DUTY_DISPLAY_STYLE[display]
+              const dot = {
+                reviewed: 'bg-green-500', awaiting_review: 'bg-yellow-500',
+                in_progress: 'bg-blue-500', pending: 'bg-gray-300',
+              }[display]
+              return (
+                <Link
+                  key={duty.id}
+                  href={`/dashboard/duties/${duty.id}`}
+                  className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 p-3 rounded-lg border border-gray-100 hover:bg-gray-50 transition group"
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    {/* Status dot */}
+                    <span className={`w-2 h-2 rounded-full shrink-0 ${dot}`} />
 
-                  <div className="min-w-0">
-                    <p className="text-sm font-medium text-gray-800 truncate">{duty.title}</p>
-                    <p className="text-xs text-gray-400 mt-0.5 capitalize">
-                      {duty.duty_type.replace('_', ' ')} · {(duty as any).assignee?.full_name ?? '—'}
-                    </p>
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-gray-800 truncate">{duty.title}</p>
+                      <p className="text-xs text-gray-400 mt-0.5">
+                        {dutyTypeLabel(duty.duty_type)} · {duty.assignee?.full_name ?? '—'}
+                      </p>
+                    </div>
                   </div>
-                </div>
 
-                <div className="flex items-center gap-3 shrink-0 pl-5 sm:pl-0">
-                  {/* Priority badge */}
-                  <span className={`text-xs font-medium px-2 py-0.5 rounded-full capitalize ${
-                    duty.priority === 'urgent' ? 'bg-red-100 text-red-600'    :
-                    duty.priority === 'high'   ? 'bg-orange-100 text-orange-600' :
-                    'bg-gray-100 text-gray-500'
-                  }`}>
-                    {duty.priority}
-                  </span>
+                  <div className="flex items-center gap-3 shrink-0 pl-5 sm:pl-0">
+                    {/* Priority badge */}
+                    <span className={`text-xs font-medium px-2 py-0.5 rounded-full capitalize ${
+                      duty.priority === 'urgent' ? 'bg-red-100 text-red-600'    :
+                      duty.priority === 'high'   ? 'bg-orange-100 text-orange-600' :
+                      'bg-gray-100 text-gray-500'
+                    }`}>
+                      {duty.priority}
+                    </span>
 
-                  {/* Status badge */}
-                  <span className={`text-xs font-medium px-2.5 py-0.5 rounded-full ${
-                    duty.status === 'reviewed'    ? 'bg-green-100 text-green-700'  :
-                    duty.status === 'completed'   ? 'bg-yellow-100 text-yellow-700':
-                    duty.status === 'in_progress' ? 'bg-blue-100 text-blue-700'   :
-                    'bg-gray-100 text-gray-500'
-                  }`}>
-                    {duty.status === 'in_progress' ? 'In Progress' :
-                     duty.status.charAt(0).toUpperCase() + duty.status.slice(1)}
-                  </span>
+                    {/* Status badge */}
+                    <span
+                      className="text-xs font-medium px-2.5 py-0.5 rounded-full"
+                      style={{ background: sbg, color: stc }}
+                    >
+                      {DUTY_DISPLAY_LABELS[display]}
+                    </span>
 
-                  <span className="text-gray-300 group-hover:text-gray-500 transition text-xs">→</span>
-                </div>
-              </Link>
-            ))}
+                    <span className="text-gray-300 group-hover:text-gray-500 transition text-xs">→</span>
+                  </div>
+                </Link>
+              )
+            })}
           </div>
         )}
       </div>

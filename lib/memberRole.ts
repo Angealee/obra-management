@@ -27,3 +27,10 @@ export function memberRoleLabel(role: string | null | undefined): string {
   if (!role) return MEMBER_ROLE_LABELS.none
   return MEMBER_ROLE_LABELS[role as MemberRole] ?? MEMBER_ROLE_LABELS.none
 }
+
+// Duty-facing label for a duties.duty_type value. Same labels as member roles,
+// except 'other' (which has no MemberRole equivalent) reads as "General Duty".
+export function dutyTypeLabel(dutyType: string | null | undefined): string {
+  if (dutyType === 'other') return 'General Duty'
+  return memberRoleLabel(dutyType)
+}

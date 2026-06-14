@@ -3,19 +3,8 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import type { Profile } from '@/types/database'
 import DutyActions from './DutyActions'
-import ChecklistPanel from './CheckListPanel'
-
-const statusStyles: Record<string, string> = {
-  pending:     'bg-gray-100 text-gray-600',
-  in_progress: 'bg-blue-100 text-blue-700',
-  completed:   'bg-yellow-100 text-yellow-700',
-  reviewed:    'bg-green-100 text-green-700',
-}
-
-const statusLabels: Record<string, string> = {
-  pending: 'Pending', in_progress: 'In Progress',
-  completed: 'Completed', reviewed: 'Reviewed',
-}
+import DutyDetailsForm from './DutyDetailsForm'
+import { dutyDisplayStatus, DUTY_DISPLAY_LABELS, DUTY_DISPLAY_STYLE } from '@/lib/dutyStatus'
 
 const priorityStyles: Record<string, string> = {
   low: 'bg-gray-50 text-gray-400', normal: 'bg-gray-100 text-gray-500',
@@ -48,21 +37,21 @@ export default async function DutyDetailPage({
       events ( id, title, event_date ),
       assignee:profiles!duties_assigned_to_fkey ( id, full_name ),
       assigner:profiles!duties_assigned_by_fkey ( id, full_name ),
-      reviewer:profiles!duties_reviewed_by_fkey ( id, full_name ),
-      duty_checklists ( * )
+      reviewer:profiles!duties_reviewed_by_fkey ( id, full_name )
     `)
     .eq('id', id)
     .single()
 
   if (!duty) redirect('/dashboard/duties')
-    // Fetch workload mark for this duty
+
+  // Fetch workload mark for this duty (the recorded outcome)
   const { data: workloadMark } = duty.assigned_to && duty.event_id
     ? await supabase
         .from('workload_marks')
         .select('mark')
         .eq('member_id', duty.assigned_to)
         .eq('event_id', duty.event_id)
-        .single()
+        .maybeSingle()
     : { data: null }
 
   // Members can only view their own duties
@@ -70,7 +59,8 @@ export default async function DutyDetailPage({
   if (!isHead && duty.assigned_to !== user.id) redirect('/dashboard/duties')
 
   const isAssignee = duty.assigned_to === user.id
-  const checklist = duty.duty_checklists ?? []
+  const display = dutyDisplayStatus(duty)
+  const [sbg, stc] = DUTY_DISPLAY_STYLE[display]
 
   return (
     <div className="max-w-2xl">
@@ -86,17 +76,17 @@ export default async function DutyDetailPage({
             <span className={`text-xs font-medium px-3 py-1 rounded-full capitalize ${priorityStyles[duty.priority]}`}>
               {duty.priority}
             </span>
-            <span className={`text-xs font-medium px-3 py-1 rounded-full ${statusStyles[duty.status]}`}>
-              {statusLabels[duty.status]}
+            <span
+              className="text-xs font-medium px-3 py-1 rounded-full"
+              style={{ background: sbg, color: stc }}
+            >
+              {DUTY_DISPLAY_LABELS[display]}
             </span>
           </div>
         </div>
-        {duty.description && (
-          <p className="text-gray-500 text-sm mt-2">{duty.description}</p>
-        )}
       </div>
 
-      {/* Duty Info */}
+      {/* Context (read-only) */}
       <div className="bg-white rounded-xl shadow-sm p-4 sm:p-6 mb-6">
         <h2 className="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-4">Details</h2>
         {[
@@ -106,37 +96,30 @@ export default async function DutyDetailPage({
             : '—'],
           ['Assigned To', (duty as any).assignee?.full_name ?? '—'],
           ['Assigned By', (duty as any).assigner?.full_name ?? '—'],
-          ['Duty Type', duty.duty_type.replace('_', ' ')],
-          ['Due Date', duty.due_date ? new Date(duty.due_date).toLocaleDateString('en-PH', { year:'numeric', month:'long', day:'numeric' }) : '—'],
-          ['Completed', duty.completed_at ? new Date(duty.completed_at).toLocaleDateString('en-PH') : '—'],
-          ['Reviewed By', (duty as any).reviewer?.full_name ?? '—'],
-          ['Reviewed', duty.reviewed_at ? new Date(duty.reviewed_at).toLocaleDateString('en-PH') : '—'],
         ].map(([label, value]) => (
           <div key={label} className="flex justify-between items-center py-2 border-b border-gray-50 last:border-0">
             <span className="text-sm text-gray-500">{label}</span>
-            <span className="text-sm text-gray-800 font-medium capitalize">{value}</span>
+            <span className="text-sm text-gray-800 font-medium">{value}</span>
           </div>
         ))}
 
-        {duty.remarks && (
+        {isHead && duty.assigned_to && duty.event_id && (
           <div className="mt-4 pt-4 border-t border-gray-100">
-            <p className="text-xs text-gray-500 mb-1">Remarks from reviewer</p>
-            <p className="text-sm text-gray-700 bg-gray-50 rounded-lg p-3">{duty.remarks}</p>
+            <Link
+              href={`/dashboard/workloads?member=${duty.assigned_to}&event=${duty.event_id}`}
+              className="inline-flex items-center gap-1.5 text-sm text-gray-600 hover:text-gray-900 underline transition"
+            >
+              View in Workload Matrix →
+            </Link>
           </div>
         )}
       </div>
 
-      {/* Checklist */}
-      {checklist.length > 0 && (
-        <div className="bg-white rounded-xl shadow-sm p-4 sm:p-6 mb-6">
-          <h2 className="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-4">Checklist</h2>
-          <ChecklistPanel
-            items={checklist}
-            dutyStatus={duty.status}
-            canCheck={isAssignee && (duty.status === 'pending' || duty.status === 'in_progress')}
-          />
-        </div>
-      )}
+      {/* Editable description / priority / due date */}
+      <DutyDetailsForm
+        duty={{ id: duty.id, description: duty.description, priority: duty.priority, due_date: duty.due_date }}
+        isHead={isHead}
+      />
 
       {/* Actions */}
       <DutyActions
@@ -144,6 +127,7 @@ export default async function DutyDetailPage({
         profile={profile}
         isAssignee={isAssignee}
         isHead={isHead}
+        workloadMark={(workloadMark as any)?.mark ?? null}
       />
     </div>
   )

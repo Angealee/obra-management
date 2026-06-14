@@ -43,7 +43,7 @@ export default function WorkloadCell({
     cursor: canEdit ? 'pointer' : 'default',
   }
 
-  const interactive = canEdit ? 'hover:scale-110 active:scale-95' : ''
+  const interactive = canEdit ? 'matrix-cell-btn hover:scale-110 active:scale-95' : 'matrix-cell-btn'
 
   if (mark) {
     const s = MARK_STYLE[mark]
@@ -51,7 +51,7 @@ export default function WorkloadCell({
       <button
         onClick={canEdit ? onClick : undefined}
         className={interactive}
-        style={{ ...base, background: s.bg, color: s.color, boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}
+        style={{ ...base, background: s.bg, color: s.color, boxShadow: '0 1px 3px rgba(0,0,0,0.12)' }}
       >
         {s.icon}
       </button>
@@ -64,7 +64,7 @@ export default function WorkloadCell({
       <button
         onClick={canEdit ? onClick : undefined}
         className={interactive}
-        style={{ ...base, background: s.bg, color: s.color, border: '1px solid rgba(0,0,0,0.05)' }}
+        style={{ ...base, background: s.bg, color: s.color, border: '1px solid rgba(0,0,0,0.06)' }}
       >
         {s.icon}
       </button>
@@ -74,7 +74,7 @@ export default function WorkloadCell({
   return (
     <button
       onClick={canEdit ? onClick : undefined}
-      className={canEdit ? 'hover:border-[#3b82f6] hover:bg-[#eff6ff]' : ''}
+      className={`matrix-cell-btn ${canEdit ? 'hover:border-[#3b82f6] hover:bg-[#eff6ff]' : ''}`}
       style={{ ...base, background: '#fff', border: '1.5px dashed rgba(0,0,0,0.18)' }}
     />
   )

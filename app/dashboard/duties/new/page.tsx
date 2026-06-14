@@ -5,16 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import type { ObraEvent, Profile } from '@/types/database'
-
-const dutyTypes = [
-  { value: 'photographer',    label: 'Photographer' },
-  { value: 'photo_editor',    label: 'Photo Editor' },
-  { value: 'videographer',    label: 'Videographer' },
-  { value: 'video_editor',    label: 'Video Editor' },
-  { value: 'graphic_designer', label: 'Graphic Designer' },
-  { value: 'animator',        label: 'Animator' },
-  { value: 'other',           label: 'Other' },
-]
+import { memberRoleLabel } from '@/lib/memberRole'
 
 type MemberWithSkills = Profile & {
   profile_skills: { member_skills: { name: string } }[]
@@ -26,15 +17,15 @@ export default function NewDutyPage() {
   const preselectedEvent = searchParams.get('event')
   const supabase = createClient()
 
-  // Form state
-  const [title, setTitle] = useState('')
+  // Form state — title & duty_type are auto-derived at submit; no checklist.
   const [description, setDescription] = useState('')
-  const [dutyType, setDutyType] = useState('photographer')
   const [priority, setPriority] = useState('normal')
   const [dueDate, setDueDate] = useState('')
   const [eventId, setEventId] = useState(preselectedEvent ?? '')
   const [assignedTo, setAssignedTo] = useState<string[]>([])
-  const [checklistItems, setChecklistItems] = useState<string[]>([''])
+
+  // Members already assigned a duty for the currently-selected event.
+  const [alreadyAssigned, setAlreadyAssigned] = useState<Set<string>>(new Set())
 
   // Data
   const [events, setEvents] = useState<ObraEvent[]>([])
@@ -68,66 +59,76 @@ export default function NewDutyPage() {
     load()
   }, [])
 
-  function addChecklistItem() {
-    setChecklistItems(prev => [...prev, ''])
-  }
+  // When the selected event changes, load who's already assigned for it so we
+  // can flag those members as non-selectable (avoid duplicate assignments).
+  useEffect(() => {
+    if (!eventId) { setAlreadyAssigned(new Set()); return }
+    let cancelled = false
+    async function loadAssigned() {
+      const { data } = await supabase
+        .from('duties')
+        .select('assigned_to')
+        .eq('event_id', eventId)
+      if (cancelled) return
+      const ids = new Set<string>((data ?? []).map((d: any) => d.assigned_to).filter(Boolean))
+      setAlreadyAssigned(ids)
+      // Drop any selection that's now already-assigned for this event.
+      setAssignedTo(prev => prev.filter(id => !ids.has(id)))
+    }
+    loadAssigned()
+    return () => { cancelled = true }
+  }, [eventId])
 
-  function updateChecklistItem(index: number, value: string) {
-    setChecklistItems(prev => prev.map((item, i) => i === index ? value : item))
-  }
-
-  function removeChecklistItem(index: number) {
-    setChecklistItems(prev => prev.filter((_, i) => i !== index))
+  function toggleMember(id: string) {
+    if (alreadyAssigned.has(id)) return
+    setAssignedTo(prev =>
+      prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
+    )
   }
 
   async function handleSubmit() {
-  if (!title.trim())        return setError('Duty title is required.')
-  if (!eventId)             return setError('Please select an event.')
-  if (assignedTo.length === 0) return setError('Please select at least one member.')
+    if (!eventId)                return setError('Please select an event.')
+    if (assignedTo.length === 0) return setError('Please select at least one member.')
 
-  setLoading(true)
-  setError('')
+    setLoading(true)
+    setError('')
 
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) { setError('Not authenticated.'); setLoading(false); return }
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) { setError('Not authenticated.'); setLoading(false); return }
 
-  const validItems = checklistItems.filter(item => item.trim())
+    const event = events.find(e => e.id === eventId)
+    if (!event) { setError('Selected event not found.'); setLoading(false); return }
 
-  // Create one duty record per selected member
-  for (const memberId of assignedTo) {
-    const { data: duty, error: dutyError } = await supabase
-      .from('duties')
-      .insert({
-        title: title.trim(),
-        description: description.trim() || null,
-        duty_type: dutyType,
-        priority,
-        due_date: dueDate || null,
-        event_id: eventId,
-        assigned_to: memberId,
-        assigned_by: user.id,
-        status: 'pending',
-      })
-      .select()
-      .single()
+    // Create one duty record per selected member, auto-deriving title + duty_type
+    // from the event and the member's primary creative role.
+    for (const memberId of assignedTo) {
+      const member = members.find(m => m.id === memberId)
+      const dutyType = member?.member_role && member.member_role !== 'none'
+        ? member.member_role
+        : 'other'
+      const roleLabel = dutyType === 'other' ? 'General Duty' : memberRoleLabel(dutyType)
+      const title = `${event.title} — ${roleLabel}`
 
-    if (dutyError) { setError(dutyError.message); setLoading(false); return }
+      const { error: dutyError } = await supabase
+        .from('duties')
+        .insert({
+          title,
+          description: description.trim() || null,
+          duty_type: dutyType,
+          priority,
+          due_date: dueDate || null,
+          event_id: eventId,
+          assigned_to: memberId,
+          assigned_by: user.id,
+          status: 'pending',
+        })
 
-    // Each member gets their own copy of the checklist
-    if (validItems.length > 0) {
-      await supabase.from('duty_checklists').insert(
-        validItems.map(item => ({
-          duty_id: duty.id,
-          item_text: item.trim(),
-          is_done: false,
-        }))
-      )
+      if (dutyError) { setError(dutyError.message); setLoading(false); return }
     }
-  }
 
-  router.push('/dashboard/duties')
-  router.refresh()
-}
+    router.push('/dashboard/duties')
+    router.refresh()
+  }
 
   // Group members by role for display
   const creativeHeads = members.filter(m => m.system_role === 'creative_head')
@@ -140,7 +141,10 @@ export default function NewDutyPage() {
           ← Back to Duties
         </Link>
         <h1 className="text-2xl font-bold text-gray-800">Assign Duty</h1>
-        <p className="text-gray-500 text-sm mt-1">Assign a task to an Obra member for a specific event.</p>
+        <p className="text-gray-500 text-sm mt-1">
+          Pick an event and the members handling it. Each member’s duty title and type are set
+          automatically from their creative role.
+        </p>
       </div>
 
       <div className="space-y-6">
@@ -173,7 +177,11 @@ export default function NewDutyPage() {
         <div className="bg-white rounded-xl shadow-sm p-4 sm:p-6 space-y-4">
           <div>
             <h2 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">Assign To</h2>
-            <p className="text-gray-400 text-xs mt-1">Select the member who will handle this duty.</p>
+            <p className="text-gray-400 text-xs mt-1">
+              {eventId
+                ? 'Select the members who will handle this duty. Members already assigned for this event are disabled.'
+                : 'Select an event first, then choose the members who will handle this duty.'}
+            </p>
           </div>
 
           {members.length === 0 ? (
@@ -193,11 +201,8 @@ export default function NewDutyPage() {
                         key={member.id}
                         member={member}
                         selected={assignedTo.includes(member.id)}
-                        onSelect={() => setAssignedTo(prev =>
-                          prev.includes(member.id)
-                            ? prev.filter(id => id !== member.id)
-                            : [...prev, member.id]
-                        )}
+                        disabled={alreadyAssigned.has(member.id)}
+                        onSelect={() => toggleMember(member.id)}
                       />
                     ))}
                   </div>
@@ -216,11 +221,8 @@ export default function NewDutyPage() {
                         key={member.id}
                         member={member}
                         selected={assignedTo.includes(member.id)}
-                        onSelect={() => setAssignedTo(prev =>
-                          prev.includes(member.id)
-                            ? prev.filter(id => id !== member.id)
-                            : [...prev, member.id]
-                        )}
+                        disabled={alreadyAssigned.has(member.id)}
+                        onSelect={() => toggleMember(member.id)}
                       />
                     ))}
                   </div>
@@ -231,22 +233,9 @@ export default function NewDutyPage() {
           )}
         </div>
 
-        {/* Duty Info */}
+        {/* Duty Details */}
         <div className="bg-white rounded-xl shadow-sm p-4 sm:p-6 space-y-4">
           <h2 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">Duty Details</h2>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Title <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="text"
-              value={title}
-              onChange={e => setTitle(e.target.value)}
-              placeholder="e.g. Event Photography Coverage"
-              className="w-full border border-gray-300 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-400"
-            />
-          </div>
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
@@ -259,19 +248,7 @@ export default function NewDutyPage() {
             />
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Duty Type</label>
-              <select
-                value={dutyType}
-                onChange={e => setDutyType(e.target.value)}
-                className="w-full border border-gray-300 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-400"
-              >
-                {dutyTypes.map(t => (
-                  <option key={t.value} value={t.value}>{t.label}</option>
-                ))}
-              </select>
-            </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Priority</label>
               <select
@@ -295,39 +272,6 @@ export default function NewDutyPage() {
               />
             </div>
           </div>
-        </div>
-
-        {/* Checklist */}
-        <div className="bg-white rounded-xl shadow-sm p-4 sm:p-6 space-y-3">
-          <div>
-            <h2 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">Checklist</h2>
-            <p className="text-gray-400 text-xs mt-1">Optional. Step-by-step tasks for the member to complete.</p>
-          </div>
-          {checklistItems.map((item, index) => (
-            <div key={index} className="flex gap-2">
-              <input
-                type="text"
-                value={item}
-                onChange={e => updateChecklistItem(index, e.target.value)}
-                placeholder={`Step ${index + 1}`}
-                className="flex-1 border border-gray-300 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-400"
-              />
-              {checklistItems.length > 1 && (
-                <button
-                  onClick={() => removeChecklistItem(index)}
-                  className="px-3 py-2 text-gray-400 hover:text-red-500 transition text-lg leading-none"
-                >
-                  ×
-                </button>
-              )}
-            </div>
-          ))}
-          <button
-            onClick={addChecklistItem}
-            className="text-sm text-gray-500 hover:text-gray-800 underline transition"
-          >
-            + Add item
-          </button>
         </div>
 
         {error && (
@@ -357,10 +301,12 @@ export default function NewDutyPage() {
 function MemberCard({
   member,
   selected,
+  disabled = false,
   onSelect,
 }: {
   member: MemberWithSkills
   selected: boolean
+  disabled?: boolean
   onSelect: () => void
 }) {
   const skills = member.profile_skills?.map(ps => ps.member_skills?.name).filter(Boolean) ?? []
@@ -383,11 +329,13 @@ function MemberCard({
 
   return (
     <div
-      onClick={onSelect}
-      className={`flex items-center gap-4 p-4 rounded-xl border-2 cursor-pointer transition ${
-        selected
-          ? 'border-gray-900 bg-gray-50'
-          : 'border-gray-100 hover:border-gray-300 bg-white'
+      onClick={disabled ? undefined : onSelect}
+      className={`flex items-center gap-4 p-4 rounded-xl border-2 transition ${
+        disabled
+          ? 'border-gray-100 bg-gray-50 opacity-60 cursor-not-allowed'
+          : selected
+            ? 'border-gray-900 bg-gray-50 cursor-pointer'
+            : 'border-gray-100 hover:border-gray-300 bg-white cursor-pointer'
       }`}
     >
       {/* Checkbox circle */}
@@ -410,9 +358,16 @@ function MemberCard({
 
       {/* Info */}
       <div className="flex-1 min-w-0">
-        <p className={`text-sm font-medium truncate ${selected ? 'text-gray-900' : 'text-gray-800'}`}>
-          {member.full_name}
-        </p>
+        <div className="flex items-center gap-2">
+          <p className={`text-sm font-medium truncate ${selected ? 'text-gray-900' : 'text-gray-800'}`}>
+            {member.full_name}
+          </p>
+          {disabled && (
+            <span className="bg-gray-200 text-gray-500 text-[10px] font-medium px-2 py-0.5 rounded-full shrink-0 uppercase tracking-wide">
+              Already assigned
+            </span>
+          )}
+        </div>
         <p className="text-xs text-gray-400 mt-0.5">{displayRole}</p>
 
         {/* Skill badges */}

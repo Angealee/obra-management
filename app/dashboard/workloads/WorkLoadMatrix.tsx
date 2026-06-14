@@ -1,10 +1,11 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import WorkloadCell from './WorkLoadCell'
+import { dutyDisplayStatus } from '@/lib/dutyStatus'
 import {
   Users, CalendarDays, ListChecks, CheckCircle2, Scale, Search,
   ArrowUpAZ, ArrowDownAZ, ArrowUp10, ArrowDown10, ChevronDown, ChevronUp, Loader2,
@@ -33,6 +34,7 @@ type DutyCell = {
   id: string
   status: string
   duty_type: string
+  reviewed_by: string | null
   title: string
 }
 
@@ -81,11 +83,11 @@ function SkillTag({ name }: { name: string }) {
   )
 }
 
-function StatCard({ icon: Icon, label, value, sub, accent }: {
-  icon: LucideIcon; label: string; value: string | number; sub?: string; accent: string
+function StatCard({ icon: Icon, label, value, sub, accent, delay }: {
+  icon: LucideIcon; label: string; value: string | number; sub?: string; accent: string; delay?: string
 }) {
   return (
-    <div className="dash-card" style={{ padding: '16px 18px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+    <div className="dash-card lift-hover fade-rise" style={{ padding: '16px 18px', display: 'flex', flexDirection: 'column', gap: 10, animationDelay: delay }}>
       <div style={{
         width: 32, height: 32, borderRadius: 9, background: `${accent}1a`, color: accent,
         display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
@@ -109,12 +111,16 @@ export default function WorkloadMatrix({
   matrix,
   initialMarksMap,
   canManage,
+  highlightMember = null,
+  highlightEvent = null,
 }: {
   members: Member[]
   events: Event[]
   matrix: Record<string, Record<string, DutyCell[]>>
   initialMarksMap: Record<string, MarkRecord>
   canManage: boolean
+  highlightMember?: string | null
+  highlightEvent?: string | null
 }) {
   const router = useRouter()
   const supabase = createClient()
@@ -132,7 +138,24 @@ export default function WorkloadMatrix({
   const [search, setSearch] = useState('')
   const [dutyTypeFilter, setDutyTypeFilter] = useState('all')
   const [sortBy, setSortBy] = useState<SortOption>('alpha')
-  const [expanded, setExpanded] = useState<Record<string, boolean>>({})
+  // Pre-expand the highlighted member's card (mobile) so the deep-linked cell is visible.
+  const [expanded, setExpanded] = useState<Record<string, boolean>>(
+    highlightMember ? { [highlightMember]: true } : {}
+  )
+
+  // Deep-link highlight: scroll the targeted member/event cell into view and
+  // flash a ring around it for a few seconds.
+  const highlightKey = highlightMember && highlightEvent ? `${highlightMember}_${highlightEvent}` : null
+  const [showHighlight, setShowHighlight] = useState(!!highlightKey)
+  const highlightRef = useRef<HTMLTableCellElement | null>(null)
+
+  useEffect(() => {
+    if (!highlightKey) return
+    const el = highlightRef.current
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' })
+    const t = setTimeout(() => setShowHighlight(false), 4000)
+    return () => clearTimeout(t)
+  }, [highlightKey])
 
   const hasPending = Object.keys(pending).length > 0
   const cycle: Mark[] = ['completed', 'late', 'did_not_duty', null]
@@ -161,13 +184,39 @@ export default function WorkloadMatrix({
     if (!user) { setSaveError('Not authenticated.'); setSaving(false); return }
 
     const errors: string[] = []
+    const uid = user.id
+    const nowIso = new Date().toISOString()
+
+    // Keep the matching duty record in sync with the mark recorded here, so
+    // marking an outcome in the matrix behaves exactly like "Mark Outcome" on
+    // the duty detail page (DutyActions). Recording an outcome stamps the duty
+    // as reviewed (status='completed' + reviewed_by/reviewed_at); clearing a
+    // mark reverts that review. Matrix-only cells (no duty) are left untouched.
+    // Without this, the matrix and the Duties list drift apart — a cell marked
+    // completed here would otherwise leave its duty stuck on "pending".
+    async function syncDuties(memberId: string, eventId: string, reviewed: boolean) {
+      const cellDuties = matrix[memberId]?.[eventId] ?? []
+      for (const d of cellDuties) {
+        const upd: Record<string, any> = reviewed
+          ? { status: 'completed', reviewed_by: uid, reviewed_at: nowIso }
+          : { reviewed_by: null, reviewed_at: null, remarks: null }
+        // Stamp completion time only on the transition into completed.
+        if (reviewed && d.status !== 'completed' && d.status !== 'reviewed') {
+          upd.completed_at = nowIso
+        }
+        // Demote legacy status='reviewed' back to 'completed' when un-reviewing.
+        if (!reviewed && d.status === 'reviewed') upd.status = 'completed'
+        const { error } = await supabase.from('duties').update(upd).eq('id', d.id)
+        if (error) errors.push(error.message)
+      }
+    }
 
     for (const [key, newMark] of Object.entries(pending)) {
       const [memberId, eventId] = key.split('_')
       const existing = marksMap[key]
 
       if (newMark === null) {
-        // Delete
+        // Delete the mark + revert the matching duty's review state.
         if (existing?.id) {
           const { error } = await supabase
             .from('workload_marks')
@@ -176,28 +225,31 @@ export default function WorkloadMatrix({
           if (error) errors.push(error.message)
           else {
             setMarksMap(prev => { const n = { ...prev }; delete n[key]; return n })
+            await syncDuties(memberId, eventId, false)
           }
         }
       } else if (existing?.id) {
-        // Update
+        // Update the mark + stamp the matching duty as reviewed.
         const { error } = await supabase
           .from('workload_marks')
-          .update({ mark: newMark, marked_by: user.id })
+          .update({ mark: newMark, marked_by: uid })
           .eq('id', existing.id)
         if (error) errors.push(error.message)
         else {
           setMarksMap(prev => ({ ...prev, [key]: { id: existing.id, mark: newMark } }))
+          await syncDuties(memberId, eventId, true)
         }
       } else {
-        // Insert
+        // Insert the mark + stamp the matching duty as reviewed.
         const { data, error } = await supabase
           .from('workload_marks')
-          .insert({ member_id: memberId, event_id: eventId, mark: newMark, marked_by: user.id })
+          .insert({ member_id: memberId, event_id: eventId, mark: newMark, marked_by: uid })
           .select()
           .single()
         if (error) errors.push(error.message)
         else if (data) {
           setMarksMap(prev => ({ ...prev, [key]: { id: data.id, mark: newMark } }))
+          await syncDuties(memberId, eventId, true)
         }
       }
     }
@@ -242,7 +294,7 @@ export default function WorkloadMatrix({
       const cellDuties = matrix[memberId]?.[event.id] ?? []
       if (cellDuties.length > 0) {
         total += cellDuties.length
-        reviewed += cellDuties.filter(d => d.status === 'reviewed').length
+        reviewed += cellDuties.filter(d => dutyDisplayStatus(d) === 'reviewed').length
         pendingCount += cellDuties.filter(d => d.status === 'pending').length
       } else if (mark === 'completed' || mark === 'late') {
         total += 1
@@ -297,15 +349,16 @@ export default function WorkloadMatrix({
 
       {/* Summary cards */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-        <StatCard icon={Users} label="Members" value={members.length} accent="#3b82f6" />
-        <StatCard icon={CalendarDays} label="Events" value={events.length} accent="#7c3aed" />
-        <StatCard icon={ListChecks} label="Total Duties" value={overallTotal} accent="#0891b2" />
+        <StatCard icon={Users} label="Members" value={members.length} accent="#3b82f6" delay="0ms" />
+        <StatCard icon={CalendarDays} label="Events" value={events.length} accent="#7c3aed" delay="40ms" />
+        <StatCard icon={ListChecks} label="Total Duties" value={overallTotal} accent="#0891b2" delay="80ms" />
         <StatCard
           icon={CheckCircle2}
           label="Reviewed"
           value={overallReviewed}
           sub={overallTotal > 0 ? `${completionRate}% complete` : undefined}
           accent="#16a34a"
+          delay="120ms"
         />
         <StatCard
           icon={Scale}
@@ -313,6 +366,7 @@ export default function WorkloadMatrix({
           value={avgTotal.toFixed(1)}
           sub={`min ${minTotal} · max ${maxTotal}`}
           accent="#ca8a04"
+          delay="160ms"
         />
       </div>
 
@@ -399,9 +453,10 @@ export default function WorkloadMatrix({
 
       {/* Save bar */}
       {hasPending && (
-        <div style={{
+        <div className="matrix-savebar" style={{
           display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap',
           background: '#111', color: '#fff', borderRadius: 12, padding: '12px 18px',
+          boxShadow: '0 8px 24px rgba(0,0,0,0.18)',
         }}>
           <div className="flex items-center gap-3">
             <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#ca8a04', flexShrink: 0 }} />
@@ -472,17 +527,17 @@ export default function WorkloadMatrix({
       ) : (
         <>
           {/* Desktop / tablet table */}
-          <div className="hidden md:block" style={{ background: '#fff', border: '1px solid rgba(0,0,0,0.06)', borderRadius: 12, overflow: 'hidden' }}>
+          <div className="hidden md:block" style={{ background: '#fff', border: '1px solid rgba(0,0,0,0.06)', borderRadius: 12, overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.03)' }}>
             <div className="overflow-x-auto">
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, minWidth: Math.max(700, 260 + events.length * 110) }}>
                 <thead>
-                  <tr style={{ borderBottom: '1px solid rgba(0,0,0,0.05)' }}>
+                  <tr style={{ borderBottom: '1px solid rgba(0,0,0,0.10)' }}>
                     <th
                       className="sticky left-0 z-10"
                       style={{
                         background: '#F1F1EF', textAlign: 'left', padding: '14px 20px',
                         fontSize: 11, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: '#555',
-                        borderRight: '1px solid rgba(0,0,0,0.06)', minWidth: 240,
+                        borderRight: '1px solid rgba(0,0,0,0.12)', minWidth: 240,
                       }}
                     >
                       Member
@@ -490,7 +545,7 @@ export default function WorkloadMatrix({
                     {events.map(event => {
                       const es = EVENT_STATUS_STYLE[event.status] ?? EVENT_STATUS_STYLE.upcoming
                       return (
-                        <th key={event.id} style={{ textAlign: 'center', padding: '12px 8px', minWidth: 104, maxWidth: 120 }}>
+                        <th key={event.id} style={{ textAlign: 'center', padding: '12px 8px', minWidth: 104, maxWidth: 120, borderRight: '1px solid rgba(0,0,0,0.07)' }}>
                           <Link href={`/dashboard/events/${event.id}`} style={{ textDecoration: 'none' }}>
                             <p style={{
                               fontSize: 11.5, fontWeight: 600, color: '#555', lineHeight: 1.3, margin: 0,
@@ -526,8 +581,8 @@ export default function WorkloadMatrix({
                     const skills = getMemberSkills(member)
 
                     return (
-                      <tr key={member.id} className="group hover:bg-[#FAFAF9]" style={{ borderBottom: '1px solid rgba(0,0,0,0.03)', opacity: total === 0 ? 0.6 : 1 }}>
-                        <td className="sticky left-0 z-10 bg-white group-hover:bg-[#FAFAF9]" style={{ padding: '12px 20px', borderRight: '1px solid rgba(0,0,0,0.05)', transition: 'background 0.1s ease' }}>
+                      <tr key={member.id} className="matrix-row" style={{ borderBottom: '1px solid rgba(0,0,0,0.05)', opacity: total === 0 ? 0.6 : 1 }}>
+                        <td className="sticky left-0 z-10 matrix-sticky" style={{ padding: '12px 20px', borderRight: '1px solid rgba(0,0,0,0.12)' }}>
                           <Link href={`/dashboard/members/${member.id}`} className="flex items-center gap-3 group/link">
                             <div style={{
                               width: 32, height: 32, borderRadius: '50%', flexShrink: 0,
@@ -555,9 +610,20 @@ export default function WorkloadMatrix({
                           const cellDuties = matrix[member.id]?.[event.id] ?? []
                           const displayMark = getDisplayMark(member.id, event.id)
                           const isPendingChange = pending[`${member.id}_${event.id}`] !== undefined
+                          const isHighlighted = showHighlight && highlightKey === `${member.id}_${event.id}`
 
                           return (
-                            <td key={event.id} style={{ padding: '10px 8px', textAlign: 'center', background: isPendingChange ? '#fffbeb' : undefined }}>
+                            <td
+                              key={event.id}
+                              ref={isHighlighted ? highlightRef : undefined}
+                              style={{
+                                padding: '10px 8px', textAlign: 'center',
+                                borderRight: '1px solid rgba(0,0,0,0.07)',
+                                background: isHighlighted ? '#eff6ff' : isPendingChange ? '#fffbeb' : undefined,
+                                boxShadow: isHighlighted ? 'inset 0 0 0 2px #3b82f6' : undefined,
+                                transition: 'background 0.3s ease, box-shadow 0.3s ease',
+                              }}
+                            >
                               <div className="flex justify-center">
                                 <WorkloadCell
                                   mark={displayMark}
@@ -598,7 +664,7 @@ export default function WorkloadMatrix({
                       Duties / Event
                     </td>
                     {events.map(event => (
-                      <td key={event.id} style={{ textAlign: 'center', padding: '10px 8px', fontSize: 13, fontWeight: 700, color: '#555' }}>
+                      <td key={event.id} style={{ textAlign: 'center', padding: '10px 8px', fontSize: 13, fontWeight: 700, color: '#555', borderRight: '1px solid rgba(0,0,0,0.07)' }}>
                         {Object.values(matrix).reduce((c, me) => c + (me[event.id]?.length ?? 0), 0)}
                       </td>
                     ))}
@@ -619,7 +685,7 @@ export default function WorkloadMatrix({
               const isOpen = !!expanded[member.id]
 
               return (
-                <div key={member.id} className="dash-card" style={{ padding: 0, overflow: 'hidden' }}>
+                <div key={member.id} className="dash-card lift-hover" style={{ padding: 0, overflow: 'hidden' }}>
                   <button
                     onClick={() => toggleExpanded(member.id)}
                     className="flex items-center gap-3 w-full"
@@ -661,14 +727,25 @@ export default function WorkloadMatrix({
                   </button>
 
                   {isOpen && (
-                    <div style={{ padding: '4px 16px 16px', borderTop: '1px solid rgba(0,0,0,0.04)' }}>
+                    <div className="panel-reveal" style={{ padding: '4px 16px 16px', borderTop: '1px solid rgba(0,0,0,0.04)' }}>
                       <div className="grid grid-cols-3 sm:grid-cols-4 gap-3" style={{ marginTop: 12 }}>
                         {events.map(event => {
                           const cellDuties = matrix[member.id]?.[event.id] ?? []
                           const displayMark = getDisplayMark(member.id, event.id)
+                          const isHighlighted = showHighlight && highlightKey === `${member.id}_${event.id}`
 
                           return (
-                            <div key={event.id} className="flex flex-col items-center gap-1.5">
+                            <div
+                              key={event.id}
+                              className="flex flex-col items-center gap-1.5"
+                              style={{
+                                borderRadius: 8,
+                                padding: 4,
+                                boxShadow: isHighlighted ? '0 0 0 2px #3b82f6' : undefined,
+                                background: isHighlighted ? '#eff6ff' : undefined,
+                                transition: 'background 0.3s ease, box-shadow 0.3s ease',
+                              }}
+                            >
                               <WorkloadCell
                                 mark={displayMark}
                                 dutyStatus={cellDuties[0]?.status ?? null}

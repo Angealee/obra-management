@@ -100,8 +100,8 @@ export type ObraEventWithDetails = ObraEvent & {
 }
 
 export type DutyType =
-  | 'photography' | 'videography' | 'video_editing' | 'photo_editing'
-  | 'graphic_design' | 'animation' | 'writing' | 'event_assistance' | 'other'
+  | 'photographer' | 'photo_editor' | 'videographer' | 'video_editor'
+  | 'graphic_designer' | 'animator' | 'other'
 
 export type DutyPriority = 'low' | 'normal' | 'high' | 'urgent'
 

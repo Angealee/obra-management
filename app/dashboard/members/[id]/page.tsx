@@ -6,19 +6,8 @@ import ToggleActiveButton from './ToggleActiveButton'
 import WorkloadBadge from '@/components/WorkLoadBadge'
 import ArchiveMemberButton from './ArchiveMemberButton'
 import MemberYearsPanel from './MemberYearsPanel'
-import { memberRoleLabel } from '@/lib/memberRole'
-
-const dutyStatusStyle: Record<string, [string, string]> = {
-  pending:     ['#f3f4f6', '#6b7280'],
-  in_progress: ['#eff6ff', '#3b82f6'],
-  completed:   ['#fefce8', '#ca8a04'],
-  reviewed:    ['#f0fdf4', '#16a34a'],
-}
-
-const dutyStatusLabel: Record<string, string> = {
-  pending: 'Pending', in_progress: 'In Progress',
-  completed: 'Completed', reviewed: 'Reviewed',
-}
+import { memberRoleLabel, dutyTypeLabel } from '@/lib/memberRole'
+import { dutyDisplayStatus, DUTY_DISPLAY_LABELS, DUTY_DISPLAY_STYLE } from '@/lib/dutyStatus'
 
 export default async function MemberDetailPage({
   params,
@@ -48,7 +37,7 @@ export default async function MemberDetailPage({
   const { data: duties } = await supabase
     .from('duties')
     .select(`
-      id, title, duty_type, status, completed_at, created_at,
+      id, title, duty_type, status, reviewed_by, completed_at, created_at,
       event_id,
       events ( id, title, event_date, status )
     `)
@@ -94,7 +83,7 @@ export default async function MemberDetailPage({
 
   // Group duties by event
   type DutyRow = {
-    id: string; title: string; duty_type: string; status: string
+    id: string; title: string; duty_type: string; status: string; reviewed_by: string | null
     completed_at: string | null; event_id: string
     events: { id: string; title: string; event_date: string; status: string } | null
   }
@@ -114,7 +103,7 @@ export default async function MemberDetailPage({
 
   // Stats
   const totalDuties   = duties?.length ?? 0
-  const reviewedCount = duties?.filter(d => d.status === 'reviewed').length ?? 0
+  const reviewedCount = duties?.filter(d => dutyDisplayStatus(d) === 'reviewed').length ?? 0
   const lateCount     = Object.values(markMap).filter(m => m === 'late').length
   const dndCount      = Object.values(markMap).filter(m => m === 'did_not_duty').length
 
@@ -285,19 +274,20 @@ export default async function MemberDetailPage({
                   {/* Duties under this event */}
                   <div style={{ padding: '8px 0' }}>
                     {eventDuties.map((d, i) => {
-                      const [bg, tc] = dutyStatusStyle[d.status] ?? ['#f3f4f6', '#6b7280']
+                      const display = dutyDisplayStatus(d)
+                      const [bg, tc] = DUTY_DISPLAY_STYLE[display]
                       return (
                         <Link key={d.id} href={`/dashboard/duties/${d.id}`}
                           style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 16px', borderTop: i > 0 ? '1px solid rgba(0,0,0,0.04)' : 'none' }}
                           className="hover:bg-gray-50 transition-colors">
                           <div>
                             <p style={{ fontSize: '13px', fontWeight: 500, color: '#333' }}>{d.title}</p>
-                            <p style={{ fontSize: '11.5px', color: '#bbb', marginTop: '2px', textTransform: 'capitalize' }}>
-                              {d.duty_type.replace('_', ' ')}
+                            <p style={{ fontSize: '11.5px', color: '#bbb', marginTop: '2px' }}>
+                              {dutyTypeLabel(d.duty_type)}
                             </p>
                           </div>
                           <span style={{ fontSize: '11px', fontWeight: 600, background: bg, color: tc, padding: '3px 10px', borderRadius: '99px' }}>
-                            {dutyStatusLabel[d.status] ?? d.status}
+                            {DUTY_DISPLAY_LABELS[display]}
                           </span>
                         </Link>
                       )

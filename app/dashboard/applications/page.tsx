@@ -1,66 +1,42 @@
-import { createClient } from '@/lib/supabase/server'
-import { redirect } from 'next/navigation'
-import ApplicationsClient from './ApplicationsClient'
-import { enrichApplications } from './utils'
-import { requireProfile } from '@/lib/auth'
-import { getAcademicYearContext } from '@/lib/academicYear'
+import { Inbox } from 'lucide-react'
 
-export default async function ApplicationsPage() {
-  const { user, profile } = await requireProfile()
-  if (!['consultant', 'creative_head'].includes(profile.system_role)) {
-    redirect('/dashboard')
-  }
-
-  const supabase = await createClient()
-
-  const { viewYearId } = await getAcademicYearContext()
-
-  // Applications for the chosen year, plus legacy/untagged ones.
-  let applicationsQuery = supabase
-    .from('member_applications')
-    .select('*')
-    .order('created_at', { ascending: false })
-
-  if (viewYearId) {
-    applicationsQuery = applicationsQuery.or(
-      `academic_year_id.eq.${viewYearId},academic_year_id.is.null`
-    )
-  }
-
-  const { data: applications } = await applicationsQuery
-
-  const enriched = await enrichApplications(supabase, (applications as any[]) || [])
-
+// Index route content. Auth + the list/filter shell live in layout.tsx; this
+// only renders the right-hand placeholder shown before an applicant is opened.
+export default function ApplicationsIndexPage() {
   return (
-    <div className="page-enter">
-      <div style={{ marginBottom: 24 }}>
-        <h1 className="page-title">Membership Applications</h1>
-        <p className="page-subtitle">Review and evaluate applicants for Obra Creative Media Productions.</p>
-      </div>
-
-      <ApplicationsClient
-        applications={enriched}
-        selectedId={null}
-        userRole={profile.system_role}
-        userId={user.id}
-      >
-        <div className="dash-card" style={{
-          height: '100%',
-          minHeight: 400,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-        }}>
-          <div style={{ textAlign: 'center' }}>
-            <p style={{ fontFamily: 'DM Sans, sans-serif', fontSize: 14, color: '#bbb', fontWeight: 500 }}>
-              Select an applicant to view details
-            </p>
-            <p style={{ fontFamily: 'DM Sans, sans-serif', fontSize: 13, color: '#ddd', marginTop: 4 }}>
-              Use the list on the left to browse
-            </p>
-          </div>
+    <div
+      className="dash-card"
+      style={{
+        height: '100%',
+        minHeight: 420,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        textAlign: 'center',
+      }}
+    >
+      <div style={{ maxWidth: 280 }}>
+        <div
+          style={{
+            width: 48,
+            height: 48,
+            borderRadius: 12,
+            background: '#F2F2F0',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            margin: '0 auto 14px',
+          }}
+        >
+          <Inbox size={22} style={{ color: '#9a9a96' }} />
         </div>
-      </ApplicationsClient>
+        <p style={{ fontFamily: 'DM Sans, sans-serif', fontSize: 15, color: '#444', fontWeight: 600, margin: 0 }}>
+          Select an applicant to review
+        </p>
+        <p style={{ fontFamily: 'DM Sans, sans-serif', fontSize: 13.5, color: '#888', marginTop: 6, lineHeight: 1.6 }}>
+          Choose someone from the list to see their profile, portfolio score, and decision history.
+        </p>
+      </div>
     </div>
   )
 }
