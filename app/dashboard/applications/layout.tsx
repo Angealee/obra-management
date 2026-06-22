@@ -40,7 +40,7 @@ export default async function ApplicationsLayout({
   }
 
   const { data: applications } = await applicationsQuery
-  const enriched = await enrichApplications(supabase, (applications as any[]) || [])
+  const enriched = await enrichApplications(supabase, (applications as any[]) || [], user.id)
 
   return (
     <div className="page-enter">

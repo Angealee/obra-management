@@ -136,7 +136,7 @@ function EventSection({
         {title}
       </h2>
       {/* Mobile: stacked cards */}
-      <div className={`md:hidden bg-white rounded-xl border border-black/[0.06] overflow-hidden ${muted ? 'opacity-60' : ''}`}>
+      <div className={`md:hidden bg-white rounded-xl border border-black/6 overflow-hidden ${muted ? 'opacity-60' : ''}`}>
         {events.map((event) => (
           <Link
             key={event.id}
@@ -165,7 +165,7 @@ function EventSection({
       </div>
 
       {/* Desktop: Table */}
-      <div className={`hidden md:block bg-white rounded-xl border border-black/[0.06] overflow-hidden ${muted ? 'opacity-60' : ''}`}>
+      <div className={`hidden md:block bg-white rounded-xl border border-black/6 overflow-hidden ${muted ? 'opacity-60' : ''}`}>
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-gray-100">

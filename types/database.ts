@@ -194,6 +194,8 @@ export type MemberApplication = {
   avgScore?: number | null
   scoreCount?: number
   isDuplicate?: boolean
+  /** True when the currently-signed-in reviewer has scored this application. */
+  scoredByMe?: boolean
 }
 
 export type ApplicationScore = {

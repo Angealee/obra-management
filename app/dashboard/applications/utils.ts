@@ -12,12 +12,14 @@ export const STATUS_ACCENTS: Record<ApplicationStatus, string> = {
 }
 
 /**
- * Attaches average portfolio score, score count, and duplicate flags
- * (shared by the list page and the detail page so both stay in sync).
+ * Attaches average portfolio score, score count, duplicate flags, and (when a
+ * reviewer id is supplied) whether that reviewer has scored each application.
+ * Shared by the list page and the detail page so both stay in sync.
  */
 export async function enrichApplications(
   supabase: Awaited<ReturnType<typeof createClient>>,
-  applications: MemberApplication[]
+  applications: MemberApplication[],
+  currentUserId?: string
 ): Promise<MemberApplication[]> {
   if (applications.length === 0) return []
 
@@ -25,14 +27,18 @@ export async function enrichApplications(
 
   const { data: scores } = await supabase
     .from('application_scores')
-    .select('application_id, score')
+    .select('application_id, score, scored_by')
     .in('application_id', ids)
 
   const scoreMap = new Map<string, number[]>()
+  const scoredByMeSet = new Set<string>()
   for (const row of (scores as any[]) || []) {
     const list = scoreMap.get(row.application_id) || []
     list.push(row.score)
     scoreMap.set(row.application_id, list)
+    if (currentUserId && row.scored_by === currentUserId) {
+      scoredByMeSet.add(row.application_id)
+    }
   }
 
   // Duplicate detection — same email (case-insensitive) appearing more than once
@@ -52,6 +58,7 @@ export async function enrichApplications(
       avgScore,
       scoreCount: list?.length || 0,
       isDuplicate: (emailCounts.get(a.email.trim().toLowerCase()) || 0) > 1,
+      scoredByMe: scoredByMeSet.has(a.id),
     }
   })
 }

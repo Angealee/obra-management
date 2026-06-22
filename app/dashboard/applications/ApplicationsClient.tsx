@@ -1,11 +1,20 @@
 'use client'
 
-import { useState, useMemo, useTransition } from 'react'
+import { useState, useMemo, useTransition, useEffect } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { MemberApplication, ApplicationStatus } from '@/types/database'
 import { Search, ArrowLeft, Loader2, AlertTriangle, Star, Trash2, XCircle, SlidersHorizontal, X } from 'lucide-react'
 import { getInitials, getAvatarColor, STATUS_ACCENTS } from './utils'
+
+// Applications in one of these states have already been decided, so they no
+// longer count as "needs my review".
+const TERMINAL_STATUSES = new Set<ApplicationStatus>(['approved', 'rejected', 'withdrawn'])
+
+// localStorage key for the per-device filter/sort/review state.
+const FILTERS_KEY = 'obra-applications-filters'
+
+type ReviewFilter = 'all' | 'needs' | 'scored'
 
 const STATUS_COLORS: Record<ApplicationStatus, { bg: string; color: string; label: string }> = {
   pending:     { bg: '#fef9c3', color: '#854d0e', label: 'Pending' },
@@ -74,11 +83,54 @@ export default function ApplicationsClient({ applications, userRole, userId, chi
   const [filterYear, setFilterYear]         = useState('all')
   const [sortBy, setSortBy]                 = useState('name')
   const [minScore, setMinScore]             = useState('0')
+  const [reviewFilter, setReviewFilter]     = useState<ReviewFilter>('all')
+
+  // Restore the per-device filter state on first mount (and persist on change).
+  // Reading localStorage in an effect — rather than during render — keeps the
+  // server/client markup identical and avoids a hydration mismatch.
+  const [hydrated, setHydrated] = useState(false)
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(FILTERS_KEY)
+      if (raw) {
+        const s = JSON.parse(raw)
+        if (typeof s.search === 'string')         setSearch(s.search)
+        if (typeof s.filterStatus === 'string')   setFilterStatus(s.filterStatus)
+        if (typeof s.filterPosition === 'string') setFilterPosition(s.filterPosition)
+        if (typeof s.filterYear === 'string')     setFilterYear(s.filterYear)
+        if (typeof s.sortBy === 'string')         setSortBy(s.sortBy)
+        if (typeof s.minScore === 'string')       setMinScore(s.minScore)
+        if (s.reviewFilter === 'all' || s.reviewFilter === 'needs' || s.reviewFilter === 'scored') {
+          setReviewFilter(s.reviewFilter)
+        }
+      }
+    } catch { /* ignore malformed/blocked storage */ }
+    setHydrated(true)
+  }, [])
+
+  useEffect(() => {
+    if (!hydrated) return
+    try {
+      localStorage.setItem(FILTERS_KEY, JSON.stringify({
+        search, filterStatus, filterPosition, filterYear, sortBy, minScore, reviewFilter,
+      }))
+    } catch { /* ignore quota/blocked storage */ }
+  }, [hydrated, search, filterStatus, filterPosition, filterYear, sortBy, minScore, reviewFilter])
 
   const [selectedIds, setSelectedIds]     = useState<Set<string>>(new Set())
   const [confirmAction, setConfirmAction] = useState<'reject' | 'delete' | null>(null)
   const [bulkLoading, setBulkLoading]     = useState(false)
   const [bulkError, setBulkError]         = useState<string | null>(null)
+
+  // Index of the keyboard-highlighted row (−1 = none; falls back to the open one).
+  const [cursorIndex, setCursorIndex] = useState(-1)
+
+  // How many applicants still need a score from the signed-in reviewer
+  // (active-pipeline only — terminal decisions don't count).
+  const needsReviewCount = useMemo(
+    () => applications.filter(a => !a.scoredByMe && !TERMINAL_STATUSES.has(a.status)).length,
+    [applications]
+  )
 
   const filtered = useMemo(() => {
     return applications
@@ -90,7 +142,11 @@ export default function ApplicationsClient({ applications, userRole, userId, chi
         const matchPosition = filterPosition === 'all' || a.positions.includes(filterPosition)
         const matchYear     = filterYear     === 'all' || a.year_level === filterYear
         const matchScore    = (a.avgScore ?? 0) >= Number(minScore)
-        return matchSearch && matchStatus && matchPosition && matchYear && matchScore
+        const matchReview   =
+          reviewFilter === 'all' ||
+          (reviewFilter === 'needs'  && !a.scoredByMe && !TERMINAL_STATUSES.has(a.status)) ||
+          (reviewFilter === 'scored' && !!a.scoredByMe)
+        return matchSearch && matchStatus && matchPosition && matchYear && matchScore && matchReview
       })
       .sort((a, b) => {
         if (sortBy === 'score_desc') return (b.avgScore ?? -1) - (a.avgScore ?? -1)
@@ -98,7 +154,7 @@ export default function ApplicationsClient({ applications, userRole, userId, chi
         if (sortBy === 'newest')     return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
         return a.full_name.localeCompare(b.full_name)
       })
-  }, [applications, search, filterStatus, filterPosition, filterYear, sortBy, minScore])
+  }, [applications, search, filterStatus, filterPosition, filterYear, sortBy, minScore, reviewFilter])
 
   // Active non-default filters, rendered as removable chips.
   const activeChips: { key: string; label: string; onRemove: () => void }[] = []
@@ -120,6 +176,45 @@ export default function ApplicationsClient({ applications, userRole, userId, chi
     setPendingId(id)
     startTransition(() => router.push(`/dashboard/applications/${id}`))
   }
+
+  // When a different applicant opens (by click or Enter), let the keyboard
+  // cursor track it so the next ↑/↓ resumes from the open row.
+  useEffect(() => { setCursorIndex(-1) }, [selectedId])
+
+  // ↑/↓ move the highlight through the filtered list; Enter opens it.
+  // Skipped while focus is in a text field so typing/search is unaffected.
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (filtered.length === 0) return
+      const t = e.target as HTMLElement | null
+      const tag = t?.tagName
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || t?.isContentEditable) return
+      if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp' && e.key !== 'Enter') return
+
+      const current = cursorIndex >= 0 ? cursorIndex : filtered.findIndex(a => a.id === selectedId)
+
+      if (e.key === 'ArrowDown') {
+        e.preventDefault()
+        setCursorIndex(current < 0 ? 0 : Math.min(current + 1, filtered.length - 1))
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault()
+        setCursorIndex(current < 0 ? 0 : Math.max(current - 1, 0))
+      } else if (e.key === 'Enter') {
+        const target = current >= 0 ? filtered[current] : null
+        if (target) { e.preventDefault(); navigate(target.id) }
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filtered, cursorIndex, selectedId])
+
+  // Keep the highlighted row in view as the cursor moves.
+  useEffect(() => {
+    if (cursorIndex < 0) return
+    const el = document.querySelector(`[data-app-idx="${cursorIndex}"]`)
+    if (el) (el as HTMLElement).scrollIntoView({ block: 'nearest' })
+  }, [cursorIndex])
 
   function toggleSelect(id: string) {
     setSelectedIds(prev => {
@@ -215,6 +310,52 @@ export default function ApplicationsClient({ applications, userRole, userId, chi
 
         {/* Filter header */}
         <div style={{ padding: '16px 16px 12px', borderBottom: '1px solid rgba(0,0,0,0.07)' }}>
+
+          {/* Review segmented toggle — scoped to the signed-in reviewer */}
+          <div style={{
+            display: 'flex', gap: 2, marginBottom: 12,
+            background: '#F2F2F0', borderRadius: 9, padding: 3,
+          }}>
+            {([
+              { key: 'all',    label: 'All',      title: 'All applicants' },
+              { key: 'needs',  label: 'To score',  title: 'Still in the pipeline and not yet scored by you' },
+              { key: 'scored', label: 'Scored',   title: "Applicants you've already scored" },
+            ] as { key: ReviewFilter; label: string; title: string }[]).map(seg => {
+              const active = reviewFilter === seg.key
+              return (
+                <button
+                  key={seg.key}
+                  type="button"
+                  title={seg.title}
+                  onClick={() => setReviewFilter(seg.key)}
+                  style={{
+                    flex: 1,
+                    display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 5,
+                    padding: '6px 4px', borderRadius: 7, border: 'none',
+                    background: active ? '#fff' : 'transparent',
+                    boxShadow: active ? '0 1px 2px rgba(0,0,0,0.08)' : 'none',
+                    color: active ? '#CC0000' : '#777',
+                    fontFamily: 'DM Sans, sans-serif', fontSize: 11.5, fontWeight: 600,
+                    cursor: 'pointer', whiteSpace: 'nowrap',
+                    transition: 'background 0.13s ease, color 0.13s ease',
+                  }}
+                >
+                  {seg.label}
+                  {seg.key === 'needs' && needsReviewCount > 0 && (
+                    <span style={{
+                      minWidth: 16, height: 16, padding: '0 4px', borderRadius: 999,
+                      background: active ? '#CC0000' : '#d6d6d2',
+                      color: active ? '#fff' : '#555',
+                      fontFamily: 'DM Mono, monospace', fontSize: 9.5, fontWeight: 700,
+                      display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                    }}>
+                      {needsReviewCount}
+                    </span>
+                  )}
+                </button>
+              )
+            })}
+          </div>
 
           {/* Search + filter toggle */}
           <div style={{ display: 'flex', gap: 8 }}>
@@ -397,19 +538,27 @@ export default function ApplicationsClient({ applications, userRole, userId, chi
               No applicants match your filters.
             </div>
           ) : (
-            filtered.map(app => {
+            filtered.map((app, idx) => {
               const s = STATUS_COLORS[app.status]
               const accent = STATUS_ACCENTS[app.status]
               const isSelected = app.id === selectedId
+              const isCursor = idx === cursorIndex
               const isItemPending = isPending && pendingId === app.id
               const checked = selectedIds.has(app.id)
               return (
                 <div
                   key={app.id}
+                  data-app-idx={idx}
                   role="button"
                   tabIndex={0}
                   onClick={() => navigate(app.id)}
-                  onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') navigate(app.id) }}
+                  onKeyDown={e => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault()
+                      e.stopPropagation()
+                      navigate(app.id)
+                    }
+                  }}
                   style={{
                     width: '100%',
                     textAlign: 'left',
@@ -419,11 +568,12 @@ export default function ApplicationsClient({ applications, userRole, userId, chi
                     borderLeft: isSelected
                       ? `3px solid ${accent}`
                       : '3px solid transparent',
+                    boxShadow: isCursor ? 'inset 0 0 0 2px rgba(204,0,0,0.4)' : 'none',
                     cursor: 'pointer',
                     display: 'flex',
                     gap: 11,
                     alignItems: 'flex-start',
-                    transition: 'background 0.13s ease',
+                    transition: 'background 0.13s ease, box-shadow 0.13s ease',
                   }}
                 >
                   {isConsultant && (
