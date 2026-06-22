@@ -97,7 +97,12 @@ const RANK_BADGES: { icon: LucideIcon; color: string; bg: string }[] = [
 ]
 
 // ─── Avatar ───────────────────────────────────────────────
-function Avatar({ name, size = 28, bg = '#111' }: { name: string; size?: number; bg?: string }) {
+function Avatar({ name, size = 28, bg = '#111', src = null }: { name: string; size?: number; bg?: string; src?: string | null }) {
+  if (src) {
+    return (
+      <img src={src} alt={name} style={{ width: size, height: size, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} />
+    )
+  }
   const init = name.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase()
   return (
     <div style={{ width: size, height: size, borderRadius: '50%', background: bg, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '10.5px', fontWeight: 700, flexShrink: 0 }}>
@@ -139,7 +144,7 @@ export default async function DashboardPage() {
       { data: activeMembers },
     ] = await Promise.all([
       supabase.from('academic_year_members').select('*', { count: 'exact', head: true }).eq('academic_year_id', yearId),
-      supabase.from('duties').select('id, title, status, reviewed_by, assigned_to, event_id, events(title), assignee:profiles!duties_assigned_to_fkey(full_name)').in('event_id', eventFilter).order('created_at', { ascending: false }).limit(200),
+      supabase.from('duties').select('id, title, status, reviewed_by, assigned_to, event_id, events(title), assignee:profiles!duties_assigned_to_fkey(full_name, avatar_url)').in('event_id', eventFilter).order('created_at', { ascending: false }).limit(200),
       supabase.from('member_applications').select('*', { count: 'exact', head: true }).eq('status', 'pending'),
       supabase.from('workload_marks').select('mark, member_id').in('event_id', eventFilter),
       supabase.from('profiles').select('id').eq('is_active', true).neq('system_role', 'consultant'),
@@ -162,12 +167,13 @@ export default async function DashboardPage() {
     const compl   = displayIs('awaiting_review')
     const rev     = displayIs('reviewed')
 
-    type MemberStats = { name: string; total: number; reviewed: number; events: Set<string> }
+    type MemberStats = { name: string; avatar: string | null; total: number; reviewed: number; events: Set<string> }
     const memberStats: Record<string, MemberStats> = {}
     for (const d of duties ?? []) {
       if (!d.assigned_to) continue
       const name = (d as any).assignee?.full_name ?? 'Unknown'
-      if (!memberStats[d.assigned_to]) memberStats[d.assigned_to] = { name, total: 0, reviewed: 0, events: new Set() }
+      const avatar = (d as any).assignee?.avatar_url ?? null
+      if (!memberStats[d.assigned_to]) memberStats[d.assigned_to] = { name, avatar, total: 0, reviewed: 0, events: new Set() }
       const m = memberStats[d.assigned_to]
       m.total++
       if (dutyDisplayStatus(d) === 'reviewed') m.reviewed++
@@ -284,7 +290,7 @@ export default async function DashboardPage() {
                       </div>
                     )}
                     <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                      <Avatar name={data.name} size={36} bg={i === 0 ? '#111' : '#d1d5db'} />
+                      <Avatar name={data.name} src={data.avatar} size={36} bg={i === 0 ? '#111' : '#d1d5db'} />
                       <div style={{ minWidth: 0 }}>
                         <p style={{ fontSize: '13.5px', fontWeight: 600, color: '#111', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{data.name}</p>
                         <p style={{ fontSize: '11px', color: '#aaa' }}>#{i + 1} contributor</p>

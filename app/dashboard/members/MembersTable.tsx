@@ -50,7 +50,35 @@ type Member = {
   is_active: boolean
   member_status: string
   created_at: string
+  avatar_url: string | null
   profile_skills: { member_skills: { name: string } | null }[]
+}
+
+// Member avatar — shows the uploaded profile picture when available, otherwise
+// falls back to initials on the brand-dark (or muted, if archived) circle.
+function MemberAvatar({ name, src, size, archived }: {
+  name: string; src: string | null; size: number; archived: boolean
+}) {
+  if (src) {
+    return (
+      <img
+        src={src}
+        alt={name}
+        style={{ width: size, height: size, borderRadius: '50%', objectFit: 'cover', flexShrink: 0, opacity: archived ? 0.6 : 1 }}
+      />
+    )
+  }
+  const initials = name.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase()
+  return (
+    <div style={{
+      width: size, height: size, borderRadius: '50%',
+      background: archived ? '#e5e7eb' : '#111', color: '#fff',
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      fontFamily: 'DM Sans, sans-serif', fontSize: size >= 36 ? 13 : 12, fontWeight: 600, flexShrink: 0,
+    }}>
+      {initials}
+    </div>
+  )
 }
 
 type Props = {
@@ -258,23 +286,7 @@ export default function MembersTable({ members, userRole }: Props) {
                   }}
                 >
                   <div style={{ padding: '14px 16px', display: 'flex', alignItems: 'center', gap: 12 }}>
-                    {/* Avatar initials */}
-                    <div style={{
-                      width: 36,
-                      height: 36,
-                      borderRadius: '50%',
-                      background: isArchived ? '#e5e7eb' : '#111',
-                      color: '#fff',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      fontFamily: 'DM Sans, sans-serif',
-                      fontSize: 13,
-                      fontWeight: 600,
-                      flexShrink: 0,
-                    }}>
-                      {member.full_name.split(' ').map((n: string) => n[0]).slice(0, 2).join('').toUpperCase()}
-                    </div>
+                    <MemberAvatar name={member.full_name} src={member.avatar_url} size={36} archived={isArchived} />
 
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
@@ -390,23 +402,7 @@ export default function MembersTable({ members, userRole }: Props) {
                     {/* Name */}
                     <td>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                        {/* Avatar initials */}
-                        <div style={{
-                          width: 32,
-                          height: 32,
-                          borderRadius: '50%',
-                          background: isArchived ? '#e5e7eb' : '#111',
-                          color: '#fff',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          fontFamily: 'DM Sans, sans-serif',
-                          fontSize: 12,
-                          fontWeight: 600,
-                          flexShrink: 0,
-                        }}>
-                          {member.full_name.split(' ').map((n: string) => n[0]).slice(0, 2).join('').toUpperCase()}
-                        </div>
+                        <MemberAvatar name={member.full_name} src={member.avatar_url} size={32} archived={isArchived} />
                         <div>
                           <p style={{
                             fontFamily: 'DM Sans, sans-serif',

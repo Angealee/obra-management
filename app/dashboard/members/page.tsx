@@ -32,6 +32,7 @@ export default async function MembersPage() {
           is_active,
           member_status,
           created_at,
+          avatar_url,
           profile_skills (
             member_skills ( name )
           )
