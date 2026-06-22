@@ -35,23 +35,38 @@ export default async function DashboardLayout({
     ? await getAcademicYearContext()
     : { years: [], viewYearId: null }
 
+  // When the sticky year bar is shown, expose its height as a CSS variable so
+  // page-level sticky headers (e.g. the applicant card) can park *below* it
+  // instead of colliding at top:0. Falls back to 0 when the bar is absent.
+  const hasTopBar = showYearPicker && years.length > 0
+  const TOPBAR_H = 48
+
   return (
     <div className="flex flex-col md:flex-row" style={{ height: '100vh', overflow: 'hidden', background: '#F7F7F5' }}>
       <Sidebar profile={profile} />
-      <main style={{ flex: 1, overflowY: 'auto', minWidth: 0 }}>
-        {showYearPicker && years.length > 0 && (
+      <main
+        style={{
+          flex: 1,
+          overflowY: 'auto',
+          minWidth: 0,
+          ['--obra-topbar-h' as string]: hasTopBar ? `${TOPBAR_H}px` : '0px',
+        } as React.CSSProperties}
+      >
+        {hasTopBar && (
           <div
             style={{
               position: 'sticky',
               top: 0,
               zIndex: 20,
+              height: TOPBAR_H,
               display: 'flex',
               justifyContent: 'flex-end',
               alignItems: 'center',
               gap: 12,
-              padding: '10px 20px',
+              padding: '0 20px',
               background: 'rgba(247,247,245,0.85)',
               backdropFilter: 'blur(8px)',
+              WebkitBackdropFilter: 'blur(8px)',
               borderBottom: '1px solid rgba(0,0,0,0.05)',
             }}
           >
