@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { MoreVertical, XCircle, RotateCcw, Trash2, Loader2, LucideIcon } from 'lucide-react'
@@ -49,6 +49,28 @@ export default function ApplicationMenu({ applicationId, applicantName, status }
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  const btnRef = useRef<HTMLButtonElement>(null)
+  // Horizontal offset of the menu relative to the button (absolute positioning),
+  // so it stays attached to the button while still being clamped to the viewport.
+  const [menuLeft, setMenuLeft] = useState(0)
+  const MENU_W = 220
+
+  // Open the menu anchored under the trigger, right-aligned to it, but clamped
+  // to the viewport so it can never spill off-screen — the button can wrap to
+  // the left edge on mobile (flexWrap in the sticky header). We keep it
+  // position:absolute (attached to the button) and only compute the horizontal
+  // offset; vertical follows the button via top:100%.
+  function toggleOpen() {
+    if (open) { setOpen(false); return }
+    const r = btnRef.current?.getBoundingClientRect()
+    if (r) {
+      const vw = window.innerWidth
+      const clampedViewportLeft = Math.max(8, Math.min(r.right - MENU_W, vw - 8 - MENU_W))
+      setMenuLeft(clampedViewportLeft - r.left) // convert to offset from the button
+    }
+    setOpen(true)
+  }
+
   const isTerminal = ['approved', 'rejected', 'withdrawn'].includes(status)
   const ConfirmIcon = confirmAction ? MENU_COPY[confirmAction].icon : null
 
@@ -96,7 +118,8 @@ export default function ApplicationMenu({ applicationId, applicantName, status }
     <div style={{ position: 'relative' }}>
       <button
         type="button"
-        onClick={() => setOpen(o => !o)}
+        ref={btnRef}
+        onClick={toggleOpen}
         className="btn-secondary"
         aria-label="More actions"
         style={{ padding: '7px 9px' }}
@@ -108,9 +131,9 @@ export default function ApplicationMenu({ applicationId, applicantName, status }
         <>
           <div style={{ position: 'fixed', inset: 0, zIndex: 40 }} onClick={() => setOpen(false)} />
           <div style={{
-            position: 'absolute', top: 'calc(100% + 6px)', right: 0, zIndex: 50,
+            position: 'absolute', top: 'calc(100% + 6px)', left: menuLeft, zIndex: 50,
             background: '#fff', border: '1px solid rgba(0,0,0,0.08)', borderRadius: 10,
-            boxShadow: '0 8px 24px rgba(0,0,0,0.10)', minWidth: 200, padding: 6,
+            boxShadow: '0 8px 24px rgba(0,0,0,0.10)', width: MENU_W, padding: 6,
           }}>
             {!isTerminal && (
               <>

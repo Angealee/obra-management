@@ -25,9 +25,8 @@ export default function StickyHeader({ accentColor, children }: Props) {
   return (
     <>
       <div ref={sentinelRef} style={{ height: 0 }} />
-      <div className="dash-card" style={{
+      <div className="dash-card app-sticky-header" style={{
         display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap',
-        position: 'sticky', top: 0, zIndex: 30,
         padding: '16px 24px',
         borderLeft: `3px solid ${accentColor}`,
         boxShadow: stuck ? '0 4px 12px rgba(0,0,0,0.08)' : 'none',
