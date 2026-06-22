@@ -125,6 +125,12 @@ npm run dev        # http://localhost:3000
 | `npm run build` | Production build |
 | `npm start` | Serve the production build |
 | `npm run lint` | ESLint |
+| `npm test` | Run the Vitest unit suite once |
+| `npm run test:watch` | Vitest in watch mode |
+
+Unit tests live in [`tests/`](./tests) and cover pure, dependency-free logic
+(no DB / no React) so they run in milliseconds. They are excluded from the
+production build.
 
 ---
 
