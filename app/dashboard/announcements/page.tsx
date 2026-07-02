@@ -52,7 +52,7 @@ export default async function AnnouncementsPage() {
           <h1 style={{ fontSize: '26px', fontWeight: 700, letterSpacing: '-0.4px', color: '#111', lineHeight: 1.1 }}>
             Announcements
           </h1>
-          <p style={{ fontSize: '13px', color: '#999', marginTop: '5px' }}>
+          <p style={{ fontSize: '13px', color: '#6b7280', marginTop: '5px' }}>
             {announcements?.length ?? 0} announcement{(announcements?.length ?? 0) !== 1 ? 's' : ''}
           </p>
         </div>
@@ -91,7 +91,7 @@ export default async function AnnouncementsPage() {
                         <p style={{ fontSize: '15px', fontWeight: 600, color: '#111', lineHeight: 1.3, marginBottom: '5px' }}>
                         {a.title}
                         </p>
-                        <p style={{ fontSize: '13px', color: '#888', lineHeight: 1.5, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' as any }}>
+                        <p style={{ fontSize: '13px', color: '#6b7280', lineHeight: 1.5, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' as any }}>
                         {a.content}
                         </p>
                     </div>
@@ -106,7 +106,7 @@ export default async function AnnouncementsPage() {
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginTop: '12px', paddingTop: '10px', borderTop: '1px solid rgba(0,0,0,0.04)' }}>
                     <p style={{ fontSize: '11.5px', color: '#bbb' }}>
-                        Posted by <span style={{ color: '#888', fontWeight: 500 }}>{a.poster?.full_name ?? '—'}</span>
+                        Posted by <span style={{ color: '#6b7280', fontWeight: 500 }}>{a.poster?.full_name ?? '—'}</span>
                     </p>
                     <span style={{ color: '#ddd' }}>·</span>
                     <p style={{ fontSize: '11.5px', color: '#bbb' }}>

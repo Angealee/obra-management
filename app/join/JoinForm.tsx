@@ -29,7 +29,7 @@ export default function JoinForm() {
           <span className="text-[12.5px]" style={{ color: '#666' }}>We restored your previous draft.</span>
           <div className="flex items-center gap-3">
             <button type="button" onClick={() => j.setDraftRestored(false)}
-              style={{ fontSize: 11.5, fontWeight: 500, color: '#888', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
+              style={{ fontSize: 11.5, fontWeight: 500, color: '#6b7280', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
               Dismiss
             </button>
             <button type="button" onClick={j.startOver}
@@ -96,7 +96,7 @@ export default function JoinForm() {
         </div>
 
         {j.step === STEPS.length && (
-          <p className="text-center text-[11.5px]" style={{ color: '#aaa', marginTop: -6 }}>
+          <p className="text-center text-[11.5px]" style={{ color: '#6b7280', marginTop: -6 }}>
             {j.consented
               ? 'You have agreed to our Data Privacy Notice.'
               : 'You will be asked to review our Data Privacy Notice before anything is sent.'}

@@ -164,22 +164,22 @@ export default function WorkloadMatrix({
           {/* Footer summary */}
           <div className="dash-card" style={{ padding: '14px 18px' }}>
             <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
-              <p style={{ fontSize: 12, color: '#888', margin: 0 }}>
+              <p style={{ fontSize: 12, color: '#6b7280', margin: 0 }}>
                 <span style={{ fontWeight: 600, color: '#555' }}>{view.noDutyCount}</span> member{view.noDutyCount !== 1 ? 's' : ''} with no duties
               </p>
-              <p style={{ fontSize: 12, color: '#888', margin: 0 }}>
+              <p style={{ fontSize: 12, color: '#6b7280', margin: 0 }}>
                 <span style={{ fontWeight: 600, color: '#555' }}>{view.overallPending}</span> duties pending
               </p>
-              <p style={{ fontSize: 12, color: '#888', margin: 0 }}>
+              <p style={{ fontSize: 12, color: '#6b7280', margin: 0 }}>
                 <span style={{ fontWeight: 600, color: '#555' }}>{view.overallReviewed}</span> of {view.overallTotal} reviewed
               </p>
               {view.overallTotal > 0 && (
-                <p style={{ fontSize: 12, color: '#888', margin: 0 }}>
+                <p style={{ fontSize: 12, color: '#6b7280', margin: 0 }}>
                   <span style={{ fontWeight: 600, color: '#16a34a' }}>{view.completionRate}%</span> completion rate
                 </p>
               )}
               {view.visibleMembers.length !== members.length && (
-                <p style={{ fontSize: 12, color: '#888', margin: '0 0 0 auto' }}>
+                <p style={{ fontSize: 12, color: '#6b7280', margin: '0 0 0 auto' }}>
                   Showing <span style={{ fontWeight: 600, color: '#555' }}>{view.visibleMembers.length}</span> of {members.length} members
                 </p>
               )}

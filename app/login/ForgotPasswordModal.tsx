@@ -95,7 +95,7 @@ export default function ForgotPasswordModal({ onClose }: { onClose: () => void }
         onClick={e => e.stopPropagation()}
       >
         <div className="mb-5 flex items-center justify-between">
-          <span style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#999' }}>
+          <span style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#6b7280' }}>
             {step === 1 && 'Reset Password'}
             {step === 2 && 'Enter Code'}
             {step === 3 && 'Done'}
@@ -207,7 +207,7 @@ export default function ForgotPasswordModal({ onClose }: { onClose: () => void }
             </button>
 
             <div className="text-center">
-              <span style={{ fontSize: 12.5, color: '#999' }}>Didn&apos;t get the code? </span>
+              <span style={{ fontSize: 12.5, color: '#6b7280' }}>Didn&apos;t get the code? </span>
               <button type="button" onClick={handleResend} disabled={resendIn > 0}
                 style={{ fontSize: 12.5, fontWeight: 600, color: resendIn > 0 ? '#bbb' : '#CC0000', background: 'none', border: 'none', cursor: resendIn > 0 ? 'default' : 'pointer', padding: 0 }}>
                 {resendIn > 0 ? `Resend in ${resendIn}s` : 'Resend code'}

@@ -69,7 +69,7 @@ export default function ScoreCard({ applicationId, userId, userRole, scores }: P
           <span style={{ fontFamily: 'DM Mono, monospace', fontSize: 34, fontWeight: 700, color: '#111', lineHeight: 1 }}>
             {avg !== null ? avg.toFixed(1) : '—'}
           </span>
-          <span style={{ fontFamily: 'DM Sans, sans-serif', fontSize: 13, color: '#999' }}>/ 10</span>
+          <span style={{ fontFamily: 'DM Sans, sans-serif', fontSize: 13, color: '#6b7280' }}>/ 10</span>
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
           <div style={{ display: 'flex', gap: 1 }}>
@@ -82,7 +82,7 @@ export default function ScoreCard({ applicationId, userId, userRole, scores }: P
               />
             ))}
           </div>
-          <span style={{ fontFamily: 'DM Sans, sans-serif', fontSize: 11.5, color: '#999' }}>
+          <span style={{ fontFamily: 'DM Sans, sans-serif', fontSize: 11.5, color: '#6b7280' }}>
             Average from {scores.length} review{scores.length !== 1 ? 's' : ''}
           </span>
         </div>
@@ -123,7 +123,7 @@ export default function ScoreCard({ applicationId, userId, userRole, scores }: P
               )
             })}
           </div>
-          {saving && <Loader2 size={14} className="animate-spin" style={{ color: '#999' }} />}
+          {saving && <Loader2 size={14} className="animate-spin" style={{ color: '#6b7280' }} />}
           {!saving && myScore && (
             <span style={{ fontFamily: 'DM Mono, monospace', fontSize: 13, fontWeight: 700, color: '#111' }}>
               {myScore.score}/10

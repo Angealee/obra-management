@@ -62,10 +62,10 @@ export default function SkillsEditor({
 
   return (
     <div className="p-4 sm:p-6" style={{ background: '#fff', border: '1px solid rgba(0,0,0,0.07)', borderRadius: '12px' }}>
-      <p style={{ fontSize: '10.5px', fontWeight: 600, letterSpacing: '0.07em', textTransform: 'uppercase', color: '#999', marginBottom: '4px' }}>
+      <p style={{ fontSize: '10.5px', fontWeight: 600, letterSpacing: '0.07em', textTransform: 'uppercase', color: '#6b7280', marginBottom: '4px' }}>
         Skills
       </p>
-      <p style={{ fontSize: '12px', color: '#999', marginBottom: '14px' }}>
+      <p style={{ fontSize: '12px', color: '#6b7280', marginBottom: '14px' }}>
         Select the skills you bring to Obra. This is separate from your assigned creative role.
       </p>
 

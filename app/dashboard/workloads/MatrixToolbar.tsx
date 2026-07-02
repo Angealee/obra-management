@@ -69,7 +69,7 @@ export default function MatrixToolbar({
                 style={{
                   display: 'flex', alignItems: 'center', gap: 5, padding: '6px 10px', borderRadius: 6, border: 'none',
                   background: active ? '#111' : 'transparent',
-                  color: active ? '#fff' : '#888',
+                  color: active ? '#fff' : '#6b7280',
                   fontSize: 12, fontWeight: 500, cursor: 'pointer', transition: 'all 0.15s ease',
                   fontFamily: "'DM Sans', sans-serif",
                 }}
@@ -90,14 +90,14 @@ export default function MatrixToolbar({
           { bg: '#ca8a04', label: 'Late', icon: '!' },
           { bg: '#CC0000', label: 'Did Not Duty', icon: '✗' },
         ].map(item => (
-          <span key={item.label} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: '#888' }}>
+          <span key={item.label} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: '#6b7280' }}>
             <span style={{ width: 18, height: 18, borderRadius: 5, background: item.bg, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 700 }}>
               {item.icon}
             </span>
             {item.label}
           </span>
         ))}
-        <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: '#888' }}>
+        <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: '#6b7280' }}>
           <span style={{ width: 18, height: 18, borderRadius: 5, background: '#FCFCFB', border: '1px dashed rgba(0,0,0,0.08)' }} />
           Not assigned
         </span>

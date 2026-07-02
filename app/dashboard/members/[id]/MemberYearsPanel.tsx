@@ -68,10 +68,10 @@ export default function MemberYearsPanel({
 
   return (
     <div className="p-4 sm:p-6" style={{ background: '#fff', border: '1px solid rgba(0,0,0,0.07)', borderRadius: '12px' }}>
-      <p style={{ fontSize: '10.5px', fontWeight: 600, letterSpacing: '0.07em', textTransform: 'uppercase', color: '#999', marginBottom: '8px' }}>
+      <p style={{ fontSize: '10.5px', fontWeight: 600, letterSpacing: '0.07em', textTransform: 'uppercase', color: '#6b7280', marginBottom: '8px' }}>
         Academic Years
       </p>
-      <p style={{ fontSize: '13px', color: '#aaa', marginBottom: '14px' }}>
+      <p style={{ fontSize: '13px', color: '#6b7280', marginBottom: '14px' }}>
         The years this member is active for. They only appear in a year&apos;s members list, workloads, and duties while listed here.
       </p>
 

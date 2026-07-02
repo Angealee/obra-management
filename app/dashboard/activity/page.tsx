@@ -4,6 +4,7 @@ import { requireProfile } from '@/lib/auth'
 import type { ActivityLog } from '@/types/database'
 import EmptyState from '@/components/EmptyState'
 import Pager from '@/components/Pager'
+import Avatar from '@/components/ui/Avatar'
 import { History } from 'lucide-react'
 import ActivityFilters from './ActivityFilters'
 import PurgeExpiredCard from './PurgeExpiredCard'
@@ -71,32 +72,20 @@ function DiffList({ diff }: { diff: NonNullable<NonNullable<ActivityLog['details
   const entries = Object.entries(diff)
   return (
     <details style={{ marginTop: '4px' }}>
-      <summary style={{ fontSize: '11.5px', color: '#888', cursor: 'pointer', userSelect: 'none' }}>
+      <summary style={{ fontSize: '11.5px', color: '#6b7280', cursor: 'pointer', userSelect: 'none' }}>
         {entries.length} field{entries.length !== 1 ? 's' : ''} changed
       </summary>
       <div style={{ marginTop: '6px', display: 'flex', flexDirection: 'column', gap: '3px' }}>
         {entries.map(([field, change]) => (
-          <p key={field} style={{ fontSize: '11.5px', color: '#777', fontFamily: "'DM Mono', monospace", margin: 0, overflowWrap: 'anywhere' }}>
-            <span style={{ color: '#999' }}>{field.replace(/_/g, ' ')}:</span>{' '}
+          <p key={field} style={{ fontSize: '11.5px', color: '#6b7280', fontFamily: "'DM Mono', monospace", margin: 0, overflowWrap: 'anywhere' }}>
+            <span style={{ color: '#6b7280' }}>{field.replace(/_/g, ' ')}:</span>{' '}
             {change.changed
-              ? <em style={{ color: '#aaa' }}>changed</em>
+              ? <em style={{ color: '#6b7280' }}>changed</em>
               : <>{change.old ?? '—'} <span style={{ color: '#bbb' }}>→</span> <strong style={{ fontWeight: 600, color: '#555' }}>{change.new ?? '—'}</strong></>}
           </p>
         ))}
       </div>
     </details>
-  )
-}
-
-function Avatar({ name, src }: { name: string; src: string | null }) {
-  if (src) {
-    return <img src={src} alt={name} style={{ width: 26, height: 26, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} />
-  }
-  const init = name.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase()
-  return (
-    <div style={{ width: 26, height: 26, borderRadius: '50%', background: '#111', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '9.5px', fontWeight: 700, flexShrink: 0 }}>
-      {init || '•'}
-    </div>
   )
 }
 
@@ -185,7 +174,7 @@ export default async function ActivityPage({
               <div key={log.id} className="px-4 py-3.5 border-b border-gray-50 last:border-0">
                 <div className="flex items-start justify-between gap-2">
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
-                    <Avatar name={log.actor?.full_name ?? 'System'} src={log.actor?.avatar_url ?? null} />
+                    <Avatar name={log.actor?.full_name ?? 'System'} src={log.actor?.avatar_url ?? null} size={26} />
                     <p style={{ fontSize: '12.5px', fontWeight: 600, color: '#333', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       {log.actor?.full_name ?? 'System'}
                     </p>
@@ -194,7 +183,7 @@ export default async function ActivityPage({
                 </div>
                 <p style={{ fontSize: '13px', color: '#555', marginTop: '7px' }}>{sentence(log)}</p>
                 {log.details?.diff && <DiffList diff={log.details.diff} />}
-                <p style={{ fontSize: '11px', color: '#aaa', marginTop: '6px' }}>
+                <p style={{ fontSize: '11px', color: '#6b7280', marginTop: '6px' }}>
                   {fmtWhen(log.created_at)} · {MODULE_LABEL[log.target_table] ?? log.target_table}
                 </p>
               </div>
@@ -221,7 +210,7 @@ export default async function ActivityPage({
                     </td>
                     <td className="px-6 py-4">
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
-                        <Avatar name={log.actor?.full_name ?? 'System'} src={log.actor?.avatar_url ?? null} />
+                        <Avatar name={log.actor?.full_name ?? 'System'} src={log.actor?.avatar_url ?? null} size={26} />
                         <span style={{ fontSize: '12.5px', fontWeight: 500, color: '#333', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                           {log.actor?.full_name ?? 'System'}
                         </span>

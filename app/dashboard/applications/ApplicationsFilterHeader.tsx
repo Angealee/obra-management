@@ -25,7 +25,7 @@ const fieldLabelStyle: React.CSSProperties = {
   fontFamily: 'DM Sans, sans-serif',
   fontSize: 11,
   fontWeight: 600,
-  color: '#777',
+  color: '#6b7280',
   textTransform: 'uppercase',
   letterSpacing: '0.05em',
 }
@@ -39,7 +39,7 @@ const iconBtnStyle: React.CSSProperties = {
   borderRadius: 7,
   border: '1px solid rgba(0,0,0,0.10)',
   background: '#fff',
-  color: '#777',
+  color: '#6b7280',
   cursor: 'pointer',
 }
 
@@ -85,7 +85,7 @@ export default function ApplicationsFilterHeader({
                 padding: '6px 4px', borderRadius: 7, border: 'none',
                 background: active ? '#fff' : 'transparent',
                 boxShadow: active ? '0 1px 2px rgba(0,0,0,0.08)' : 'none',
-                color: active ? '#CC0000' : '#777',
+                color: active ? '#CC0000' : '#6b7280',
                 fontFamily: 'DM Sans, sans-serif', fontSize: 11.5, fontWeight: 600,
                 cursor: 'pointer', whiteSpace: 'nowrap',
                 transition: 'background 0.13s ease, color 0.13s ease',
@@ -113,7 +113,7 @@ export default function ApplicationsFilterHeader({
         <div style={{ position: 'relative', flex: 1 }}>
           <Search size={15} style={{
             position: 'absolute', left: 11, top: '50%',
-            transform: 'translateY(-50%)', color: '#aaa',
+            transform: 'translateY(-50%)', color: '#6b7280',
           }} />
           <input
             type="text"
@@ -252,14 +252,14 @@ export default function ApplicationsFilterHeader({
           fontFamily: 'DM Sans, sans-serif',
           fontSize: 12.5,
           fontWeight: 500,
-          color: '#888',
+          color: '#6b7280',
         }}>
           {resultCount} applicant{resultCount !== 1 ? 's' : ''}
         </p>
 
         {isConsultant && selectedCount > 0 && (
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span style={{ fontSize: 12, color: '#777', fontFamily: 'DM Sans, sans-serif', fontWeight: 500 }}>
+            <span style={{ fontSize: 12, color: '#6b7280', fontFamily: 'DM Sans, sans-serif', fontWeight: 500 }}>
               {selectedCount} selected
             </span>
             <button type="button" title="Reject selected" style={iconBtnStyle}

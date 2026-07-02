@@ -26,7 +26,7 @@ export function MiniBar({ value, max }: { value: number; max: number }) {
 export function SkillTag({ name }: { name: string }) {
   return (
     <span style={{
-      fontSize: 10.5, fontWeight: 500, color: '#888', background: '#F7F7F5',
+      fontSize: 10.5, fontWeight: 500, color: '#6b7280', background: '#F7F7F5',
       padding: '2px 8px', borderRadius: 999, whiteSpace: 'nowrap',
     }}>
       {name}
@@ -50,7 +50,7 @@ export function StatCard({ icon: Icon, label, value, sub, accent, delay }: {
         <p style={{ fontSize: 22, fontWeight: 700, letterSpacing: '-0.5px', color: '#111', marginTop: 4, fontFamily: "'DM Sans', sans-serif" }}>
           {value}
         </p>
-        {sub && <p style={{ fontSize: 11, color: '#aaa', marginTop: 2 }}>{sub}</p>}
+        {sub && <p style={{ fontSize: 11, color: '#6b7280', marginTop: 2 }}>{sub}</p>}
       </div>
     </div>
   )

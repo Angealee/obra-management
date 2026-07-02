@@ -11,7 +11,7 @@ export function JoinStepper({ step }: { step: number }) {
   return (
     <div className="mb-6">
       <div className="mb-2 flex items-center justify-between">
-        <span style={{ fontSize: 11, fontWeight: 600, color: '#999', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+        <span style={{ fontSize: 11, fontWeight: 600, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
           Step {step} of {STEPS.length}
         </span>
         <span style={{ fontSize: 11, fontWeight: 600, color: '#CC0000' }}>
@@ -91,7 +91,7 @@ function ReviewSection({ title, onEdit, children }: {
       }}
     >
       <div className="mb-2 flex items-center justify-between">
-        <span style={{ fontSize: 11, fontWeight: 700, color: '#999', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+        <span style={{ fontSize: 11, fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
           {title}
         </span>
         <button type="button" onClick={onEdit}
@@ -113,7 +113,7 @@ function ReviewSection({ title, onEdit, children }: {
 function ReviewRow({ label, value, multiline }: { label: string; value: string; multiline?: boolean }) {
   return (
     <div className={multiline ? '' : 'flex items-baseline justify-between gap-3'}>
-      <span style={{ fontSize: 11.5, color: '#aaa', whiteSpace: 'nowrap' }}>{label}</span>
+      <span style={{ fontSize: 11.5, color: '#6b7280', whiteSpace: 'nowrap' }}>{label}</span>
       <p style={{
         margin: multiline ? '2px 0 0' : 0,
         fontSize: 13, color: '#222', lineHeight: 1.5,

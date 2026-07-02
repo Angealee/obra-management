@@ -227,7 +227,7 @@ export default async function JoinPage() {
                   fontSize: 10.5,
                   letterSpacing: '0.12em',
                   textTransform: 'uppercase',
-                  color: '#999',
+                  color: '#6b7280',
                 }}
               >
                 Membership Application
@@ -251,7 +251,7 @@ export default async function JoinPage() {
               style={{
                 marginTop: 6,
                 fontSize: 13.5,
-                color: '#888',
+                color: '#6b7280',
                 lineHeight: 1.6,
               }}
             >
@@ -309,7 +309,7 @@ export default async function JoinPage() {
                     fontSize: 11,
                     textTransform: 'uppercase',
                     letterSpacing: '0.08em',
-                    color: '#aaa',
+                    color: '#6b7280',
                     margin: '4px 0 0',
                   }}
                 >

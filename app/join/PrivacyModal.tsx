@@ -12,7 +12,7 @@ import { PRIVACY_CONTACT_EMAIL } from '@/lib/privacyPolicy'
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div style={{ marginBottom: 16 }}>
-      <p style={{ fontSize: 11, fontWeight: 700, color: '#999', textTransform: 'uppercase', letterSpacing: '0.08em', margin: '0 0 5px' }}>
+      <p style={{ fontSize: 11, fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.08em', margin: '0 0 5px' }}>
         {title}
       </p>
       <div style={{ fontSize: 13, color: '#444', lineHeight: 1.65 }}>{children}</div>
@@ -73,7 +73,7 @@ export default function PrivacyModal({
             <h3 id="privacy-modal-title" style={{ fontSize: 16, fontWeight: 700, color: '#111', margin: 0 }}>
               Data Privacy Notice
             </h3>
-            <p style={{ fontSize: 11.5, color: '#999', margin: '2px 0 0' }}>
+            <p style={{ fontSize: 11.5, color: '#6b7280', margin: '2px 0 0' }}>
               Please read before submitting your application.
             </p>
           </div>
@@ -81,7 +81,7 @@ export default function PrivacyModal({
             type="button"
             onClick={onClose}
             aria-label="Close privacy notice"
-            style={{ width: 30, height: 30, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 8, border: '1px solid rgba(0,0,0,0.08)', background: '#fff', color: '#999', cursor: 'pointer', flexShrink: 0 }}
+            style={{ width: 30, height: 30, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 8, border: '1px solid rgba(0,0,0,0.08)', background: '#fff', color: '#6b7280', cursor: 'pointer', flexShrink: 0 }}
           >
             <X size={15} />
           </button>
@@ -143,7 +143,7 @@ export default function PrivacyModal({
             </p>
           </Section>
 
-          <p style={{ fontSize: 12, color: '#888', lineHeight: 1.6, margin: 0, background: '#FAFAF9', border: '1px solid rgba(0,0,0,0.05)', borderRadius: 8, padding: '10px 12px' }}>
+          <p style={{ fontSize: 12, color: '#6b7280', lineHeight: 1.6, margin: 0, background: '#FAFAF9', border: '1px solid rgba(0,0,0,0.05)', borderRadius: 8, padding: '10px 12px' }}>
             By clicking <strong style={{ color: '#555' }}>“I Agree &amp; Continue”</strong>, you confirm that you have read this
             notice and consent to the collection and processing of your personal data as
             described above. The date and version of your consent are recorded with your

@@ -1,3 +1,5 @@
+import Image from 'next/image'
+
 // Shared avatar: photo when available, initials fallback otherwise.
 // Server-safe (no hooks). Replaces the hand-rolled copies that lived in the
 // dashboard, activity feed, and members table.
@@ -14,9 +16,11 @@ export default function Avatar({
 }) {
   if (src) {
     return (
-      <img
+      <Image
         src={src}
         alt={name}
+        width={size}
+        height={size}
         style={{ width: size, height: size, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }}
       />
     )

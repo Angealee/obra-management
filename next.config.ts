@@ -39,6 +39,12 @@ const securityHeaders = [
 
 const nextConfig: NextConfig = {
   reactCompiler: true,
+  images: {
+    // Supabase Storage avatars (public bucket) served through next/image.
+    remotePatterns: [
+      { protocol: 'https', hostname: '*.supabase.co' },
+    ],
+  },
   async headers() {
     return [
       {

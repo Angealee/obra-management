@@ -212,7 +212,7 @@ export default function PwaController() {
             aria-label="Dismiss"
             style={{
               flexShrink: 0, width: 26, height: 26, borderRadius: 7,
-              border: '1px solid rgba(0,0,0,0.08)', background: '#fff', color: '#888',
+              border: '1px solid rgba(0,0,0,0.08)', background: '#fff', color: '#6b7280',
               display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
             }}
           >

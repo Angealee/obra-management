@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
+import Image from 'next/image'
 import { usePathname } from 'next/navigation'
 import {
   LayoutDashboard, Users, Calendar, CheckSquare,
@@ -136,17 +137,21 @@ export default function Sidebar({ profile }: { profile: Profile }) {
           <Menu size={18} strokeWidth={2.2} />
         </button>
 
-        <img
+        <Image
           src="/whiteobralogo.png"
           alt="Obra Logo"
+          width={90}
+          height={30}
           style={{ height: '30px', width: 'auto', objectFit: 'contain' }}
         />
 
         <Link href="/dashboard/profile" style={{ display: 'flex', alignItems: 'center' }}>
           {profile.avatar_url ? (
-            <img
+            <Image
               src={profile.avatar_url}
               alt={profile.full_name}
+              width={30}
+              height={30}
               style={{ width: '30px', height: '30px', borderRadius: '50%', objectFit: 'cover' }}
             />
           ) : (
@@ -216,9 +221,11 @@ export default function Sidebar({ profile }: { profile: Profile }) {
             transform: effectiveCollapsed ? 'scale(0.95)' : 'scale(1)',
           }}
         >
-          <img
+          <Image
             src="/whiteobralogo.png"
             alt="Obra Logo"
+            width={96}
+            height={76}
             style={{
               width: effectiveCollapsed ? '36px' : '96px',
               height: effectiveCollapsed ? '36px' : '76px',
@@ -261,7 +268,7 @@ export default function Sidebar({ profile }: { profile: Profile }) {
           <button
             onClick={toggle}
             title="Collapse sidebar"
-            className="hidden md:flex"
+            className="hidden md:flex sidebar-icon-btn"
             style={{
               flexShrink: 0,
               width: '28px',
@@ -270,21 +277,9 @@ export default function Sidebar({ profile }: { profile: Profile }) {
               justifyContent: 'center',
               borderRadius: '6px',
               border: '1px solid rgba(255,255,255,0.08)',
-              background: 'rgba(255,255,255,0.04)',
-              color: 'rgba(255,255,255,0.55)',
               cursor: 'pointer',
               opacity: collapsed ? 0 : 1,
               transform: collapsed ? 'translateX(8px) scale(0.9)' : 'translateX(0) scale(1)',
-              transition:
-                'background 0.15s ease, color 0.15s ease, opacity 0.2s ease, transform 0.2s ease',
-            }}
-            onMouseEnter={e => {
-              e.currentTarget.style.background = 'rgba(255,255,255,0.10)'
-              e.currentTarget.style.color = 'rgba(255,255,255,0.85)'
-            }}
-            onMouseLeave={e => {
-              e.currentTarget.style.background = 'rgba(255,255,255,0.04)'
-              e.currentTarget.style.color = 'rgba(255,255,255,0.55)'
             }}
           >
             <PanelLeftClose size={14} strokeWidth={2.2} />
@@ -319,15 +314,14 @@ export default function Sidebar({ profile }: { profile: Profile }) {
 
       {/* ── User + sign out ── */}
       <Link href="/dashboard/profile" style={{ textDecoration: 'none', display: 'block' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '8px 6px', marginBottom: '2px', borderRadius: '8px', transition: 'background 0.15s ease' }}
-          onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.06)')}
-          onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
-        >
+        <div className="sidebar-user-row" style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '8px 6px', marginBottom: '2px' }}>
           {/* Avatar — show image if exists, otherwise initials */}
           {profile.avatar_url ? (
-            <img
+            <Image
               src={profile.avatar_url}
               alt={profile.full_name}
+              width={28}
+              height={28}
               style={{ width: '28px', height: '28px', borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }}
             />
           ) : (

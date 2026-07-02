@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
+import Image from 'next/image'
 import { createClient } from '@/lib/supabase/server'
 import type { Profile } from '@/types/database'
 import ToggleActiveButton from './ToggleActiveButton'
@@ -138,7 +139,7 @@ export default async function MemberDetailPage({
         <div style={{ display: 'flex', alignItems: 'center', gap: '18px', flexWrap: 'wrap' }}>
           {/* Avatar */}
           {member.avatar_url ? (
-            <img src={member.avatar_url} alt={member.full_name}
+            <Image src={member.avatar_url} alt={member.full_name} width={64} height={64}
               style={{ width: '64px', height: '64px', borderRadius: '50%', objectFit: 'cover', flexShrink: 0, border: '2px solid rgba(0,0,0,0.07)' }} />
           ) : (
             <div style={{ width: '64px', height: '64px', borderRadius: '50%', background: '#111', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px', fontWeight: 700, flexShrink: 0 }}>
@@ -192,7 +193,7 @@ export default async function MemberDetailPage({
           ].map(stat => (
             <div key={stat.label} style={{ background: '#fafaf9', padding: '14px 16px', textAlign: 'center' }}>
               <p style={{ fontSize: '22px', fontWeight: 700, color: stat.color, letterSpacing: '-0.3px' }}>{stat.value}</p>
-              <p style={{ fontSize: '11px', color: '#999', marginTop: '3px', fontWeight: 500 }}>{stat.label}</p>
+              <p style={{ fontSize: '11px', color: '#6b7280', marginTop: '3px', fontWeight: 500 }}>{stat.label}</p>
             </div>
           ))}
         </div>
@@ -200,7 +201,7 @@ export default async function MemberDetailPage({
 
       {/* Profile info */}
       <div className="p-4 sm:p-6" style={{ background: '#fff', border: '1px solid rgba(0,0,0,0.07)', borderRadius: '12px', marginBottom: '14px' }}>
-        <p style={{ fontSize: '10.5px', fontWeight: 600, letterSpacing: '0.07em', textTransform: 'uppercase', color: '#999', marginBottom: '14px' }}>
+        <p style={{ fontSize: '10.5px', fontWeight: 600, letterSpacing: '0.07em', textTransform: 'uppercase', color: '#6b7280', marginBottom: '14px' }}>
           Profile
         </p>
         {[
@@ -214,7 +215,7 @@ export default async function MemberDetailPage({
         ].map(([label, value]) => (
           <div key={label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 0', borderBottom: '1px solid rgba(0,0,0,0.04)' }}
             className="last:border-0">
-            <span style={{ fontSize: '13px', color: '#999' }}>{label}</span>
+            <span style={{ fontSize: '13px', color: '#6b7280' }}>{label}</span>
             <span style={{ fontSize: '13px', color: '#333', fontWeight: 500 }}>{value}</span>
           </div>
         ))}
@@ -222,7 +223,7 @@ export default async function MemberDetailPage({
         {member.portfolio_url && (
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 0', borderBottom: '1px solid rgba(0,0,0,0.04)' }}
             className="last:border-0">
-            <span style={{ fontSize: '13px', color: '#999' }}>Portfolio / Social</span>
+            <span style={{ fontSize: '13px', color: '#6b7280' }}>Portfolio / Social</span>
             <a href={member.portfolio_url} target="_blank" rel="noopener noreferrer"
               style={{ fontSize: '13px', color: '#3b82f6', fontWeight: 500, textDecoration: 'none', wordBreak: 'break-all' }}
               className="hover:underline">
@@ -245,7 +246,7 @@ export default async function MemberDetailPage({
 
       {/* Event History */}
       <div className="p-4 sm:p-6" style={{ background: '#fff', border: '1px solid rgba(0,0,0,0.07)', borderRadius: '12px', marginBottom: '14px' }}>
-        <p style={{ fontSize: '10.5px', fontWeight: 600, letterSpacing: '0.07em', textTransform: 'uppercase', color: '#999', marginBottom: '16px' }}>
+        <p style={{ fontSize: '10.5px', fontWeight: 600, letterSpacing: '0.07em', textTransform: 'uppercase', color: '#6b7280', marginBottom: '16px' }}>
           Event History &amp; Duties
         </p>
 
@@ -315,10 +316,10 @@ export default async function MemberDetailPage({
       {/* Account Status — consultant only */}
       {viewer.system_role === 'consultant' && (
         <div className="p-4 sm:p-6" style={{ background: '#fff', border: '1px solid rgba(0,0,0,0.07)', borderRadius: '12px' }}>
-          <p style={{ fontSize: '10.5px', fontWeight: 600, letterSpacing: '0.07em', textTransform: 'uppercase', color: '#999', marginBottom: '8px' }}>
+          <p style={{ fontSize: '10.5px', fontWeight: 600, letterSpacing: '0.07em', textTransform: 'uppercase', color: '#6b7280', marginBottom: '8px' }}>
             Account Status
           </p>
-          <p style={{ fontSize: '13px', color: '#aaa', marginBottom: '14px' }}>
+          <p style={{ fontSize: '13px', color: '#6b7280', marginBottom: '14px' }}>
             Inactive members cannot log in but their records are preserved.
           </p>
           <ToggleActiveButton memberId={member.id} isActive={member.is_active} memberName={member.full_name} />

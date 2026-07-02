@@ -26,8 +26,8 @@ export default function YearPicker({
 
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-      <CalendarRange size={14} style={{ color: '#999', flexShrink: 0 }} />
-      <span style={{ fontSize: 12, color: '#999', fontWeight: 500, whiteSpace: 'nowrap' }}>
+      <CalendarRange size={14} style={{ color: '#6b7280', flexShrink: 0 }} />
+      <span style={{ fontSize: 12, color: '#6b7280', fontWeight: 500, whiteSpace: 'nowrap' }}>
         Viewing
       </span>
       <select

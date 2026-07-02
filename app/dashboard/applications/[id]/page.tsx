@@ -153,7 +153,7 @@ export default async function ApplicationDetailPage({
                     </span>
                   )}
                 </div>
-                <p style={{ fontFamily: 'DM Sans, sans-serif', fontSize: 13, color: '#888', margin: '4px 0 0' }}>
+                <p style={{ fontFamily: 'DM Sans, sans-serif', fontSize: 13, color: '#6b7280', margin: '4px 0 0' }}>
                   Applied {appliedDate}{ayLabel && ` · ${ayLabel}`}
                 </p>
               </div>
@@ -277,7 +277,7 @@ export default async function ApplicationDetailPage({
             {/* Reviewer */}
             {application.reviewed_by && reviewerName && (
               <div style={{ borderTop: '1px solid rgba(0,0,0,0.06)', paddingTop: 14 }}>
-                <p style={{ fontFamily: 'DM Sans, sans-serif', fontSize: 12.5, color: '#777', margin: 0 }}>
+                <p style={{ fontFamily: 'DM Sans, sans-serif', fontSize: 12.5, color: '#6b7280', margin: 0 }}>
                   Last reviewed by <strong style={{ color: '#444' }}>{reviewerName}</strong>
                   {application.reviewed_at && (
                     <> on {new Date(application.reviewed_at).toLocaleDateString('en-PH', {

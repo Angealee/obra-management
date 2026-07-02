@@ -128,7 +128,7 @@ export default function ApplicationActions({ application, userRole }: Props) {
         gap: 12,
       }}>
 
-        <p style={{ fontFamily: 'DM Sans, sans-serif', fontSize: 13, color: '#888', margin: 0 }}>
+        <p style={{ fontFamily: 'DM Sans, sans-serif', fontSize: 13, color: '#6b7280', margin: 0 }}>
           {isTerminal ? (
             <>
               This application is <strong style={{ color: '#555' }}>{currentStatus}</strong>.

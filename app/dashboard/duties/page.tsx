@@ -8,7 +8,8 @@ import DutyRowActions from './DutyRowActions'
 import Pager from '@/components/Pager'
 import { getAcademicYearContext } from '@/lib/academicYear'
 import { dutyTypeLabel } from '@/lib/memberRole'
-import { dutyDisplayStatus, DUTY_DISPLAY_LABELS, DUTY_DISPLAY_STYLE, type DutyDisplayStatus } from '@/lib/dutyStatus'
+import { dutyDisplayStatus, type DutyDisplayStatus } from '@/lib/dutyStatus'
+import { DutyStatusBadge } from '@/components/ui/StatusBadge'
 
 // Valid-format UUID that matches no row — used so "no year selected" yields an
 // empty result instead of an unscoped query.
@@ -23,12 +24,7 @@ const priorityStyle: Record<string, [string, string]> = {
 
 function StatusCell({ display, mark }: { display: DutyDisplayStatus; mark: string | null }) {
   if (mark) return <WorkloadBadge mark={mark} />
-  const [bg, tc] = DUTY_DISPLAY_STYLE[display]
-  return (
-    <span style={{ fontSize: '11px', fontWeight: 600, background: bg, color: tc, padding: '3px 10px', borderRadius: '99px' }}>
-      {DUTY_DISPLAY_LABELS[display]}
-    </span>
-  )
+  return <DutyStatusBadge display={display} />
 }
 
 // Reviewed history paginates; active groups always show in full.
@@ -121,7 +117,7 @@ export default async function DutiesPage({
           <h1 style={{ fontSize: '26px', fontWeight: 700, letterSpacing: '-0.4px', color: '#111', lineHeight: 1.1 }}>
             {isHead ? 'All Duties' : 'My Duties'}
           </h1>
-          <p style={{ fontSize: '13px', color: '#999', marginTop: '5px' }}>
+          <p style={{ fontSize: '13px', color: '#6b7280', marginTop: '5px' }}>
             {groups.pending.length} pending · {groups.in_progress.length} in progress · {groups.awaiting_review.length} awaiting review · {reviewedTotal} reviewed
           </p>
         </div>
@@ -152,7 +148,7 @@ export default async function DutiesPage({
             if (sectionTotal === 0) return null
             return (
               <div key={groupStatus}>
-                <p style={{ fontSize: '10.5px', fontWeight: 600, letterSpacing: '0.07em', textTransform: 'uppercase', color: '#999', marginBottom: '10px' }}>
+                <p style={{ fontSize: '10.5px', fontWeight: 600, letterSpacing: '0.07em', textTransform: 'uppercase', color: '#6b7280', marginBottom: '10px' }}>
                   {groupTitles[groupStatus]}{' '}
                   <span style={{ color: '#ccc' }}>({sectionTotal})</span>
                 </p>
@@ -183,7 +179,7 @@ export default async function DutiesPage({
                           </span>
                         </div>
 
-                        <p style={{ color: '#888', fontSize: '12.5px', marginTop: '8px' }}>
+                        <p style={{ color: '#6b7280', fontSize: '12.5px', marginTop: '8px' }}>
                           {duty.events?.title ?? '—'}
                           {duty.events?.event_date && (
                             <span style={{ color: '#bbb' }}>
@@ -194,7 +190,7 @@ export default async function DutiesPage({
                         </p>
 
                         {isHead && (
-                          <p style={{ color: '#888', fontSize: '12.5px', marginTop: '2px' }}>
+                          <p style={{ color: '#6b7280', fontSize: '12.5px', marginTop: '2px' }}>
                             Assigned to <span style={{ color: '#555', fontWeight: 500 }}>{duty.assignee?.full_name ?? '—'}</span>
                           </p>
                         )}

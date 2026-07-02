@@ -152,7 +152,7 @@ body {
 
 .page-subtitle {
   font-size: 13px;
-  color: #888;
+  color: #6b7280; /* WCAG AA (4.6:1) — was #888 */
   margin-top: 3px;
   font-weight: 400;
 }
@@ -162,7 +162,28 @@ body {
   font-weight: 600;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: #999;
+  color: #6b7280; /* WCAG AA (4.6:1) — was #999 */
+}
+
+/* ── Sidebar hover states in CSS (keyboard focus gets the same treatment) ── */
+.sidebar-icon-btn {
+  background: rgba(255, 255, 255, 0.04);
+  color: rgba(255, 255, 255, 0.55);
+  transition: background 0.15s ease, color 0.15s ease, opacity 0.2s ease, transform 0.2s ease;
+}
+.sidebar-icon-btn:hover,
+.sidebar-icon-btn:focus-visible {
+  background: rgba(255, 255, 255, 0.10);
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.sidebar-user-row {
+  border-radius: 8px;
+  transition: background 0.15s ease;
+}
+.sidebar-user-row:hover,
+a:focus-visible > .sidebar-user-row {
+  background: rgba(255, 255, 255, 0.06);
 }
 
 .obra-table {

@@ -67,7 +67,7 @@ export default function EditAnnouncementForm({
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
         <div className="p-4 sm:p-6" style={{ background: '#fff', border: '1px solid rgba(0,0,0,0.07)', borderRadius: '10px' }}>
-          <p style={{ fontSize: '10.5px', fontWeight: 600, letterSpacing: '0.07em', textTransform: 'uppercase', color: '#999', marginBottom: '16px' }}>
+          <p style={{ fontSize: '10.5px', fontWeight: 600, letterSpacing: '0.07em', textTransform: 'uppercase', color: '#6b7280', marginBottom: '16px' }}>
             Content
           </p>
           <div style={{ marginBottom: '14px' }}>
@@ -82,7 +82,7 @@ export default function EditAnnouncementForm({
         </div>
 
         <div className="p-4 sm:p-6" style={{ background: '#fff', border: '1px solid rgba(0,0,0,0.07)', borderRadius: '10px' }}>
-          <p style={{ fontSize: '10.5px', fontWeight: 600, letterSpacing: '0.07em', textTransform: 'uppercase', color: '#999', marginBottom: '16px' }}>
+          <p style={{ fontSize: '10.5px', fontWeight: 600, letterSpacing: '0.07em', textTransform: 'uppercase', color: '#6b7280', marginBottom: '16px' }}>
             Settings
           </p>
           <div style={{ marginBottom: '16px' }}>
@@ -111,7 +111,7 @@ export default function EditAnnouncementForm({
                   </div>
                   <div>
                     <p style={{ fontSize: '13.5px', fontWeight: 500, color: '#111', lineHeight: 1 }}>{opt.label}</p>
-                    <p style={{ fontSize: '12px', color: '#aaa', marginTop: '2px' }}>{opt.desc}</p>
+                    <p style={{ fontSize: '12px', color: '#6b7280', marginTop: '2px' }}>{opt.desc}</p>
                   </div>
                 </label>
               ))}

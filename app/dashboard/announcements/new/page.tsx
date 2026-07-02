@@ -74,7 +74,7 @@ export default function NewAnnouncementPage() {
         <h1 style={{ fontSize: '26px', fontWeight: 700, letterSpacing: '-0.4px', color: '#111' }}>
           Post Announcement
         </h1>
-        <p style={{ fontSize: '13px', color: '#999', marginTop: '5px' }}>
+        <p style={{ fontSize: '13px', color: '#6b7280', marginTop: '5px' }}>
           Post a notice for your Obra members.
         </p>
       </div>
@@ -83,7 +83,7 @@ export default function NewAnnouncementPage() {
 
         {/* Content card */}
         <div className="p-4 sm:p-6" style={{ background: '#fff', border: '1px solid rgba(0,0,0,0.07)', borderRadius: '10px' }}>
-          <p style={{ fontSize: '10.5px', fontWeight: 600, letterSpacing: '0.07em', textTransform: 'uppercase', color: '#999', marginBottom: '16px' }}>
+          <p style={{ fontSize: '10.5px', fontWeight: 600, letterSpacing: '0.07em', textTransform: 'uppercase', color: '#6b7280', marginBottom: '16px' }}>
             Content
           </p>
 
@@ -113,7 +113,7 @@ export default function NewAnnouncementPage() {
 
         {/* Settings card */}
         <div className="p-4 sm:p-6" style={{ background: '#fff', border: '1px solid rgba(0,0,0,0.07)', borderRadius: '10px' }}>
-          <p style={{ fontSize: '10.5px', fontWeight: 600, letterSpacing: '0.07em', textTransform: 'uppercase', color: '#999', marginBottom: '16px' }}>
+          <p style={{ fontSize: '10.5px', fontWeight: 600, letterSpacing: '0.07em', textTransform: 'uppercase', color: '#6b7280', marginBottom: '16px' }}>
             Settings
           </p>
 
@@ -157,7 +157,7 @@ export default function NewAnnouncementPage() {
                   </div>
                   <div>
                     <p style={{ fontSize: '13.5px', fontWeight: 500, color: '#111', lineHeight: 1 }}>{opt.label}</p>
-                    <p style={{ fontSize: '12px', color: '#aaa', marginTop: '2px' }}>{opt.desc}</p>
+                    <p style={{ fontSize: '12px', color: '#6b7280', marginTop: '2px' }}>{opt.desc}</p>
                   </div>
                 </label>
               ))}

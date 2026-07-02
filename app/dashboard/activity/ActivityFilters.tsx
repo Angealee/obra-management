@@ -86,7 +86,7 @@ export default function ActivityFilters({
           onClick={() => apply({ module: '', action: '', actor: '' })}
           style={{
             fontSize: '12px',
-            color: '#888',
+            color: '#6b7280',
             background: 'transparent',
             border: 'none',
             cursor: 'pointer',

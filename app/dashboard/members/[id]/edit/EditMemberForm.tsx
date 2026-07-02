@@ -128,7 +128,7 @@ export default function EditMemberForm({ member }: { member: MemberData }) {
           </p>
 
           <div style={{ background: '#fafaf9', border: '1px solid rgba(0,0,0,0.08)', borderRadius: 10, padding: '14px 16px', marginBottom: 18 }}>
-            <p style={{ fontSize: 10.5, fontWeight: 600, letterSpacing: '0.07em', textTransform: 'uppercase', color: '#999', marginBottom: 6 }}>
+            <p style={{ fontSize: 10.5, fontWeight: 600, letterSpacing: '0.07em', textTransform: 'uppercase', color: '#6b7280', marginBottom: 6 }}>
               New Password
             </p>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
@@ -161,7 +161,7 @@ export default function EditMemberForm({ member }: { member: MemberData }) {
   return (
     <div className="max-w-2xl">
       <div className="mb-8">
-        <Link href={`/dashboard/members/${member.id}`} style={{ fontFamily: 'DM Sans', fontSize: 13, color: '#999' }} className="mb-2 inline-block">
+        <Link href={`/dashboard/members/${member.id}`} style={{ fontFamily: 'DM Sans', fontSize: 13, color: '#6b7280' }} className="mb-2 inline-block">
           ← Back to Member
         </Link>
         <h1 style={{ fontFamily: 'Bebas Neue, sans-serif', fontSize: 32, letterSpacing: '0.04em', color: '#111', marginBottom: 4 }}>
@@ -176,7 +176,7 @@ export default function EditMemberForm({ member }: { member: MemberData }) {
 
         {/* Basic Info */}
         <div className="p-4 sm:p-6" style={{ background: '#fff', border: '1px solid rgba(0,0,0,0.07)', borderRadius: 12 }}>
-          <h2 style={{ fontFamily: 'DM Mono', fontSize: 11, color: '#999', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 16 }}>
+          <h2 style={{ fontFamily: 'DM Mono', fontSize: 11, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 16 }}>
             Basic Information
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -215,7 +215,7 @@ export default function EditMemberForm({ member }: { member: MemberData }) {
 
         {/* Login Credentials */}
         <div className="p-4 sm:p-6" style={{ background: '#fff', border: '1px solid rgba(0,0,0,0.07)', borderRadius: 12 }}>
-          <h2 style={{ fontFamily: 'DM Mono', fontSize: 11, color: '#999', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 16 }}>
+          <h2 style={{ fontFamily: 'DM Mono', fontSize: 11, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 16 }}>
             Login Credentials
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -226,7 +226,7 @@ export default function EditMemberForm({ member }: { member: MemberData }) {
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
               <label className="obra-label">Reset Password</label>
               <input className="obra-input" type="text" value={password} onChange={e => setPassword(e.target.value)} placeholder="Leave blank to keep current" />
-              <p style={{ fontFamily: 'DM Sans', fontSize: 12, color: '#999' }}>
+              <p style={{ fontFamily: 'DM Sans', fontSize: 12, color: '#6b7280' }}>
                 Leave blank to keep the current password. Enter a new one to reset it (min. 6 characters).
               </p>
             </div>
@@ -235,7 +235,7 @@ export default function EditMemberForm({ member }: { member: MemberData }) {
 
         {/* Role */}
         <div className="p-4 sm:p-6" style={{ background: '#fff', border: '1px solid rgba(0,0,0,0.07)', borderRadius: 12 }}>
-          <h2 style={{ fontFamily: 'DM Mono', fontSize: 11, color: '#999', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 16 }}>
+          <h2 style={{ fontFamily: 'DM Mono', fontSize: 11, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 16 }}>
             Role
           </h2>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
@@ -266,7 +266,7 @@ export default function EditMemberForm({ member }: { member: MemberData }) {
                     <option key={opt.value} value={opt.value}>{opt.label}</option>
                   ))}
                 </select>
-                <p style={{ fontFamily: 'DM Sans', fontSize: 12, color: '#999' }}>
+                <p style={{ fontFamily: 'DM Sans', fontSize: 12, color: '#6b7280' }}>
                   The member&apos;s primary position. Skills below are extra capabilities.
                 </p>
               </div>
@@ -276,10 +276,10 @@ export default function EditMemberForm({ member }: { member: MemberData }) {
 
         {/* Skills */}
         <div className="p-4 sm:p-6" style={{ background: '#fff', border: '1px solid rgba(0,0,0,0.07)', borderRadius: 12 }}>
-          <h2 style={{ fontFamily: 'DM Mono', fontSize: 11, color: '#999', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 4 }}>
+          <h2 style={{ fontFamily: 'DM Mono', fontSize: 11, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 4 }}>
             Skills
           </h2>
-          <p style={{ fontFamily: 'DM Sans', fontSize: 12, color: '#999', marginBottom: 14 }}>
+          <p style={{ fontFamily: 'DM Sans', fontSize: 12, color: '#6b7280', marginBottom: 14 }}>
             Select all skills this member has.
           </p>
           <div className="flex flex-wrap gap-2">
@@ -306,7 +306,7 @@ export default function EditMemberForm({ member }: { member: MemberData }) {
             ))}
           </div>
           {selectedSkills.length > 0 && (
-            <p style={{ fontFamily: 'DM Sans', fontSize: 12, color: '#999', marginTop: 10 }}>
+            <p style={{ fontFamily: 'DM Sans', fontSize: 12, color: '#6b7280', marginTop: 10 }}>
               {selectedSkills.length} skill(s) selected
             </p>
           )}

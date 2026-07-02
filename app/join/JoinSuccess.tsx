@@ -1,5 +1,6 @@
 'use client'
 
+import Image from 'next/image'
 import { CheckCircle } from 'lucide-react'
 
 // Post-submission screen: confirmation + the Messenger group-chat QR code.
@@ -27,7 +28,7 @@ export default function JoinSuccess() {
       <p style={{
         fontSize: 11,
         fontWeight: 600,
-        color: '#999',
+        color: '#6b7280',
         textTransform: 'uppercase',
         letterSpacing: '0.1em',
         marginBottom: 6,
@@ -38,7 +39,7 @@ export default function JoinSuccess() {
         Join our Messenger Group Chat
       </p>
 
-      <p style={{ fontSize: 12.5, color: '#888', margin: '0 0 20px', lineHeight: 1.5 }}>
+      <p style={{ fontSize: 12.5, color: '#6b7280', margin: '0 0 20px', lineHeight: 1.5 }}>
         Scan the QR code below to join the Obra applicants group chat
         and stay updated on your application status.
       </p>
@@ -53,9 +54,11 @@ export default function JoinSuccess() {
         display: 'inline-block',
         marginBottom: 16,
       }}>
-        <img
+        <Image
           src="/qrgc.jpg"
           alt="Messenger Group Chat QR Code"
+          width={200}
+          height={200}
           style={{
             width: 200,
             height: 200,

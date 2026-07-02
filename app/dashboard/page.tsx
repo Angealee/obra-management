@@ -3,6 +3,9 @@ import { createClient } from '@/lib/supabase/server'
 import { requireProfile } from '@/lib/auth'
 import { getAcademicYearContext } from '@/lib/academicYear'
 import { dutyDisplayStatus } from '@/lib/dutyStatus'
+import Avatar from '@/components/ui/Avatar'
+import { DutyStatusBadge, EventStatusBadge } from '@/components/ui/StatusBadge'
+import { T } from '@/components/ui/tokens'
 import {
   Users, CalendarDays, ListChecks, FileText, CheckCircle2, Clock, XCircle,
   Activity, ClipboardCheck, Trophy, Medal, type LucideIcon,
@@ -12,13 +15,7 @@ import {
 // a year has no events (keeps every query uniformly a Supabase query for typing).
 const NONE_UUID = '00000000-0000-0000-0000-000000000000'
 
-// ─── Design tokens ───────────────────────────────────────
-const T = {
-  card:    'bg-white rounded-[10px] border border-black/[0.06]',
-  cardHov: 'hover:-translate-y-[2px] hover:shadow-[0_6px_20px_rgba(0,0,0,0.07)] hover:border-black/[0.10] transition-all duration-200',
-  label:   { fontSize: '10.5px', fontWeight: 600, letterSpacing: '0.07em', textTransform: 'uppercase' as const, color: '#999' },
-  row:     'flex items-center justify-between p-3 rounded-lg hover:bg-black/[0.025] transition-colors duration-150 group',
-}
+// Design tokens shared via components/ui/tokens.ts (card / label / row dialect).
 
 // ─── Stat card ───────────────────────────────────────────
 function Stat({ label, value, sub, href, accent, icon: Icon }: {
@@ -41,37 +38,12 @@ function Stat({ label, value, sub, href, accent, icon: Icon }: {
         <p style={{ fontSize: '28px', fontWeight: 700, letterSpacing: '-0.5px', lineHeight: 1.15, color: accent, fontFamily: "'DM Sans', sans-serif", marginTop: '4px' }}>
           {value}
         </p>
-        {sub && <p style={{ fontSize: '11.5px', color: '#aaa', marginTop: '3px' }}>{sub}</p>}
+        {sub && <p style={{ fontSize: '11.5px', color: '#6b7280', marginTop: '3px' }}>{sub}</p>}
       </div>
     </div>
   )
   if (href) return <Link href={href} className="block">{inner}</Link>
   return inner
-}
-
-// ─── Status badge ─────────────────────────────────────────
-function Badge({ status }: { status: string }) {
-  const map: Record<string, [string, string]> = {
-    pending:         ['#f3f4f6', '#6b7280'],
-    in_progress:     ['#eff6ff', '#3b82f6'],
-    completed:       ['#fefce8', '#ca8a04'],
-    awaiting_review: ['#fefce8', '#ca8a04'],
-    reviewed:        ['#f0fdf4', '#16a34a'],
-    upcoming:        ['#eff6ff', '#3b82f6'],
-    ongoing:         ['#fefce8', '#ca8a04'],
-    cancelled:       ['#f3f4f6', '#9ca3af'],
-  }
-  const labels: Record<string, string> = {
-    pending: 'Pending', in_progress: 'In Progress', completed: 'Completed',
-    awaiting_review: 'Awaiting Review',
-    reviewed: 'Reviewed', upcoming: 'Upcoming', ongoing: 'Ongoing', cancelled: 'Cancelled',
-  }
-  const [bg, color] = map[status] ?? ['#f3f4f6', '#6b7280']
-  return (
-    <span style={{ background: bg, color, fontSize: '11px', fontWeight: 600, padding: '3px 10px', borderRadius: '99px', whiteSpace: 'nowrap' }}>
-      {labels[status] ?? status}
-    </span>
-  )
 }
 
 // ─── Section heading ──────────────────────────────────────
@@ -80,7 +52,7 @@ function SectionHead({ title, action }: { title: string; action?: { label: strin
     <div className="flex items-center justify-between mb-4">
       <p style={T.label}>{title}</p>
       {action && (
-        <Link href={action.href} style={{ fontSize: '12px', color: '#aaa', textDecoration: 'none' }}
+        <Link href={action.href} style={{ fontSize: '12px', color: '#6b7280', textDecoration: 'none' }}
           className="hover:text-gray-700 transition-colors">
           {action.label}
         </Link>
@@ -95,21 +67,6 @@ const RANK_BADGES: { icon: LucideIcon; color: string; bg: string }[] = [
   { icon: Medal,  color: '#94a3b8', bg: '#f1f5f9' }, // silver
   { icon: Medal,  color: '#c2703d', bg: '#fdf1e7' }, // bronze
 ]
-
-// ─── Avatar ───────────────────────────────────────────────
-function Avatar({ name, size = 28, bg = '#111', src = null }: { name: string; size?: number; bg?: string; src?: string | null }) {
-  if (src) {
-    return (
-      <img src={src} alt={name} style={{ width: size, height: size, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} />
-    )
-  }
-  const init = name.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase()
-  return (
-    <div style={{ width: size, height: size, borderRadius: '50%', background: bg, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '10.5px', fontWeight: 700, flexShrink: 0 }}>
-      {init}
-    </div>
-  )
-}
 
 export default async function DashboardPage() {
   const { user, profile } = await requireProfile()
@@ -222,7 +179,7 @@ export default async function DashboardPage() {
             <h1 style={{ fontSize: '26px', fontWeight: 700, letterSpacing: '-0.4px', color: '#111', lineHeight: 1.1 }}>
               Good day, {profile.full_name.split(' ')[0]}.
             </h1>
-            <p style={{ fontSize: '13px', color: '#999', marginTop: '5px' }}>
+            <p style={{ fontSize: '13px', color: '#6b7280', marginTop: '5px' }}>
               {activeAY
                 ? <><span style={{ color: '#bbb' }}>Active year</span> &nbsp;{activeAY.label}</>
                 : 'No active academic year set.'
@@ -267,7 +224,7 @@ export default async function DashboardPage() {
             ].map(item => (
               <div key={item.label} style={{ background: '#fff', padding: '16px', textAlign: 'center' }}>
                 <p style={{ fontSize: '24px', fontWeight: 700, color: item.color, letterSpacing: '-0.3px', lineHeight: 1 }}>{item.val}</p>
-                <p style={{ fontSize: '11px', color: '#999', marginTop: '4px', fontWeight: 500 }}>{item.label}</p>
+                <p style={{ fontSize: '11px', color: '#6b7280', marginTop: '4px', fontWeight: 500 }}>{item.label}</p>
                 {item.note && <p style={{ fontSize: '10px', color: '#bbb', marginTop: '2px' }}>{item.note}</p>}
               </div>
             ))}
@@ -319,7 +276,7 @@ export default async function DashboardPage() {
                       <Avatar name={data.name} src={data.avatar} size={36} bg={i === 0 ? '#111' : '#d1d5db'} />
                       <div style={{ minWidth: 0 }}>
                         <p style={{ fontSize: '13.5px', fontWeight: 600, color: '#111', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{data.name}</p>
-                        <p style={{ fontSize: '11px', color: '#aaa' }}>#{i + 1} contributor</p>
+                        <p style={{ fontSize: '11px', color: '#6b7280' }}>#{i + 1} contributor</p>
                       </div>
                     </div>
                     <div>
@@ -327,8 +284,8 @@ export default async function DashboardPage() {
                         <div style={{ height: '100%', width: `${rate}%`, background: '#16a34a', transition: 'width 0.5s ease' }} />
                       </div>
                       <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                        <span style={{ fontSize: '11px', color: '#999' }}>{data.reviewed}/{data.total} reviewed</span>
-                        <span style={{ fontSize: '11px', color: '#999' }}>{data.events.size} event{data.events.size !== 1 ? 's' : ''}</span>
+                        <span style={{ fontSize: '11px', color: '#6b7280' }}>{data.reviewed}/{data.total} reviewed</span>
+                        <span style={{ fontSize: '11px', color: '#6b7280' }}>{data.events.size} event{data.events.size !== 1 ? 's' : ''}</span>
                       </div>
                     </div>
                   </Link>
@@ -347,12 +304,12 @@ export default async function DashboardPage() {
                 <Link key={ev.id} href={`/dashboard/events/${ev.id}`} className={T.row} style={{ textDecoration: 'none' }}>
                   <div>
                     <p style={{ fontSize: '13.5px', fontWeight: 500, color: '#111' }}>{ev.title}</p>
-                    <p style={{ fontSize: '11.5px', color: '#aaa', marginTop: '2px' }}>
+                    <p style={{ fontSize: '11.5px', color: '#6b7280', marginTop: '2px' }}>
                       {new Date(ev.event_date).toLocaleDateString('en-PH', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}
                     </p>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <Badge status={ev.status} />
+                    <EventStatusBadge status={ev.status} />
                     <span style={{ fontSize: '14px', color: '#ddd' }} className="group-hover:text-gray-400 transition-colors">→</span>
                   </div>
                 </Link>
@@ -398,7 +355,7 @@ export default async function DashboardPage() {
             Good day, {profile.full_name.split(' ')[0]}.
           </h1>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '5px' }}>
-            <p style={{ fontSize: '13px', color: '#999' }}>{activeAY?.label ?? 'No active academic year'}</p>
+            <p style={{ fontSize: '13px', color: '#6b7280' }}>{activeAY?.label ?? 'No active academic year'}</p>
             {profile.creative_head_role && profile.creative_head_role !== 'none' && (
               <span style={{ fontSize: '10.5px', fontWeight: 600, background: '#eff6ff', color: '#3b82f6', padding: '2px 9px', borderRadius: '99px', textTransform: 'capitalize' as const }}>
                 {profile.creative_head_role.replace('_', ' ')}
@@ -432,7 +389,7 @@ export default async function DashboardPage() {
                   <Link key={d.id} href={`/dashboard/duties/${d.id}`} className={T.row} style={{ textDecoration: 'none' }}>
                     <div>
                       <p style={{ fontSize: '13.5px', fontWeight: 500, color: '#111' }}>{d.title}</p>
-                      <p style={{ fontSize: '11.5px', color: '#aaa', marginTop: '2px' }}>
+                      <p style={{ fontSize: '11.5px', color: '#6b7280', marginTop: '2px' }}>
                         {(d as any).assignee?.full_name} · {(d as any).events?.title}
                       </p>
                     </div>
@@ -453,11 +410,11 @@ export default async function DashboardPage() {
                   <Link key={ev.id} href={`/dashboard/events/${ev.id}`} className={T.row} style={{ textDecoration: 'none' }}>
                     <div>
                       <p style={{ fontSize: '13.5px', fontWeight: 500, color: '#111' }}>{ev.title}</p>
-                      <p style={{ fontSize: '11.5px', color: '#aaa', marginTop: '2px' }}>
+                      <p style={{ fontSize: '11.5px', color: '#6b7280', marginTop: '2px' }}>
                         {new Date(ev.event_date).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' })}
                       </p>
                     </div>
-                    <Badge status={ev.status} />
+                    <EventStatusBadge status={ev.status} />
                   </Link>
                 ))}
               </div>
@@ -473,9 +430,9 @@ export default async function DashboardPage() {
                 <Link key={d.id} href={`/dashboard/duties/${d.id}`} className={T.row} style={{ textDecoration: 'none' }}>
                   <div>
                     <p style={{ fontSize: '13.5px', fontWeight: 500, color: '#111' }}>{d.title}</p>
-                    <p style={{ fontSize: '11.5px', color: '#aaa', marginTop: '2px' }}>{(d as any).events?.title}</p>
+                    <p style={{ fontSize: '11.5px', color: '#6b7280', marginTop: '2px' }}>{(d as any).events?.title}</p>
                   </div>
-                  <Badge status={dutyDisplayStatus(d)} />
+                  <DutyStatusBadge display={dutyDisplayStatus(d)} />
                 </Link>
               ))}
             </div>
@@ -512,7 +469,7 @@ export default async function DashboardPage() {
         <h1 style={{ fontSize: '26px', fontWeight: 700, letterSpacing: '-0.4px', color: '#111', lineHeight: 1.1 }}>
           Good day, {profile.full_name.split(' ')[0]}.
         </h1>
-        <p style={{ fontSize: '13px', color: '#999', marginTop: '5px' }}>{activeAY?.label ?? 'No active academic year'}</p>
+        <p style={{ fontSize: '13px', color: '#6b7280', marginTop: '5px' }}>{activeAY?.label ?? 'No active academic year'}</p>
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3.5">
@@ -556,12 +513,12 @@ export default async function DashboardPage() {
                 <Link key={d.id} href={`/dashboard/duties/${d.id}`} className={T.row} style={{ textDecoration: 'none' }}>
                   <div style={{ minWidth: 0 }}>
                     <p style={{ fontSize: '13.5px', fontWeight: 500, color: '#111', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{d.title}</p>
-                    <p style={{ fontSize: '11.5px', color: '#aaa', marginTop: '2px' }}>
+                    <p style={{ fontSize: '11.5px', color: '#6b7280', marginTop: '2px' }}>
                       {(d as any).events?.title}
                       {d.due_date && ` · Due ${new Date(d.due_date).toLocaleDateString('en-PH', { month: 'short', day: 'numeric' })}`}
                     </p>
                   </div>
-                  <div style={{ flexShrink: 0, marginLeft: '8px' }}><Badge status={dutyDisplayStatus(d)} /></div>
+                  <div style={{ flexShrink: 0, marginLeft: '8px' }}><DutyStatusBadge display={dutyDisplayStatus(d)} /></div>
                 </Link>
               ))}
             </div>
@@ -578,11 +535,11 @@ export default async function DashboardPage() {
                 <Link key={ev.id} href={`/dashboard/events/${ev.id}`} className={T.row} style={{ textDecoration: 'none' }}>
                   <div>
                     <p style={{ fontSize: '13.5px', fontWeight: 500, color: '#111' }}>{ev.title}</p>
-                    <p style={{ fontSize: '11.5px', color: '#aaa', marginTop: '2px' }}>
+                    <p style={{ fontSize: '11.5px', color: '#6b7280', marginTop: '2px' }}>
                       {new Date(ev.event_date).toLocaleDateString('en-PH', { weekday: 'short', month: 'short', day: 'numeric' })}
                     </p>
                   </div>
-                  <Badge status={ev.status} />
+                  <EventStatusBadge status={ev.status} />
                 </Link>
               ))}
             </div>
@@ -598,7 +555,7 @@ export default async function DashboardPage() {
               <Link key={d.id} href={`/dashboard/duties/${d.id}`} className={T.row} style={{ textDecoration: 'none' }}>
                 <div>
                   <p style={{ fontSize: '13.5px', fontWeight: 500, color: '#111' }}>{d.title}</p>
-                  <p style={{ fontSize: '11.5px', color: '#aaa', marginTop: '2px' }}>{(d as any).events?.title}</p>
+                  <p style={{ fontSize: '11.5px', color: '#6b7280', marginTop: '2px' }}>{(d as any).events?.title}</p>
                 </div>
                 <span style={{ fontSize: '11px', fontWeight: 600, color: '#16a34a', background: '#f0fdf4', padding: '3px 9px', borderRadius: '6px' }}>Reviewed ★</span>
               </Link>

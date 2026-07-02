@@ -44,7 +44,7 @@ export default function EmptyState({
         <p
           style={{
             fontSize: 13,
-            color: '#999',
+            color: '#6b7280',
             margin: '6px 0 0',
             maxWidth: 400,
             lineHeight: 1.6,

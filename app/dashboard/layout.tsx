@@ -21,7 +21,7 @@ export default async function DashboardLayout({
         <div style={{ background: '#fff', borderRadius: '12px', border: '1px solid rgba(0,0,0,0.06)', padding: '32px', maxWidth: '400px', width: '100%' }}>
           <h2 style={{ fontSize: '16px', fontWeight: 600, color: '#CC0000', marginBottom: '8px' }}>Profile Not Found</h2>
           <p style={{ fontSize: '13px', color: '#666', marginBottom: '12px' }}>Your account exists but has no profile record.</p>
-          <p style={{ fontSize: '11px', color: '#999', fontFamily: 'monospace' }}>ID: {user.id}</p>
+          <p style={{ fontSize: '11px', color: '#6b7280', fontFamily: 'monospace' }}>ID: {user.id}</p>
         </div>
       </div>
     )

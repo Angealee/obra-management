@@ -5,33 +5,12 @@ import type { ObraEventWithDetails } from '@/types/database'
 import { requireProfile } from '@/lib/auth'
 import EmptyState from '@/components/EmptyState'
 import Pager from '@/components/Pager'
+import { EventStatusBadge } from '@/components/ui/StatusBadge'
 import { CalendarDays } from 'lucide-react'
 import { getAcademicYearContext } from '@/lib/academicYear'
 
 // Completed-events history paginates; ongoing/upcoming/cancelled always show in full.
 const HISTORY_PAGE_SIZE = 10
-
-const statusStyles: Record<string, string> = {
-  upcoming:  'bg-blue-100 text-blue-700',
-  ongoing:   'bg-yellow-100 text-yellow-700',
-  completed: 'bg-green-100 text-green-700',
-  cancelled: 'bg-gray-100 text-gray-500',
-}
-
-const statusLabels: Record<string, string> = {
-  upcoming:  'Upcoming',
-  ongoing:   'Ongoing',
-  completed: 'Completed',
-  cancelled: 'Cancelled',
-}
-
-function StatusBadge({ status }: { status: string }) {
-  return (
-    <span className={`text-xs font-medium px-3 py-1 rounded-full ${statusStyles[status] ?? 'bg-gray-100 text-gray-500'}`}>
-      {statusLabels[status] ?? status}
-    </span>
-  )
-}
 
 export default async function EventsPage({
   searchParams,
@@ -180,7 +159,7 @@ function EventSection({
           >
             <div className="flex items-start justify-between gap-2">
               <p className="font-medium text-gray-800 text-sm">{event.title}</p>
-              <StatusBadge status={event.status} />
+              <EventStatusBadge status={event.status} />
             </div>
             {event.description && (
               <p className="text-gray-400 text-xs mt-1 line-clamp-1">{event.description}</p>
@@ -236,7 +215,7 @@ function EventSection({
                   {event.academic_years?.label ?? '—'}
                 </td>
                 <td className="px-6 py-4">
-                  <StatusBadge status={event.status} />
+                  <EventStatusBadge status={event.status} />
                 </td>
                 <td className="px-6 py-4">
                   <Link

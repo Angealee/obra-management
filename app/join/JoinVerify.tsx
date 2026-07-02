@@ -9,7 +9,7 @@ export default function JoinVerify({ j }: { j: JoinFormApi }) {
     <div className="step-content flex flex-col">
       <button type="button" onClick={() => { j.setOtpSent(false); j.setOtpError(null) }}
         className="mb-5 inline-flex items-center gap-1.5 self-start"
-        style={{ fontSize: 12.5, fontWeight: 500, color: '#888', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
+        style={{ fontSize: 12.5, fontWeight: 500, color: '#6b7280', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
         <ArrowLeft size={14} /> Back to application
       </button>
 
@@ -53,7 +53,7 @@ export default function JoinVerify({ j }: { j: JoinFormApi }) {
       </form>
 
       <div className="mt-4 text-center">
-        <span style={{ fontSize: 12.5, color: '#999' }}>Didn&apos;t get the code? </span>
+        <span style={{ fontSize: 12.5, color: '#6b7280' }}>Didn&apos;t get the code? </span>
         <button type="button" onClick={j.handleResend} disabled={j.resendIn > 0}
           style={{ fontSize: 12.5, fontWeight: 600, color: j.resendIn > 0 ? '#bbb' : '#CC0000', background: 'none', border: 'none', cursor: j.resendIn > 0 ? 'default' : 'pointer', padding: 0 }}>
           {j.resendIn > 0 ? `Resend in ${j.resendIn}s` : 'Resend code'}

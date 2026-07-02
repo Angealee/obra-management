@@ -33,7 +33,7 @@ export default function ApplicationsIndexPage() {
         <p style={{ fontFamily: 'DM Sans, sans-serif', fontSize: 15, color: '#444', fontWeight: 600, margin: 0 }}>
           Select an applicant to review
         </p>
-        <p style={{ fontFamily: 'DM Sans, sans-serif', fontSize: 13.5, color: '#888', marginTop: 6, lineHeight: 1.6 }}>
+        <p style={{ fontFamily: 'DM Sans, sans-serif', fontSize: 13.5, color: '#6b7280', marginTop: 6, lineHeight: 1.6 }}>
           Choose someone from the list to see their profile, portfolio score, and decision history.
         </p>
       </div>

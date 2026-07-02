@@ -136,6 +136,7 @@ export default function AvatarUpload({
         title="Click to change photo"
       >
         {preview ? (
+          /* Plain <img> on purpose: `preview` can be a local blob/object URL, which next/image can't optimize. */
           <img src={preview} alt={fullName} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
         ) : (
           <div style={{ width: '100%', height: '100%', background: '#CC0000', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px', fontWeight: 700, color: '#fff' }}>

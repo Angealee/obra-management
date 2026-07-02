@@ -42,7 +42,7 @@ export default async function ProfilePage() {
         <h1 style={{ fontSize: '26px', fontWeight: 700, letterSpacing: '-0.4px', color: '#111', lineHeight: 1.1 }}>
           My Profile
         </h1>
-        <p style={{ fontSize: '13px', color: '#999', marginTop: '5px' }}>
+        <p style={{ fontSize: '13px', color: '#6b7280', marginTop: '5px' }}>
           Manage your account information and security settings.
         </p>
       </div>
@@ -62,7 +62,7 @@ export default async function ProfilePage() {
                 {profile.full_name}
               </p>
               {profile.username && (
-                <p style={{ fontSize: '13px', color: '#999', marginTop: '2px' }}>@{profile.username}</p>
+                <p style={{ fontSize: '13px', color: '#6b7280', marginTop: '2px' }}>@{profile.username}</p>
               )}
               <div className="flex flex-wrap justify-center sm:justify-start items-center" style={{ gap: '8px', marginTop: '6px' }}>
                 <span style={{ fontSize: '11px', fontWeight: 600, background: '#f1f5f9', color: '#475569', padding: '3px 10px', borderRadius: '99px' }}>
@@ -90,7 +90,7 @@ export default async function ProfilePage() {
 
         {/* Read-only system info */}
         <div className="p-4 sm:p-6" style={{ background: '#fff', border: '1px solid rgba(0,0,0,0.07)', borderRadius: '12px' }}>
-          <p style={{ fontSize: '10.5px', fontWeight: 600, letterSpacing: '0.07em', textTransform: 'uppercase', color: '#999', marginBottom: '14px' }}>
+          <p style={{ fontSize: '10.5px', fontWeight: 600, letterSpacing: '0.07em', textTransform: 'uppercase', color: '#6b7280', marginBottom: '14px' }}>
             System Information
           </p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0' }}>
@@ -102,7 +102,7 @@ export default async function ProfilePage() {
               ['Member Since', new Date(profile.created_at).toLocaleDateString('en-PH', { year: 'numeric', month: 'long', day: 'numeric' })],
             ].map(([label, value]) => (
               <div key={label} className="flex justify-between items-center flex-wrap gap-x-3 last:border-0" style={{ padding: '11px 0', borderBottom: '1px solid rgba(0,0,0,0.04)' }}>
-                <span style={{ fontSize: '13px', color: '#999' }}>{label}</span>
+                <span style={{ fontSize: '13px', color: '#6b7280' }}>{label}</span>
                 <span style={{ fontSize: '13px', color: '#333', fontWeight: 500 }}>{value}</span>
               </div>
             ))}

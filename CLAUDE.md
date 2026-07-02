@@ -19,10 +19,13 @@ announcements, and membership applications across Academic Years.
 ## TECHNOLOGY STACK — DO NOT CHANGE
 
 Frontend:
-- Next.js (App Router, v15)
-- React
+- Next.js (App Router, v16 — React Compiler enabled in next.config.ts)
+- React 19
 - TypeScript
 - Tailwind CSS v4 — uses `@import "tailwindcss"` syntax only
+
+Note: Next 16 deprecates the `middleware.ts` convention in favor of `proxy.ts`
+(build warning). Rename deliberately deferred — do not "fix" in passing.
 
 Backend / Auth / Database:
 - Supabase (PostgreSQL)
@@ -90,7 +93,7 @@ Never use the admin client in components. Never expose SERVICE_ROLE_KEY to brows
 
 ---
 
-## NEXT.JS 15 RULES — CRITICAL
+## NEXT.JS 15+ RULES — CRITICAL
 
 1. `params` in dynamic routes is a Promise. Always await it:
 ```ts
@@ -99,6 +102,8 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
 }
 ```
 Not awaiting params causes 404 on all dynamic routes. This is a known bug source.
+`searchParams` is likewise a Promise — await it too (see /dashboard/activity,
+duties, and events pages, which read ?page= and filters from it).
 
 2. `useSearchParams()` requires a Suspense boundary:
 ```tsx
@@ -349,7 +354,9 @@ obra-management/
 │   ├── globals.css                       ← Design system
 │   ├── join/
 │   │   ├── page.tsx                      ← Public application form
-│   │   ├── JoinForm.tsx                  ← Client form component (OTP + consent gate)
+│   │   ├── JoinForm.tsx                  ← Orchestrator (steps + OTP + consent gate)
+│   │   ├── useJoinForm.ts                ← Full form state machine (draft, OTP, consent)
+│   │   ├── JoinSteps.tsx / JoinVerify.tsx / JoinSuccess.tsx / joinFormShared.ts
 │   │   ├── PrivacyModal.tsx              ← Data Privacy Notice modal (RA 10173)
 │   │   └── Slideshow.tsx
 │   ├── login/
@@ -389,7 +396,9 @@ obra-management/
 │       │       └── DeleteAcademicYearButton.tsx
 │       ├── members/
 │       │   ├── page.tsx                  ← Members list (server)
-│       │   ├── MembersTable.tsx          ← Table + filters (client)
+│       │   ├── MembersTable.tsx          ← Orchestrator (client)
+│       │   ├── useMemberFilters.ts / MembersFilterBar.tsx
+│       │   ├── MemberRows.tsx / memberTableShared.ts
 │       │   ├── new/page.tsx              ← Add member (Suspense + useSearchParams)
 │       │   └── [id]/
 │       │       ├── page.tsx
@@ -411,8 +420,12 @@ obra-management/
 │       │       └── ChecklistPanel.tsx
 │       ├── workloads/
 │       │   ├── page.tsx
-│       │   ├── WorkloadMatrix.tsx
-│       │   └── WorkloadCell.tsx
+│       │   ├── WorkLoadMatrix.tsx        ← Orchestrator (hooks + views below)
+│       │   ├── useWorkloadMarks.ts       ← Marks state + save/discard + duty sync
+│       │   ├── useMatrixView.ts          ← Filters/sort + per-member stats
+│       │   ├── MatrixTable.tsx / MatrixMobile.tsx / MatrixToolbar.tsx
+│       │   ├── MatrixSaveBar.tsx / MatrixBits.tsx / matrixTypes.ts
+│       │   └── WorkLoadCell.tsx
 │       ├── announcements/
 │       │   ├── page.tsx
 │       │   ├── new/page.tsx
@@ -424,7 +437,10 @@ obra-management/
 │       │           └── EditAnnouncementForm.tsx
 │       ├── applications/
 │       │   ├── page.tsx                  ← Split view list (server)
-│       │   ├── ApplicationsClient.tsx    ← Filters + list panel (client)
+│       │   ├── ApplicationsClient.tsx    ← Orchestrator (client)
+│       │   ├── useApplicationFilters.ts / useListNavigation.ts / useBulkActions.ts
+│       │   ├── ApplicationsFilterHeader.tsx / ApplicationListItem.tsx
+│       │   ├── BulkConfirmModal.tsx / applicationConstants.ts / utils.ts
 │       │   └── [id]/
 │       │       ├── page.tsx             ← Detail panel (server)
 │       │       └── ApplicationActions.tsx ← Stage buttons + notes (client)
@@ -433,17 +449,36 @@ obra-management/
 │           ├── ActivityFilters.tsx       ← Module/action/actor selects (client)
 │           └── loading.tsx
 ├── components/
-│   ├── Sidebar.tsx
+│   ├── Sidebar.tsx                       ← Nav + mobile drawer (roles-aware)
 │   ├── PageWrapper.tsx
-│   └── WorkloadBadge.tsx
+│   ├── WorkLoadBadge.tsx
+│   ├── EmptyState.tsx                    ← Shared humanized empty state
+│   ├── Skeleton.tsx                      ← Loading-skeleton primitives
+│   ├── Pager.tsx                         ← Shared numbered pagination
+│   ├── YearPicker.tsx                    ← View-year cookie control
+│   ├── PwaController.tsx
+│   └── ui/                               ← Design-system primitives
+│       ├── Avatar.tsx                    ← Photo-or-initials avatar (next/image)
+│       ├── StatusBadge.tsx               ← Pill + EventStatusBadge + DutyStatusBadge
+│       └── tokens.ts                     ← Shared card/label/row tokens (T)
 ├── lib/
-│   └── supabase/
-│       ├── client.ts
-│       ├── server.ts
-│       └── admin.ts
-├── middleware.ts
+│   ├── supabase/                         ← client.ts / server.ts / admin.ts
+│   ├── auth.ts                           ← getSessionProfile / requireProfile (cached)
+│   ├── academicYear.ts                   ← getAcademicYearContext (view-year cookie)
+│   ├── viewYear.ts                       ← Pure view-year resolution (unit-tested)
+│   ├── viewYearCookie.ts                 ← Cookie name constant (client-safe)
+│   ├── activityLog.ts                    ← logActivity + buildDiff (service-role logging)
+│   ├── privacyPolicy.ts                  ← CONSENT_VERSION / contact / retention days
+│   ├── applicationValidation.ts          ← Server-side /join validation (+consent gate)
+│   ├── emailSecurity.ts                  ← Allowlist + canonicalization + MX check
+│   ├── applicationBlocks.ts / rate-limit.ts / otp.ts / email.ts
+│   ├── dutyStatus.ts / memberRole.ts / logger.ts
+├── middleware.ts                          ← Auth session refresh + redirects
 ├── types/
-│   └── database.ts
+│   └── database.ts                       ← Hand-written row types (gen types pending)
+├── tests/                                 ← Vitest unit tests (7 suites, pure logic)
+├── vitest.config.ts
+├── next.config.ts                         ← CSP + security headers + images config
 └── .env.local
 
 ---
@@ -457,8 +492,10 @@ Card bg:         #FFFFFF
 Card border:     1px solid rgba(0,0,0,0.06)
 Text primary:    #111111
 Text secondary:  #555555
-Text muted:      #888888 / #999999
-Text faint:      #BBBBBB
+Text muted:      #6b7280  (meaningful secondary text — WCAG AA 4.6:1 on white;
+                 replaced the old #777/#888/#999/#aaa tier in July 2026)
+Text faint:      #BBBBBB / #CCCCCC (decorative ONLY — hints, dividers, disabled;
+                 never for information the user needs to read)
 Accent/Active:   #CC0000
 Success:         #16a34a
 Warning:         #ca8a04
@@ -585,9 +622,17 @@ Do not use URLSearchParams — it causes TypeScript JSX prop conflicts.
   at /dashboard/activity — requires db/2026-activity-logs.sql migration)
 - Phase 16: Privacy Consent + Retention (/join consent modal, consent proof
   columns, 1-year purge — requires db/2026-privacy-consent.sql migration)
+- Phase 17: Debt Sweep (July 2026) — 56 unit tests over security-critical libs,
+  exact-count dashboard stats, history pagination (duties/events, 10/page),
+  decomposition of the four oversized components into hooks + view files,
+  components/ui primitives (Avatar, StatusBadge, tokens), WCAG AA contrast for
+  meaningful text (#6b7280), CSS hover/focus parity, next/image migration
 
-### Not Yet Built
-- Final UI Polish — loading states, skeleton screens, error states, mobile
+### Not Yet Built / In Progress
+- db/schema.sql full dump + RLS (awaiting introspection-queries.sql results)
+- DB triggers for status-transition state machines (blocked on schema dump)
+- Generated Supabase types (dashboard copy-paste; replaces remaining `as any`)
+- Reports/exports + announcement acknowledgments (Phase C features)
 
 ---
 

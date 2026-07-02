@@ -74,7 +74,7 @@ export default async function AnnouncementDetailPage({
             <div style={{ width: '26px', height: '26px', borderRadius: '50%', background: '#111', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '10.5px', fontWeight: 700, flexShrink: 0 }}>
               {a.poster?.full_name?.charAt(0) ?? '?'}
             </div>
-            <p style={{ fontSize: '12.5px', color: '#888' }}>
+            <p style={{ fontSize: '12.5px', color: '#6b7280' }}>
               <span style={{ fontWeight: 500, color: '#555' }}>{a.poster?.full_name ?? '—'}</span>
               <span style={{ color: '#ccc', margin: '0 6px' }}>·</span>
               {new Date(a.created_at).toLocaleDateString('en-PH', {
@@ -95,7 +95,7 @@ export default async function AnnouncementDetailPage({
       {/* Actions — only for authorized users */}
       {(canEdit || canDelete) && (
         <div className="px-5 py-5 sm:px-6" style={{ background: '#fff', border: '1px solid rgba(0,0,0,0.07)', borderRadius: '10px' }}>
-          <p style={{ fontSize: '10.5px', fontWeight: 600, letterSpacing: '0.07em', textTransform: 'uppercase', color: '#999', marginBottom: '12px' }}>
+          <p style={{ fontSize: '10.5px', fontWeight: 600, letterSpacing: '0.07em', textTransform: 'uppercase', color: '#6b7280', marginBottom: '12px' }}>
             Actions
           </p>
           <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
