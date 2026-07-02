@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { createClient as createServerClient } from '@/lib/supabase/server'
+import { logActivity, buildDiff } from '@/lib/activityLog'
 
 export async function POST(req: NextRequest) {
   try {
@@ -62,9 +63,10 @@ export async function POST(req: NextRequest) {
 
     // 3. Guard: only members / creative_heads may be edited through this route.
     //    Editing consultant accounts is blocked to avoid lockout / privilege games.
+    //    The extra fields feed the activity-log diff after a successful update.
     const { data: target } = await admin
       .from('profiles')
-      .select('system_role')
+      .select('system_role, full_name, username, email, creative_head_role, member_role, student_number, course_section, year_level, contact_number')
       .eq('id', memberId)
       .single()
 
@@ -124,6 +126,32 @@ export async function POST(req: NextRequest) {
         console.error('Skills update error:', skillsError.message)
         // Non-fatal — profile saved, skills just didn't update fully
       }
+    }
+
+    // Service-role write — the audit trigger skips it, so log here with the
+    // same field-level diff shape the trigger produces (sensitive fields and
+    // the password record only a "changed" marker, never values).
+    const diff = buildDiff(target, {
+      full_name: fullName.trim(),
+      username: username?.trim() || null,
+      email: email.trim(),
+      system_role: systemRole,
+      creative_head_role: systemRole === 'creative_head' ? (creativeHeadRole || 'none') : 'none',
+      member_role: systemRole === 'member' ? (memberRole || 'none') : 'none',
+      student_number: studentNumber?.trim() || null,
+      course_section: courseSection?.trim() || null,
+      year_level: yearLevel?.trim() || null,
+      contact_number: contactNumber?.trim() || null,
+    })
+    if (password) diff.password = { changed: true }
+    if (Object.keys(diff).length > 0) {
+      await logActivity({
+        actorId: user.id,
+        action: 'updated',
+        targetTable: 'profiles',
+        targetId: memberId,
+        details: { target_label: fullName.trim(), diff },
+      })
     }
 
     return NextResponse.json({ success: true })

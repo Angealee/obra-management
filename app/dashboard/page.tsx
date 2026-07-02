@@ -136,18 +136,45 @@ export default async function DashboardPage() {
     const ayEventIds = events?.map(e => e.id) ?? []
     const eventFilter = ayEventIds.length > 0 ? ayEventIds : [NONE_UUID]
 
+    // Duty stat cards are exact DB counts (correct at any duty volume — the
+    // old approach fetched 200 rows and counted in JS, silently undercounting
+    // past the cap). The four buckets partition every duty exactly once:
+    // pending / in_progress / awaiting review (completed, no reviewer) /
+    // reviewed (completed + reviewer, or legacy status='reviewed').
+    const dutyCount = () =>
+      supabase
+        .from('duties')
+        .select('id, events!inner(id)', { count: 'exact', head: true })
+        .eq('events.academic_year_id', yearId)
+
     const [
       { count: totalMembers },
-      { data: duties },
       { count: pendingApplications },
       { data: allMarks },
       { data: activeMembers },
+      { count: pendingCount },
+      { count: inProgCount },
+      { count: awaitingCount },
+      { count: reviewedCount },
+      { data: contribDuties },
     ] = await Promise.all([
       supabase.from('academic_year_members').select('*', { count: 'exact', head: true }).eq('academic_year_id', yearId),
-      supabase.from('duties').select('id, title, status, reviewed_by, assigned_to, event_id, events(title), assignee:profiles!duties_assigned_to_fkey(full_name, avatar_url)').in('event_id', eventFilter).order('created_at', { ascending: false }).limit(200),
       supabase.from('member_applications').select('*', { count: 'exact', head: true }).eq('status', 'pending'),
       supabase.from('workload_marks').select('mark, member_id').in('event_id', eventFilter),
       supabase.from('profiles').select('id').eq('is_active', true).neq('system_role', 'consultant'),
+      dutyCount().eq('status', 'pending'),
+      dutyCount().eq('status', 'in_progress'),
+      dutyCount().eq('status', 'completed').is('reviewed_by', null),
+      dutyCount().or('and(status.eq.completed,reviewed_by.not.is.null),status.eq.reviewed'),
+      // Top Contributors: lean columns only, scoped through the event join.
+      // The high ceiling is a payload guard, not a stats cap — the cards above
+      // stay exact regardless.
+      supabase
+        .from('duties')
+        .select('assigned_to, event_id, status, reviewed_by, assignee:profiles!duties_assigned_to_fkey(full_name, avatar_url), events!inner(academic_year_id)')
+        .eq('events.academic_year_id', yearId)
+        .not('assigned_to', 'is', null)
+        .limit(2000),
     ])
 
     // Only count marks for members who actually appear in the Workload Matrix
@@ -160,16 +187,15 @@ export default async function DashboardPage() {
     const dndMarks   = visibleMarks.filter(m => m.mark === 'did_not_duty').length
     const doneMarks  = visibleMarks.filter(m => m.mark === 'completed').length
 
-    const displayIs = (s: string) => duties?.filter(d => dutyDisplayStatus(d) === s).length ?? 0
-    const total = duties?.length ?? 0
-    const pending = duties?.filter(d => d.status === 'pending').length ?? 0
-    const inProg  = duties?.filter(d => d.status === 'in_progress').length ?? 0
-    const compl   = displayIs('awaiting_review')
-    const rev     = displayIs('reviewed')
+    const pending = pendingCount ?? 0
+    const inProg  = inProgCount ?? 0
+    const compl   = awaitingCount ?? 0
+    const rev     = reviewedCount ?? 0
+    const total   = pending + inProg + compl + rev
 
     type MemberStats = { name: string; avatar: string | null; total: number; reviewed: number; events: Set<string> }
     const memberStats: Record<string, MemberStats> = {}
-    for (const d of duties ?? []) {
+    for (const d of contribDuties ?? []) {
       if (!d.assigned_to) continue
       const name = (d as any).assignee?.full_name ?? 'Unknown'
       const avatar = (d as any).assignee?.avatar_url ?? null

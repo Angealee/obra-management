@@ -5,6 +5,7 @@ import WorkloadBadge from '@/components/WorkLoadBadge'
 import EmptyState from '@/components/EmptyState'
 import { ListChecks } from 'lucide-react'
 import DutyRowActions from './DutyRowActions'
+import Pager from '@/components/Pager'
 import { getAcademicYearContext } from '@/lib/academicYear'
 import { dutyTypeLabel } from '@/lib/memberRole'
 import { dutyDisplayStatus, DUTY_DISPLAY_LABELS, DUTY_DISPLAY_STYLE, type DutyDisplayStatus } from '@/lib/dutyStatus'
@@ -30,31 +31,59 @@ function StatusCell({ display, mark }: { display: DutyDisplayStatus; mark: strin
   )
 }
 
-export default async function DutiesPage() {
+// Reviewed history paginates; active groups always show in full.
+const HISTORY_PAGE_SIZE = 10
+
+const DUTY_COLUMNS = `
+  id, title, duty_type, status, reviewed_by, priority, created_at,
+  event_id, assigned_to,
+  events!inner ( id, title, event_date ),
+  assignee:profiles!duties_assigned_to_fkey ( full_name )
+`
+
+export default async function DutiesPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ page?: string }>
+}) {
   const { user, profile } = await requireProfile()
   const supabase = await createClient()
 
   const isHead = profile.system_role === 'consultant' || profile.system_role === 'creative_head'
 
   const { viewYearId } = await getAcademicYearContext()
+  const params = await searchParams
+  const page = Math.max(1, parseInt(params.page ?? '1', 10) || 1)
 
-  // Duties belong to a year through their event. Scope them in a single query
-  // via an inner join on the event (events!inner + event's academic_year_id),
-  // instead of fetching the year's event ids in a separate round-trip.
-  const dutiesQuery = supabase
+  // Duties belong to a year through their event (events!inner join). ACTIVE
+  // duties (pending / in progress / awaiting review) are always shown in full —
+  // people work from them. The REVIEWED history grows unbounded, so it is
+  // fetched separately with a count and paginated (?page=).
+  const activeQuery = supabase
     .from('duties')
-    .select(`
-      id, title, duty_type, status, reviewed_by, priority, created_at,
-      event_id, assigned_to,
-      events!inner ( id, title, event_date ),
-      assignee:profiles!duties_assigned_to_fkey ( full_name )
-    `)
+    .select(DUTY_COLUMNS)
     .eq('events.academic_year_id', viewYearId ?? NONE_UUID)
+    .or('status.in.(pending,in_progress),and(status.eq.completed,reviewed_by.is.null)')
     .order('created_at', { ascending: false })
+  if (!isHead) activeQuery.eq('assigned_to', user.id)
 
-  if (!isHead) dutiesQuery.eq('assigned_to', user.id)
+  const reviewedQuery = supabase
+    .from('duties')
+    .select(DUTY_COLUMNS, { count: 'exact' })
+    .eq('events.academic_year_id', viewYearId ?? NONE_UUID)
+    .or('and(status.eq.completed,reviewed_by.not.is.null),status.eq.reviewed')
+    .order('created_at', { ascending: false })
+    .range((page - 1) * HISTORY_PAGE_SIZE, page * HISTORY_PAGE_SIZE - 1)
+  if (!isHead) reviewedQuery.eq('assigned_to', user.id)
 
-  const { data: duties } = await dutiesQuery
+  const [
+    { data: activeDuties },
+    { data: reviewedDuties, count: reviewedCount },
+  ] = await Promise.all([activeQuery, reviewedQuery])
+
+  const duties = [...(activeDuties ?? []), ...(reviewedDuties ?? [])]
+  const reviewedTotal = reviewedCount ?? 0
+  const totalPages = Math.max(1, Math.ceil(reviewedTotal / HISTORY_PAGE_SIZE))
 
   // Fetch workload marks
   const eventIds  = [...new Set((duties ?? []).map((d: any) => d.event_id).filter(Boolean))]
@@ -74,10 +103,10 @@ export default async function DutiesPage() {
   }
 
   const groups: Record<DutyDisplayStatus, any[]> = {
-    pending:         (duties ?? []).filter((d: any) => dutyDisplayStatus(d) === 'pending'),
-    in_progress:     (duties ?? []).filter((d: any) => dutyDisplayStatus(d) === 'in_progress'),
-    awaiting_review: (duties ?? []).filter((d: any) => dutyDisplayStatus(d) === 'awaiting_review'),
-    reviewed:        (duties ?? []).filter((d: any) => dutyDisplayStatus(d) === 'reviewed'),
+    pending:         (activeDuties ?? []).filter((d: any) => dutyDisplayStatus(d) === 'pending'),
+    in_progress:     (activeDuties ?? []).filter((d: any) => dutyDisplayStatus(d) === 'in_progress'),
+    awaiting_review: (activeDuties ?? []).filter((d: any) => dutyDisplayStatus(d) === 'awaiting_review'),
+    reviewed:        reviewedDuties ?? [],
   }
 
   const groupTitles: Record<DutyDisplayStatus, string> = {
@@ -93,7 +122,7 @@ export default async function DutiesPage() {
             {isHead ? 'All Duties' : 'My Duties'}
           </h1>
           <p style={{ fontSize: '13px', color: '#999', marginTop: '5px' }}>
-            {groups.pending.length} pending · {groups.in_progress.length} in progress · {groups.awaiting_review.length} awaiting review · {groups.reviewed.length} reviewed
+            {groups.pending.length} pending · {groups.in_progress.length} in progress · {groups.awaiting_review.length} awaiting review · {reviewedTotal} reviewed
           </p>
         </div>
         {isHead && (
@@ -103,7 +132,7 @@ export default async function DutiesPage() {
         )}
       </div>
 
-      {!duties || duties.length === 0 ? (
+      {duties.length === 0 && reviewedTotal === 0 ? (
         <EmptyState
           icon={ListChecks}
           title={isHead ? 'No duties for this academic year yet' : 'You have no duties yet'}
@@ -117,12 +146,15 @@ export default async function DutiesPage() {
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
           {(Object.entries(groups) as [DutyDisplayStatus, any[]][]).map(([groupStatus, groupDuties]) => {
-            if (groupDuties.length === 0) return null
+            // The reviewed section exists whenever ANY reviewed duties exist —
+            // even if the current ?page= slice is empty (e.g. a stale deep link).
+            const sectionTotal = groupStatus === 'reviewed' ? reviewedTotal : groupDuties.length
+            if (sectionTotal === 0) return null
             return (
               <div key={groupStatus}>
                 <p style={{ fontSize: '10.5px', fontWeight: 600, letterSpacing: '0.07em', textTransform: 'uppercase', color: '#999', marginBottom: '10px' }}>
                   {groupTitles[groupStatus]}{' '}
-                  <span style={{ color: '#ccc' }}>({groupDuties.length})</span>
+                  <span style={{ color: '#ccc' }}>({sectionTotal})</span>
                 </p>
 
                 {/* Mobile: stacked cards */}
@@ -259,6 +291,14 @@ export default async function DutiesPage() {
                     </tbody>
                   </table>
                 </div>
+
+                {groupStatus === 'reviewed' && (
+                  <Pager
+                    page={page}
+                    totalPages={totalPages}
+                    hrefFor={p => '/dashboard/duties' + (p > 1 ? `?page=${p}` : '')}
+                  />
+                )}
               </div>
             )
           })}

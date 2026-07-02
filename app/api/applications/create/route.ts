@@ -6,6 +6,7 @@ import { validateApplication } from '@/lib/applicationValidation'
 import { assessEmail } from '@/lib/emailSecurity'
 import { isRequestBlocked } from '@/lib/applicationBlocks'
 import { hashOtpCode } from '@/lib/otp'
+import { CONSENT_VERSION } from '@/lib/privacyPolicy'
 
 // This endpoint is now the ONLY way to create a member application.
 // Anonymous INSERT on member_applications is revoked at the DB level
@@ -173,6 +174,11 @@ export async function POST(req: NextRequest) {
       user_agent: str(userAgent, 1000) ?? null,
       canonical_email: canonical,
       submit_meta,
+      // Proof of consent — validateApplication already required consent=true;
+      // the server stamps its own timestamp + notice version (never trusts
+      // client-supplied values for these).
+      consented_at: new Date().toISOString(),
+      consent_version: CONSENT_VERSION,
     })
 
     if (error) {

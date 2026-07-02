@@ -1,6 +1,7 @@
 import { createAdminClient } from '@/lib/supabase/admin'
 import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
+import { logActivity } from '@/lib/activityLog'
 
 export async function POST(request: Request) {
   try {
@@ -115,6 +116,15 @@ export async function POST(request: Request) {
         // Non-fatal — member exists; they just aren't tagged to the year yet.
       }
     }
+
+    // Service-role write — the audit trigger skips it, so log here (see lib/activityLog.ts).
+    await logActivity({
+      actorId: user.id,
+      action: 'created',
+      targetTable: 'profiles',
+      targetId: newUserId,
+      details: { target_label: fullName, system_role: systemRole },
+    })
 
     return NextResponse.json({ success: true })
 

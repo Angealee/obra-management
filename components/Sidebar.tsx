@@ -9,6 +9,7 @@ import {
   PanelLeftClose, PanelLeftOpen,
   BarChart3,
   ClipboardList,
+  History,
   Menu, X,
 } from 'lucide-react'
 
@@ -30,6 +31,7 @@ const NAV = [
   { href: '/dashboard/workloads',      label: 'Workloads',      icon: BarChart2,       roles: ['consultant','creative_head'] },
   { href: '/dashboard/academic-years', label: 'Academic Years', icon: GraduationCap,   roles: ['consultant'] },
   { href: '/dashboard/applications',   label: 'Applications',   icon: ClipboardList,   roles: ['consultant','creative_head'] },
+  { href: '/dashboard/activity',       label: 'Activity',       icon: History,         roles: ['consultant'] },
 ]
 
 const ROLE_LABEL: Record<string, string> = {

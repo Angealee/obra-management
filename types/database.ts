@@ -57,6 +57,24 @@ export type AcademicYearMember = {
   created_at: string
 }
 
+// One audit-trail entry. Written by the DB trigger (authenticated writes) or
+// lib/activityLog.ts (service-role API routes). Consultant-only via RLS.
+export type ActivityLog = {
+  id: string
+  actor_id: string | null
+  action: string
+  target_table: string
+  target_id: string | null
+  details: {
+    target_label?: string
+    identifier?: string
+    mark?: string
+    purged?: number
+    diff?: Record<string, { old?: string; new?: string; changed?: boolean }>
+  } | null
+  created_at: string
+}
+
 export type MemberSkill = {
   id: string
   name: string

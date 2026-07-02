@@ -45,6 +45,13 @@ export type ValidationOutcome =
   | { error?: undefined; data: CleanApplication }
 
 export function validateApplication(body: any): ValidationOutcome {
+  // Data Privacy Notice consent is required (RA 10173). The /join form gates
+  // submission behind the consent modal; anyone bypassing the form and posting
+  // directly must still assert consent explicitly.
+  if (body?.consent !== true) {
+    return { error: 'Please review and agree to the Data Privacy Notice first.' }
+  }
+
   const full_name = String(body?.full_name ?? '').trim()
   const email = String(body?.email ?? '').trim().toLowerCase()
   const contact_raw = String(body?.contact_number ?? '').trim()

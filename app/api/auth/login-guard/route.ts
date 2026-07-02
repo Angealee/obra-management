@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { isRateLimited, recordRateLimitHit, clearRateLimit } from '@/lib/rate-limit'
+import { logActivity } from '@/lib/activityLog'
 
 // Per-ACCOUNT failed-login throttle.
 //
@@ -37,6 +38,14 @@ export async function POST(req: NextRequest) {
 
     if (action === 'fail') {
       await recordRateLimitHit(bucket, WINDOW_SEC)
+      // Audit failed attempts (consultant-visible). The identifier may be an
+      // email or a username — stored as typed, per the agreed retention scope.
+      await logActivity({
+        actorId: null,
+        action: 'login_failed',
+        targetTable: 'auth',
+        details: { identifier: identifier.toLowerCase() },
+      })
       return NextResponse.json({ ok: true })
     }
 

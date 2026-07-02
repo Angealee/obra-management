@@ -284,7 +284,17 @@ notes text (nullable)
 reviewed_by uuid (FK → profiles, nullable)
 reviewed_at timestamptz (nullable)
 academic_year_id uuid (FK → academic_years, nullable)
+consented_at timestamptz (nullable — when the applicant agreed to the privacy notice)
+consent_version text (nullable — notice version shown; server-stamped, see lib/privacyPolicy.ts)
 created_at timestamptz
+
+Privacy (RA 10173, db/2026-privacy-consent.sql):
+- /join shows a Data Privacy Notice MODAL before the OTP send (the first time
+  personal data reaches the server). validateApplication rejects consent!==true.
+- consented_at + consent_version are stamped by the server on insert (proof).
+- Retention: rejected/withdrawn applications are deleted 1 year after the
+  decision via the consultant "Data Hygiene" purge on /dashboard/activity
+  (/api/applications/purge, count-then-confirm, activity-logged).
 
 Application status pipeline:
 pending → shortlisted → interviewed → approved
@@ -297,14 +307,32 @@ RLS on member_applications:
 - UPDATE: consultant (all); creative_head (stage restricted in code to pending→shortlisted only)
 - DELETE: consultant only
 
-### public.activity_logs (table exists, not yet implemented)
+### public.activity_logs
 id uuid
-actor_id uuid (FK → profiles)
-action text
-target_table text
-target_id uuid
-details jsonb
+actor_id uuid (FK → profiles, ON DELETE SET NULL — nullable; null = failed sign-in)
+action text ('created','updated','deleted','archived','unarchived','login_failed')
+target_table text (audited table name, or 'auth' for sign-in events)
+target_id uuid (nullable)
+details jsonb ({ target_label, diff?, mark?, identifier? })
 created_at timestamptz
+
+Audit trail — HYBRID logging (db/2026-activity-logs.sql):
+- A SECURITY DEFINER trigger (log_table_activity) on profiles, events, duties,
+  workload_marks, announcements, academic_years, academic_year_members, and
+  member_applications logs every write by an AUTHENTICATED user (covers the
+  client-side mutation components). Skips service-role writes (auth.uid() null)
+  and members editing their own profile. Excluded by design: duty_checklists,
+  profile_skills, public /join submissions.
+- Service-role API routes log explicitly via lib/activityLog.ts (member
+  create/update/archive, failed logins in login-guard).
+- details.diff = field-level old→new; sensitive/long fields (email, contact,
+  student number, notes, content, description, remarks, password…) record only
+  {"changed": true}, never values.
+- RLS: SELECT consultant only; no client write policies.
+- Retention: current + previous academic year, pruned opportunistically on
+  ~2% of writes inside the trigger.
+- UI: /dashboard/activity (consultant only) — flat table, module/action/actor
+  filters, numbered pagination (50/page).
 
 ### Storage
 Bucket: avatars (public)
@@ -321,17 +349,28 @@ obra-management/
 │   ├── globals.css                       ← Design system
 │   ├── join/
 │   │   ├── page.tsx                      ← Public application form
-│   │   └── JoinForm.tsx                  ← Client form component
+│   │   ├── JoinForm.tsx                  ← Client form component (OTP + consent gate)
+│   │   ├── PrivacyModal.tsx              ← Data Privacy Notice modal (RA 10173)
+│   │   └── Slideshow.tsx
 │   ├── login/
-│   │   └── page.tsx
+│   │   ├── page.tsx
+│   │   └── ForgotPasswordModal.tsx
 │   ├── auth/
 │   │   └── signout/route.ts
 │   ├── api/
 │   │   ├── members/
 │   │   │   ├── create/route.ts           ← Admin: create auth user (service role)
+│   │   │   ├── update/route.ts           ← Consultant: edit member (service role)
 │   │   │   └── archive/route.ts          ← Consultant: archive/unarchive member
-│   │   └── applications/
-│   │       └── create/route.ts           ← Public: submit application (anon key)
+│   │   ├── applications/
+│   │   │   ├── create/route.ts           ← Public: submit application (service role, OTP-gated)
+│   │   │   ├── otp/route.ts              ← Public: send email verification code
+│   │   │   ├── block/route.ts            ← Consultant: block abusive identifiers
+│   │   │   └── purge/route.ts            ← Consultant: retention purge (1 yr after decision)
+│   │   └── auth/
+│   │       ├── login-guard/route.ts      ← Per-account failed-login throttle + audit log
+│   │       ├── resolve-login/route.ts    ← Username → email resolution
+│   │       └── forgot-password/          ← request/ + reset/ routes
 │   └── dashboard/
 │       ├── layout.tsx
 │       ├── page.tsx                      ← Role-based dashboard
@@ -383,12 +422,16 @@ obra-management/
 │       │       └── edit/
 │       │           ├── page.tsx
 │       │           └── EditAnnouncementForm.tsx
-│       └── applications/
-│           ├── page.tsx                  ← Split view list (server)
-│           ├── ApplicationsClient.tsx    ← Filters + list panel (client)
-│           └── [id]/
-│               ├── page.tsx             ← Detail panel (server)
-│               └── ApplicationActions.tsx ← Stage buttons + notes (client)
+│       ├── applications/
+│       │   ├── page.tsx                  ← Split view list (server)
+│       │   ├── ApplicationsClient.tsx    ← Filters + list panel (client)
+│       │   └── [id]/
+│       │       ├── page.tsx             ← Detail panel (server)
+│       │       └── ApplicationActions.tsx ← Stage buttons + notes (client)
+│       └── activity/
+│           ├── page.tsx                  ← Audit feed (server, consultant only)
+│           ├── ActivityFilters.tsx       ← Module/action/actor selects (client)
+│           └── loading.tsx
 ├── components/
 │   ├── Sidebar.tsx
 │   ├── PageWrapper.tsx
@@ -538,9 +581,12 @@ Do not use URLSearchParams — it causes TypeScript JSX prop conflicts.
 - Phase 12: Member Inquiry Module (/join + applications panel)
 - Phase 13: Members List Rebuild (table, filters, archive)
 - Phase 14: System-wide Academic Year Scoping
+- Phase 15: Activity Logs (hybrid trigger + API-route logging, consultant feed
+  at /dashboard/activity — requires db/2026-activity-logs.sql migration)
+- Phase 16: Privacy Consent + Retention (/join consent modal, consent proof
+  columns, 1-year purge — requires db/2026-privacy-consent.sql migration)
 
 ### Not Yet Built
-- Activity Logs — activity_logs table exists, UI not built
 - Final UI Polish — loading states, skeleton screens, error states, mobile
 
 ---
@@ -612,11 +658,10 @@ When explaining:
 
 ## NEXT PHASES (in order)
 
-1. Activity Logs
-   - Track: member created, event created, duty assigned, duty reviewed,
-     application approved/rejected, member archived
-   - Visible to Consultant (read-only)
-   - activity_logs table already in schema
+1. Pre-defense hardening (Phase A roadmap)
+   - Full schema + RLS dump committed as db/schema.sql
+   - DB triggers enforcing status-transition state machines
+     (member_applications pipeline, duties status flow)
 
 2. Final UI Polish + Refactor
    - Loading states and skeleton screens on all pages

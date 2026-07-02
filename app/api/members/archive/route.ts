@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { createClient as createServerClient } from '@/lib/supabase/server'
+import { logActivity } from '@/lib/activityLog'
 
 export async function POST(req: NextRequest) {
   try {
@@ -43,6 +44,20 @@ export async function POST(req: NextRequest) {
     } else {
       return NextResponse.json({ error: 'Invalid action.' }, { status: 400 })
     }
+
+    // Service-role write — the audit trigger skips it, so log here.
+    const { data: member } = await admin
+      .from('profiles')
+      .select('full_name')
+      .eq('id', memberId)
+      .single()
+    await logActivity({
+      actorId: user.id,
+      action: action === 'archive' ? 'archived' : 'unarchived',
+      targetTable: 'profiles',
+      targetId: memberId,
+      details: { target_label: member?.full_name ?? 'Unknown member' },
+    })
 
     return NextResponse.json({ success: true })
   } catch (err) {

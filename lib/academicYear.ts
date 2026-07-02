@@ -3,6 +3,7 @@ import { cache } from 'react'
 import { createClient } from '@/lib/supabase/server'
 import type { AcademicYear } from '@/types/database'
 import { VIEW_YEAR_COOKIE } from '@/lib/viewYearCookie'
+import { resolveViewYear } from '@/lib/viewYear'
 
 // Resolves the academic year currently "in view" for the request.
 //
@@ -26,9 +27,8 @@ export const getAcademicYearContext = cache(async () => {
   const cookieStore = await cookies()
   const cookieId = cookieStore.get(VIEW_YEAR_COOKIE)?.value
 
-  const activeYear = years.find(y => y.is_active) ?? null
-  const viewYear =
-    years.find(y => y.id === cookieId) ?? activeYear ?? years[0] ?? null
+  // Pure fallback chain lives in lib/viewYear.ts (unit-tested).
+  const { viewYear, activeYear } = resolveViewYear(years, cookieId)
 
   return {
     years,

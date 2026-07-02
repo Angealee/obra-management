@@ -4,8 +4,12 @@ import { createClient } from '@/lib/supabase/server'
 import type { ObraEventWithDetails } from '@/types/database'
 import { requireProfile } from '@/lib/auth'
 import EmptyState from '@/components/EmptyState'
+import Pager from '@/components/Pager'
 import { CalendarDays } from 'lucide-react'
 import { getAcademicYearContext } from '@/lib/academicYear'
+
+// Completed-events history paginates; ongoing/upcoming/cancelled always show in full.
+const HISTORY_PAGE_SIZE = 10
 
 const statusStyles: Record<string, string> = {
   upcoming:  'bg-blue-100 text-blue-700',
@@ -29,37 +33,59 @@ function StatusBadge({ status }: { status: string }) {
   )
 }
 
-export default async function EventsPage() {
+export default async function EventsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ page?: string }>
+}) {
   const { profile } = await requireProfile()
   if (profile.system_role === 'member') redirect('/dashboard')
 
   const supabase = await createClient()
 
   const { viewYear, viewYearId } = await getAcademicYearContext()
+  const params = await searchParams
+  const page = Math.max(1, parseInt(params.page ?? '1', 10) || 1)
 
-  // Fetch events for the chosen academic year only
-  const { data: events } = viewYearId
-    ? await supabase
-        .from('events')
-        .select(`
-          *,
-          academic_years ( label ),
-          profiles ( full_name )
-        `)
-        .eq('academic_year_id', viewYearId)
-        .order('event_date', { ascending: false }) as { data: ObraEventWithDetails[] | null }
-    : { data: [] as ObraEventWithDetails[] }
+  // Open events (ongoing/upcoming/cancelled) always show in full — they're
+  // bounded within a year. COMPLETED events are the growing history, so they
+  // are fetched separately with a count and paginated (?page=).
+  const EVENT_COLUMNS = `
+    *,
+    academic_years ( label ),
+    profiles ( full_name )
+  `
+  const [{ data: openEvents }, { data: completedEvents, count: completedCount }] = viewYearId
+    ? await Promise.all([
+        supabase
+          .from('events')
+          .select(EVENT_COLUMNS)
+          .eq('academic_year_id', viewYearId)
+          .in('status', ['upcoming', 'ongoing', 'cancelled'])
+          .order('event_date', { ascending: false }) as any,
+        supabase
+          .from('events')
+          .select(EVENT_COLUMNS, { count: 'exact' })
+          .eq('academic_year_id', viewYearId)
+          .eq('status', 'completed')
+          .order('event_date', { ascending: false })
+          .range((page - 1) * HISTORY_PAGE_SIZE, page * HISTORY_PAGE_SIZE - 1) as any,
+      ])
+    : [{ data: [] as ObraEventWithDetails[] }, { data: [] as ObraEventWithDetails[], count: 0 }]
 
+  const open = (openEvents ?? []) as ObraEventWithDetails[]
   const grouped = {
-    upcoming:  events?.filter(e => e.status === 'upcoming')  ?? [],
-    ongoing:   events?.filter(e => e.status === 'ongoing')   ?? [],
-    completed: events?.filter(e => e.status === 'completed') ?? [],
-    cancelled: events?.filter(e => e.status === 'cancelled') ?? [],
+    upcoming:  open.filter(e => e.status === 'upcoming'),
+    ongoing:   open.filter(e => e.status === 'ongoing'),
+    completed: ((completedEvents ?? []) as ObraEventWithDetails[]),
+    cancelled: open.filter(e => e.status === 'cancelled'),
   }
+  const completedTotal = completedCount ?? 0
+  const totalPages = Math.max(1, Math.ceil(completedTotal / HISTORY_PAGE_SIZE))
 
   const canManage = profile.system_role === 'consultant' || profile.system_role === 'creative_head'
 
-  const eventCount = events?.length ?? 0
+  const eventCount = open.length + completedTotal
 
   return (
     <div className="page-enter">
@@ -81,7 +107,7 @@ export default async function EventsPage() {
       </div>
 
       {/* Empty state */}
-      {!events || events.length === 0 ? (
+      {eventCount === 0 ? (
         <EmptyState
           icon={CalendarDays}
           title={viewYear ? `Nothing scheduled for ${viewYear.label}` : 'No events yet'}
@@ -105,9 +131,18 @@ export default async function EventsPage() {
             <EventSection title="Upcoming" events={grouped.upcoming} />
           )}
 
-          {/* Then completed */}
-          {grouped.completed.length > 0 && (
-            <EventSection title="Completed" events={grouped.completed} />
+          {/* Then completed — the growing history section, paginated */}
+          {completedTotal > 0 && (
+            <div>
+              {grouped.completed.length > 0 && (
+                <EventSection title="Completed" events={grouped.completed} />
+              )}
+              <Pager
+                page={page}
+                totalPages={totalPages}
+                hrefFor={p => '/dashboard/events' + (p > 1 ? `?page=${p}` : '')}
+              />
+            </div>
           )}
 
           {/* Cancelled last */}
