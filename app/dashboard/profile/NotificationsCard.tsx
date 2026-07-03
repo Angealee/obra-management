@@ -108,6 +108,10 @@ export default function NotificationsCard({
           p256dh: json.keys?.p256dh ?? '',
           auth: json.keys?.auth ?? '',
           user_agent: navigator.userAgent.slice(0, 300),
+          // A new device inherits the prefs already saved on the user's other
+          // devices; without this it would start from the all-on defaults and
+          // drift until the next toggle.
+          ...(Object.keys(categories).length > 0 ? { categories } : {}),
         },
         { onConflict: 'endpoint' },
       )

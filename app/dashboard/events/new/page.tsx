@@ -4,7 +4,6 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
-import { fireNotification } from '@/lib/notifyClient'
 import type { AcademicYear } from '@/types/database'
 
 export default function NewEventPage() {
@@ -46,47 +45,29 @@ export default function NewEventPage() {
     setLoading(true)
     setError('')
 
-    // Get current user to set as created_by
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) { setError('Not authenticated.'); setLoading(false); return }
-
-    // Guard against duplicate events: same title + date within the same year.
-    const { data: dup } = await supabase
-      .from('events')
-      .select('id')
-      .eq('academic_year_id', academicYearId)
-      .eq('event_date', eventDate)
-      .ilike('title', title.trim())
-      .maybeSingle()
-    if (dup) {
-      setError('An event with this title already exists on this date for this academic year.')
-      setLoading(false)
-      return
-    }
-
-    const { data: created, error: insertError } = await supabase
-      .from('events')
-      .insert({
-        title: title.trim(),
-        description: description.trim() || null,
-        event_date: eventDate,
-        event_time: eventTime || null,
-        location: location.trim() || null,
-        academic_year_id: academicYearId,
-        status: 'upcoming',
-        created_by: user.id,
+    // Server route: dup-checks + inserts under this user's RLS AND pushes to
+    // the year's roster in-process — delivery no longer depends on this
+    // browser staying open.
+    try {
+      const res = await fetch('/api/events/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: title.trim(),
+          description: description.trim(),
+          eventDate,
+          eventTime,
+          location: location.trim(),
+          academicYearId,
+        }),
       })
-      .select('id')
-      .single()
-
-    if (insertError) {
-      setError(insertError.message)
+      const data = await res.json()
+      if (!res.ok) { setError(data.error ?? 'Failed to create event.'); setLoading(false); return }
+    } catch {
+      setError('Network error — event not created.')
       setLoading(false)
       return
     }
-
-    // Push to the year's roster (server verifies + rebuilds from the DB).
-    if (created) fireNotification('event_created', { id: created.id })
 
     router.push('/dashboard/events')
     router.refresh()

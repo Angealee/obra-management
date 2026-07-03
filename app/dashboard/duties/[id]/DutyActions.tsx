@@ -3,7 +3,6 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { fireNotification } from '@/lib/notifyClient'
 import WorkloadBadge from '@/components/WorkLoadBadge'
 
 type Outcome = 'completed' | 'late' | 'did_not_duty'
@@ -65,49 +64,26 @@ export default function DutyActions({
     setLoading(true)
     setError('')
 
-    const now = new Date().toISOString()
-
-    // 1) Upsert the workload mark (select-then-insert/update, matching the
-    //    Workload Matrix's save pattern).
-    const { data: existing } = await supabase
-      .from('workload_marks')
-      .select('id')
-      .eq('member_id', duty.assigned_to)
-      .eq('event_id', duty.event_id)
-      .maybeSingle()
-
-    const markError = existing?.id
-      ? (await supabase
-          .from('workload_marks')
-          .update({ mark: outcome, marked_by: profile.id })
-          .eq('id', existing.id)).error
-      : (await supabase
-          .from('workload_marks')
-          .insert({ member_id: duty.assigned_to, event_id: duty.event_id, mark: outcome, marked_by: profile.id })).error
-
-    if (markError) { setError(markError.message); setLoading(false); return }
-
-    // 2) Stamp the duty as reviewed. Force status='completed' so it leaves the
-    //    pending/in-progress lists even if the head marked an outcome (e.g. Did
-    //    Not Duty) on a duty that was never started.
-    const { error: dutyError } = await supabase
-      .from('duties')
-      .update({
-        status: 'completed',
-        completed_at: duty.completed_at ?? now,
-        reviewed_by: profile.id,
-        reviewed_at: now,
-        remarks: remarks.trim() || null,
+    // Server route: writes the workload mark, stamps the duty reviewed
+    // (status='completed' + reviewed_by/reviewed_at + remarks) under this
+    // user's RLS, AND pushes "your outcome was recorded" to the member
+    // in-process — delivery no longer depends on this browser staying open.
+    try {
+      const res = await fetch('/api/workloads/save', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          entries: [{ memberId: duty.assigned_to, eventId: duty.event_id, mark: outcome }],
+          remarks,
+        }),
       })
-      .eq('id', duty.id)
-
-    if (dutyError) { setError(dutyError.message); setLoading(false); return }
-
-    // Push "your outcome was recorded" to the member (server re-verifies the
-    // mark row this reviewer just wrote before sending anything).
-    fireNotification('workload_marked', {
-      entries: [{ memberId: duty.assigned_to, eventId: duty.event_id }],
-    })
+      const data = await res.json()
+      if (!res.ok) { setError(data.error ?? 'Failed to record the outcome.'); setLoading(false); return }
+    } catch {
+      setError('Network error — outcome not recorded.')
+      setLoading(false)
+      return
+    }
 
     router.refresh()
     setLoading(false)

@@ -34,7 +34,7 @@ export default function WorkloadMatrix({
   highlightMember?: string | null
   highlightEvent?: string | null
 }) {
-  const marks = useWorkloadMarks({ matrix, initialMarksMap })
+  const marks = useWorkloadMarks({ initialMarksMap })
   const view = useMatrixView({
     members,
     events,

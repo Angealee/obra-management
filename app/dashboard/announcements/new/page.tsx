@@ -4,7 +4,6 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
-import { fireNotification } from '@/lib/notifyClient'
 import type { AcademicYear } from '@/types/database'
 
 export default function NewAnnouncementPage() {
@@ -39,25 +38,26 @@ export default function NewAnnouncementPage() {
     setLoading(true)
     setError('')
 
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) { setError('Not authenticated.'); setLoading(false); return }
-
-    const { data: created, error: insertError } = await supabase
-      .from('announcements')
-      .insert({
-        title: title.trim(),
-        content: content.trim(),
-        visibility,
-        academic_year_id: academicYearId || null,
-        posted_by: user.id,
+    // Server route: inserts under this user's RLS AND pushes to the audience
+    // in-process — delivery no longer depends on this browser staying open.
+    try {
+      const res = await fetch('/api/announcements/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: title.trim(),
+          content: content.trim(),
+          visibility,
+          academicYearId: academicYearId || null,
+        }),
       })
-      .select('id')
-      .single()
-
-    if (insertError) { setError(insertError.message); setLoading(false); return }
-
-    // Push to the announcement's audience (server rebuilds content from the DB).
-    if (created) fireNotification('announcement', { id: created.id })
+      const data = await res.json()
+      if (!res.ok) { setError(data.error ?? 'Failed to create announcement.'); setLoading(false); return }
+    } catch {
+      setError('Network error — announcement not created.')
+      setLoading(false)
+      return
+    }
 
     router.push('/dashboard/announcements')
     router.refresh()

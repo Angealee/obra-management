@@ -75,13 +75,49 @@ self.addEventListener('notificationclick', (event) => {
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then((wins) => {
       for (const win of wins) {
         // Reuse an open app window: navigate it to the target and focus.
+        // WindowClient.navigate isn't supported everywhere (notably some iOS
+        // versions), so fall back to opening a fresh window when it's missing
+        // or rejects.
         if (win.url.startsWith(self.location.origin) && 'focus' in win) {
-          win.navigate(url)
-          return win.focus()
+          if (typeof win.navigate === 'function') {
+            return win.navigate(url).then(
+              () => win.focus(),
+              () => clients.openWindow(url)
+            )
+          }
+          return clients.openWindow(url)
         }
       }
       return clients.openWindow(url)
     })
+  )
+})
+
+/* Push services occasionally rotate or expire a subscription. Re-subscribe
+ * with the same VAPID key and tell the server to swap the endpoint on the
+ * user's row (categories carry over). Without this the device silently stops
+ * receiving notifications until the user manually re-enables them. */
+self.addEventListener('pushsubscriptionchange', (event) => {
+  const oldSub = event.oldSubscription
+  const appServerKey =
+    (event.newSubscription && event.newSubscription.options.applicationServerKey) ||
+    (oldSub && oldSub.options.applicationServerKey)
+  if (!appServerKey) return
+
+  event.waitUntil(
+    self.registration.pushManager
+      .subscribe({ userVisibleOnly: true, applicationServerKey: appServerKey })
+      .then((newSub) =>
+        fetch('/api/push/resubscribe', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            oldEndpoint: oldSub ? oldSub.endpoint : null,
+            subscription: newSub.toJSON(),
+          }),
+        })
+      )
+      .catch(() => {/* best-effort — the profile card can always re-enable */})
   )
 })
 

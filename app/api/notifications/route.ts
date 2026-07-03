@@ -2,19 +2,29 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { createClient as createServerClient } from '@/lib/supabase/server'
 import { checkRateLimit } from '@/lib/rate-limit'
-import { sendPushToProfiles, type PushPayload } from '@/lib/push'
+import { sendPushToProfiles } from '@/lib/push'
+import {
+  notifyAnnouncementCreated,
+  notifyDutyAssigned,
+  notifyEventCreated,
+  notifyWorkloadMarked,
+} from '@/lib/notifyEvents'
 
-// Push-notification trigger endpoint. The client only reports THAT something
-// happened ({ type, id }); this route re-fetches the record with the service
-// role, verifies the caller was allowed to cause that event, and builds the
-// notification text from database truth — a client can never forge content
-// or notify arbitrary people. All sends are best-effort.
-
-const WORKLOAD_LABEL: Record<string, string> = {
-  completed: 'Completed',
-  late: 'Late',
-  did_not_duty: 'Did Not Duty',
-}
+// LEGACY push-notification trigger endpoint.
+//
+// Notifications are now sent in-process by the mutation routes themselves
+// (/api/announcements/create, /api/events/create, /api/duties/create,
+// /api/workloads/save) via after() + lib/notifyEvents. This route remains for
+// two reasons:
+//   1. The 'test' type powers the profile card's verification button.
+//   2. Users whose installed PWA still runs pre-refactor cached JS keep
+//      triggering notifications through here until their app updates.
+// Once the fleet is confirmed updated, everything except 'test' can go.
+//
+// Design (unchanged): the client only reports THAT something happened
+// ({ type, id }); permissions are verified against database truth here, and
+// lib/notifyEvents rebuilds the payload from the DB — a client can never
+// forge content or notify arbitrary people. All sends are best-effort.
 
 export async function POST(req: NextRequest) {
   try {
@@ -41,7 +51,7 @@ export async function POST(req: NextRequest) {
     const type = String(body?.type ?? '')
     const admin = createAdminClient()
 
-    // ── TEST (temporary — remove after push is proven in production) ──
+    // ── TEST (permanent verification tool for the profile card) ──
     if (type === 'test') {
       // Small delay so the tester can background/close the app first and
       // prove delivery does not depend on the page being open.
@@ -59,118 +69,52 @@ export async function POST(req: NextRequest) {
       const id = String(body?.id ?? '')
       const { data: a } = await admin
         .from('announcements')
-        .select('id, title, visibility, posted_by')
+        .select('id, posted_by')
         .eq('id', id)
         .single()
       if (!a) return NextResponse.json({ error: 'Not found.' }, { status: 404 })
       if (a.posted_by !== user.id && caller.system_role !== 'consultant') {
         return NextResponse.json({ error: 'Not authorized.' }, { status: 403 })
       }
-
-      let audience = admin.from('profiles').select('id').eq('is_active', true)
-      if (a.visibility === 'creative_heads') audience = audience.eq('system_role', 'creative_head')
-      else if (a.visibility === 'members') audience = audience.eq('system_role', 'member')
-      else audience = audience.in('system_role', ['creative_head', 'member'])
-      const { data: recipients } = await audience.neq('id', a.posted_by)
-
-      const result = await sendPushToProfiles(
-        (recipients ?? []).map(r => r.id),
-        'announcements',
-        {
-          title: '📣 New announcement',
-          body: a.title,
-          url: `/dashboard/announcements/${a.id}`,
-          tag: `announcement-${a.id}`,
-        },
-      )
-      return NextResponse.json(result)
+      await notifyAnnouncementCreated(a.id)
+      return NextResponse.json({ success: true })
     }
 
     if (type === 'duty_assigned') {
       const id = String(body?.id ?? '')
       const { data: d } = await admin
         .from('duties')
-        .select('id, title, assigned_to, assigned_by, events ( title )')
+        .select('id, assigned_by')
         .eq('id', id)
         .single()
       if (!d) return NextResponse.json({ error: 'Not found.' }, { status: 404 })
       if (d.assigned_by !== user.id && caller.system_role !== 'consultant') {
         return NextResponse.json({ error: 'Not authorized.' }, { status: 403 })
       }
-      if (!d.assigned_to) return NextResponse.json({ sent: 0 })
-
-      const eventTitle = (d as any).events?.title
-      const result = await sendPushToProfiles([d.assigned_to], 'duties', {
-        title: '📋 New duty assigned',
-        body: `${d.title}${eventTitle ? ` — ${eventTitle}` : ''}`,
-        url: `/dashboard/duties/${d.id}`,
-        tag: `duty-${d.id}`,
-      })
-      return NextResponse.json(result)
+      await notifyDutyAssigned(d.id)
+      return NextResponse.json({ success: true })
     }
 
     if (type === 'event_created') {
       if (!isAdmin) return NextResponse.json({ error: 'Not authorized.' }, { status: 403 })
       const id = String(body?.id ?? '')
-      const { data: ev } = await admin
-        .from('events')
-        .select('id, title, event_date, academic_year_id')
-        .eq('id', id)
-        .single()
+      const { data: ev } = await admin.from('events').select('id').eq('id', id).single()
       if (!ev) return NextResponse.json({ error: 'Not found.' }, { status: 404 })
-
-      // Whole roster of the event's academic year, minus the creator.
-      const { data: roster } = await admin
-        .from('academic_year_members')
-        .select('profile_id, profiles!inner ( is_active )')
-        .eq('academic_year_id', ev.academic_year_id)
-        .eq('profiles.is_active', true)
-      const recipients = (roster ?? []).map(r => r.profile_id).filter(pid => pid !== user.id)
-
-      const when = new Date(ev.event_date).toLocaleDateString('en-PH', { month: 'long', day: 'numeric' })
-      const result = await sendPushToProfiles(recipients, 'events', {
-        title: '📅 New event',
-        body: `${ev.title} · ${when}`,
-        url: `/dashboard/events/${ev.id}`,
-        tag: `event-${ev.id}`,
-      })
-      return NextResponse.json(result)
+      await notifyEventCreated(ev.id, user.id)
+      return NextResponse.json({ success: true })
     }
 
     if (type === 'workload_marked') {
       if (!isAdmin) return NextResponse.json({ error: 'Not authorized.' }, { status: 403 })
       const entries = Array.isArray(body?.entries) ? body.entries.slice(0, 100) : []
       if (entries.length === 0) return NextResponse.json({ sent: 0 })
-
-      const memberIds = [...new Set(entries.map((e: any) => String(e.memberId)))]
-      const eventIds = [...new Set(entries.map((e: any) => String(e.eventId)))]
-
-      // Verify against the database: only marks that really exist AND were
-      // recorded by this caller produce notifications.
-      const [{ data: marks }, { data: events }] = await Promise.all([
-        admin
-          .from('workload_marks')
-          .select('member_id, event_id, mark')
-          .eq('marked_by', user.id)
-          .in('member_id', memberIds)
-          .in('event_id', eventIds),
-        admin.from('events').select('id, title').in('id', eventIds),
-      ])
-      const eventTitle = new Map((events ?? []).map(e => [e.id, e.title]))
-
-      let sent = 0
-      for (const m of marks ?? []) {
-        const label = WORKLOAD_LABEL[m.mark] ?? m.mark
-        const payload: PushPayload = {
-          title: '⭐ Duty outcome recorded',
-          body: `Your duty for ${eventTitle.get(m.event_id) ?? 'an event'} was marked: ${label}`,
-          url: `/dashboard/workloads?member=${m.member_id}&event=${m.event_id}`,
-          tag: `mark-${m.member_id}-${m.event_id}`,
-        }
-        const r = await sendPushToProfiles([m.member_id], 'workload', payload)
-        sent += r.sent
-      }
-      return NextResponse.json({ sent })
+      // notifyWorkloadMarked only sends for mark rows this caller actually
+      // wrote, so no further verification is needed here.
+      await notifyWorkloadMarked(
+        entries.map((e: any) => ({ memberId: String(e.memberId), eventId: String(e.eventId) })),
+        user.id,
+      )
+      return NextResponse.json({ success: true })
     }
 
     return NextResponse.json({ error: 'Unknown notification type.' }, { status: 400 })

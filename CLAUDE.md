@@ -335,21 +335,32 @@ created_at timestamptz
 Web Push (db/2026-push-subscriptions.sql + lib/push.ts):
 - VAPID keys in env (see ENVIRONMENT VARIABLES). web-push npm package.
 - Service worker (public/sw.js) handles `push` (shows notification with deep
-  link in data.url) and `notificationclick` (focuses/opens the app).
-- TRIGGER MODEL: after a mutation the client fires /api/notifications with
-  only { type, id } (lib/notifyClient.ts, fire-and-forget). The route
-  re-fetches the record with the service role, verifies the caller caused it,
-  and builds the payload from DB truth — clients can never forge content.
-  Types: announcement, duty_assigned, event_created, workload_marked, test.
-  Application-submitted pushes are sent in-process from the create route.
+  link in data.url), `notificationclick` (focuses/opens the app; falls back to
+  openWindow where WindowClient.navigate is unsupported), and
+  `pushsubscriptionchange` (re-subscribes and swaps the endpoint via
+  /api/push/resubscribe so rotated subscriptions don't die silently).
+- TRIGGER MODEL (server-side sends): the mutation API routes perform the write
+  with the CALLER's session client (RLS + audit trigger intact) and send the
+  push in-process via `after()` + lib/notifyEvents — delivery never depends on
+  the user's browser surviving past the mutation. Routes:
+  /api/announcements/create, /api/events/create, /api/duties/create,
+  /api/workloads/save (matrix save bar AND duty "Mark Outcome" share it),
+  /api/applications/create (public join form → consultants).
+- lib/notifyEvents.ts is the single source of audience + wording per event
+  type; it re-fetches records with the service role (DB truth, best-effort).
+- /api/notifications is LEGACY: 'test' powers the profile card's verification
+  button; the mutation types remain only for installed PWAs still running
+  pre-refactor cached JS. Remove all but 'test' once the fleet has updated.
 - lib/push.ts sendPushToProfiles(): Promise.allSettled batching, TTL 1h,
   dead-subscription pruning on 404/410, category filtering ('test' bypasses).
-- UI: profile NotificationsCard (enable/disable device, category prefs that
-  update ALL of the user's rows, TEMPORARY test button — remove once proven)
+- UI: profile NotificationsCard (enable/disable device — new devices inherit
+  the user's saved category prefs, category prefs update ALL of the user's
+  rows, TEMPORARY test button — remove once proven)
   + one-time EnablePushBanner on the dashboard.
 - Platform truth: iOS requires 16.4+ AND Home-Screen install; SW registers in
   production builds only (test via `npm run build && npm start` or deploy).
 - RLS: users manage only their own rows; sends use service role. Not audited.
+- Setup + closed-app delivery test procedure: docs/push-runbook.md.
 
 ### public.announcement_reads
 id uuid
@@ -432,6 +443,12 @@ obra-management/
 │   │   │   ├── otp/route.ts              ← Public: send email verification code
 │   │   │   ├── block/route.ts            ← Consultant: block abusive identifiers
 │   │   │   └── purge/route.ts            ← Consultant: retention purge (1 yr after decision)
+│   │   ├── announcements/create/route.ts ← Create announcement + push audience (after())
+│   │   ├── events/create/route.ts        ← Create event + push year roster (after())
+│   │   ├── duties/create/route.ts        ← Assign duties + push assignees (after())
+│   │   ├── workloads/save/route.ts       ← Save marks + duty sync + push members (after())
+│   │   ├── notifications/route.ts        ← LEGACY trigger + 'test' verification
+│   │   ├── push/resubscribe/route.ts     ← SW pushsubscriptionchange endpoint swap
 │   │   └── auth/
 │   │       ├── login-guard/route.ts      ← Per-account failed-login throttle + audit log
 │   │       ├── resolve-login/route.ts    ← Username → email resolution
@@ -539,6 +556,8 @@ obra-management/
 │   ├── applicationValidation.ts          ← Server-side /join validation (+consent gate)
 │   ├── emailSecurity.ts                  ← Allowlist + canonicalization + MX check
 │   ├── applicationBlocks.ts / rate-limit.ts / otp.ts / email.ts
+│   ├── push.ts                           ← sendPushToProfiles (VAPID, server-only)
+│   ├── notifyEvents.ts                   ← Audience + wording per notification type
 │   ├── dutyStatus.ts / memberRole.ts / logger.ts
 ├── middleware.ts                          ← Auth session refresh + redirects
 ├── types/

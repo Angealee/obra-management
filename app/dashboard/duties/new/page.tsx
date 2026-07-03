@@ -4,9 +4,7 @@ import { useState, useEffect } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
-import { fireNotification } from '@/lib/notifyClient'
 import type { ObraEvent, Profile } from '@/types/database'
-import { memberRoleLabel } from '@/lib/memberRole'
 
 type MemberWithSkills = Profile & {
   profile_skills: { member_skills: { name: string } }[]
@@ -94,42 +92,28 @@ export default function NewDutyPage() {
     setLoading(true)
     setError('')
 
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) { setError('Not authenticated.'); setLoading(false); return }
-
-    const event = events.find(e => e.id === eventId)
-    if (!event) { setError('Selected event not found.'); setLoading(false); return }
-
-    // Create one duty record per selected member, auto-deriving title + duty_type
-    // from the event and the member's primary creative role.
-    for (const memberId of assignedTo) {
-      const member = members.find(m => m.id === memberId)
-      const dutyType = member?.member_role && member.member_role !== 'none'
-        ? member.member_role
-        : 'other'
-      const roleLabel = dutyType === 'other' ? 'General Duty' : memberRoleLabel(dutyType)
-      const title = `${event.title} — ${roleLabel}`
-
-      const { data: created, error: dutyError } = await supabase
-        .from('duties')
-        .insert({
-          title,
-          description: description.trim() || null,
-          duty_type: dutyType,
+    // Server route: creates one duty per member under this user's RLS (title +
+    // duty_type derived server-side from the event and each member's creative
+    // role) AND pushes to each assignee in-process — delivery no longer
+    // depends on this browser staying open.
+    try {
+      const res = await fetch('/api/duties/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          eventId,
+          description: description.trim(),
           priority,
-          due_date: dueDate || null,
-          event_id: eventId,
-          assigned_to: memberId,
-          assigned_by: user.id,
-          status: 'pending',
-        })
-        .select('id')
-        .single()
-
-      if (dutyError) { setError(dutyError.message); setLoading(false); return }
-
-      // Push to the assignee (server verifies + rebuilds from the DB).
-      if (created) fireNotification('duty_assigned', { id: created.id })
+          dueDate: dueDate || null,
+          memberIds: assignedTo,
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok) { setError(data.error ?? 'Failed to assign duties.'); setLoading(false); return }
+    } catch {
+      setError('Network error — duties not assigned.')
+      setLoading(false)
+      return
     }
 
     router.push('/dashboard/duties')
