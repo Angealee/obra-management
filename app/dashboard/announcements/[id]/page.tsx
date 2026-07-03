@@ -3,6 +3,21 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import type { Profile } from '@/types/database'
 import DeleteAnnouncementButton from './DeleteAnnouncementButton'
+import AnnouncementReceipt from './AnnouncementReceipt'
+
+// Expandable name list for the admin read-receipt card.
+function NameList({ label, names, color }: { label: string; names: string[]; color: string }) {
+  return (
+    <details style={{ marginTop: 8 }}>
+      <summary style={{ fontSize: '12.5px', color: '#555', cursor: 'pointer', userSelect: 'none' }}>
+        <span style={{ fontWeight: 700, color }}>{names.length}</span> {label}
+      </summary>
+      <p style={{ fontSize: '12.5px', color: '#6b7280', margin: '6px 0 0 14px', lineHeight: 1.7 }}>
+        {names.length > 0 ? names.join(', ') : '—'}
+      </p>
+    </details>
+  )
+}
 
 const visibilityStyle: Record<string, [string, string]> = {
   all:            ['#f0fdf4', '#16a34a'],
@@ -41,6 +56,48 @@ export default async function AnnouncementDetailPage({
   const isPoster = a.posted_by === user.id
   const canDelete = isConsultant
   const canEdit = isConsultant || isPoster
+
+  // ── Read receipts (db/2026-announcement-reads.sql) ──
+  // Audience = the people the visibility setting addresses; consultants manage
+  // announcements rather than acknowledge them.
+  const isAudience =
+    profile.system_role !== 'consultant' &&
+    (a.visibility === 'all' ||
+      (a.visibility === 'creative_heads' && profile.system_role === 'creative_head') ||
+      (a.visibility === 'members' && profile.system_role === 'member'))
+
+  const { data: myRead } = await supabase
+    .from('announcement_reads')
+    .select('acknowledged_at')
+    .eq('announcement_id', id)
+    .eq('profile_id', user.id)
+    .maybeSingle()
+
+  const canSeeStats = profile.system_role === 'consultant' || profile.system_role === 'creative_head'
+  let stats: { acked: string[]; seenOnly: string[]; pending: string[]; total: number; unavailable: boolean } | null = null
+  if (canSeeStats) {
+    let audienceQuery = supabase.from('profiles').select('id, full_name').eq('is_active', true)
+    if (a.visibility === 'creative_heads') audienceQuery = audienceQuery.eq('system_role', 'creative_head')
+    else if (a.visibility === 'members') audienceQuery = audienceQuery.eq('system_role', 'member')
+    else audienceQuery = audienceQuery.in('system_role', ['creative_head', 'member'])
+
+    const [{ data: audience }, { data: reads, error: readsError }] = await Promise.all([
+      audienceQuery.order('full_name'),
+      supabase.from('announcement_reads').select('profile_id, acknowledged_at').eq('announcement_id', id),
+    ])
+
+    const readMap = new Map((reads ?? []).map(r => [r.profile_id, r]))
+    const acked: string[] = []
+    const seenOnly: string[] = []
+    const pending: string[] = []
+    for (const p of audience ?? []) {
+      const r = readMap.get(p.id)
+      if (r?.acknowledged_at) acked.push(p.full_name)
+      else if (r) seenOnly.push(p.full_name)
+      else pending.push(p.full_name)
+    }
+    stats = { acked, seenOnly, pending, total: (audience ?? []).length, unavailable: !!readsError }
+  }
 
   const [bgColor, textColor] = visibilityStyle[a.visibility] ?? ['#f3f4f6', '#6b7280']
 
@@ -91,6 +148,41 @@ export default async function AnnouncementDetailPage({
           </div>
         </div>
       </div>
+
+      {/* Acknowledge bar — audience members only */}
+      {isAudience && (
+        <AnnouncementReceipt
+          announcementId={a.id}
+          profileId={user.id}
+          initialSeen={!!myRead}
+          initialAcknowledgedAt={myRead?.acknowledged_at ?? null}
+        />
+      )}
+
+      {/* Read receipts — admins only */}
+      {stats && (
+        <div className="px-5 py-5 sm:px-6" style={{ background: '#fff', border: '1px solid rgba(0,0,0,0.07)', borderRadius: '10px', marginBottom: '14px' }}>
+          <p style={{ fontSize: '10.5px', fontWeight: 600, letterSpacing: '0.07em', textTransform: 'uppercase', color: '#6b7280', marginBottom: '10px' }}>
+            Read Receipts
+          </p>
+          {stats.unavailable ? (
+            <p style={{ fontSize: '12.5px', color: '#6b7280', margin: 0 }}>
+              Read receipts aren&apos;t set up yet — run <code style={{ fontFamily: "'DM Mono', monospace" }}>db/2026-announcement-reads.sql</code> in the Supabase SQL editor.
+            </p>
+          ) : (
+            <>
+              <p style={{ fontSize: '13px', color: '#333', margin: 0 }}>
+                Acknowledged by <strong style={{ color: '#16a34a' }}>{stats.acked.length}</strong> of{' '}
+                <strong>{stats.total}</strong>
+                {' · '}seen by <strong style={{ color: '#ca8a04' }}>{stats.acked.length + stats.seenOnly.length}</strong>
+              </p>
+              <NameList label="acknowledged" names={stats.acked} color="#16a34a" />
+              <NameList label="seen, not yet acknowledged" names={stats.seenOnly} color="#ca8a04" />
+              <NameList label="not yet seen" names={stats.pending} color="#CC0000" />
+            </>
+          )}
+        </div>
+      )}
 
       {/* Actions — only for authorized users */}
       {(canEdit || canDelete) && (

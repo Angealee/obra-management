@@ -44,6 +44,39 @@ export default async function AnnouncementsPage() {
 
   const { data: announcements } = await announcementsQuery as { data: AnnouncementWithPoster[] | null }
 
+  // Admin-only acknowledgment chips: one reads query for the whole list plus
+  // the active-audience sizes per role. Gracefully absent until the
+  // db/2026-announcement-reads.sql migration has been applied (reads = null).
+  let ackCounts: Record<string, number> | null = null
+  let audience = { creative_head: 0, member: 0 }
+  if (isHead && announcements && announcements.length > 0) {
+    const [{ data: reads }, { data: activeProfiles }] = await Promise.all([
+      supabase
+        .from('announcement_reads')
+        .select('announcement_id, acknowledged_at')
+        .in('announcement_id', announcements.map(a => a.id)),
+      supabase
+        .from('profiles')
+        .select('system_role')
+        .eq('is_active', true)
+        .in('system_role', ['creative_head', 'member']),
+    ])
+    if (reads) {
+      ackCounts = {}
+      for (const r of reads) {
+        if (r.acknowledged_at) ackCounts[r.announcement_id] = (ackCounts[r.announcement_id] ?? 0) + 1
+      }
+      audience = {
+        creative_head: (activeProfiles ?? []).filter(p => p.system_role === 'creative_head').length,
+        member: (activeProfiles ?? []).filter(p => p.system_role === 'member').length,
+      }
+    }
+  }
+  const audienceFor = (visibility: string) =>
+    visibility === 'creative_heads' ? audience.creative_head
+    : visibility === 'members' ? audience.member
+    : audience.creative_head + audience.member
+
   return (
     <div>
       {/* Header */}
@@ -114,6 +147,14 @@ export default async function AnnouncementsPage() {
                         year: 'numeric', month: 'long', day: 'numeric'
                         })}
                     </p>
+                    {ackCounts && (
+                      <>
+                        <span style={{ color: '#ddd' }}>·</span>
+                        <p style={{ fontSize: '11.5px', color: (ackCounts[a.id] ?? 0) > 0 ? '#16a34a' : '#bbb' }}>
+                          ✓ {ackCounts[a.id] ?? 0}/{audienceFor(a.visibility)} acknowledged
+                        </p>
+                      </>
+                    )}
                     </div>
                 </div>
                 </Link>

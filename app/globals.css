@@ -186,6 +186,31 @@ a:focus-visible > .sidebar-user-row {
   background: rgba(255, 255, 255, 0.06);
 }
 
+/* ── Print rules (Reports module) ──────────────────────────────────────────
+   The dashboard shell locks height to 100vh with inner scrolling — fine on
+   screen, but print needs the document to flow. Chrome (sidebar, year bar,
+   action buttons) is hidden via .no-print. */
+@media print {
+  .sidebar,
+  .no-print {
+    display: none !important;
+  }
+  body {
+    background: #fff !important;
+  }
+  .dashboard-shell {
+    height: auto !important;
+    overflow: visible !important;
+    display: block !important;
+  }
+  .dashboard-shell main {
+    overflow: visible !important;
+  }
+  .print-avoid-break {
+    break-inside: avoid;
+  }
+}
+
 .obra-table {
   width: 100%;
   font-size: 13.5px;

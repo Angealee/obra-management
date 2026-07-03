@@ -42,7 +42,7 @@ export default async function DashboardLayout({
   const TOPBAR_H = 48
 
   return (
-    <div className="flex flex-col md:flex-row" style={{ height: '100vh', overflow: 'hidden', background: '#F7F7F5' }}>
+    <div className="flex flex-col md:flex-row dashboard-shell" style={{ height: '100vh', overflow: 'hidden', background: '#F7F7F5' }}>
       <Sidebar profile={profile} />
       <main
         style={{
@@ -54,6 +54,7 @@ export default async function DashboardLayout({
       >
         {hasTopBar && (
           <div
+            className="no-print"
             style={{
               position: 'sticky',
               top: 0,

@@ -2,7 +2,7 @@
 
 import { Search } from 'lucide-react'
 import { MEMBER_ROLE_OPTIONS } from '@/lib/memberRole'
-import { SKILL_OPTIONS, STATUS_OPTIONS, STATUS_STYLE, YEAR_OPTIONS } from './memberTableShared'
+import { STATUS_OPTIONS, STATUS_STYLE, YEAR_OPTIONS } from './memberTableShared'
 import type { MemberFiltersApi } from './useMemberFilters'
 
 const selectStyle: React.CSSProperties = {
@@ -74,8 +74,9 @@ export default function MembersFilterBar({ f }: { f: MemberFiltersApi }) {
         </select>
 
         <select style={selectStyle} value={f.filterSkill} onChange={e => f.setFilterSkill(e.target.value)}>
-          {SKILL_OPTIONS.map(s => (
-            <option key={s} value={s}>{s === 'all' ? 'All Skills' : s}</option>
+          <option value="all">All Skills</option>
+          {f.skillOptions.map(s => (
+            <option key={s} value={s}>{s}</option>
           ))}
         </select>
 

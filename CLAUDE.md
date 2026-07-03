@@ -183,7 +183,11 @@ name text unique
 description text
 created_at timestamptz
 
-Values: Photographer, Photo Editor, Videographer, Video Editor, Graphic Designer, Animator
+Values (LIVE DATA, verified via introspection July 2026): Animation,
+Graphic Design, Photo Editing, Photography, Video Editing, Videography.
+NOTE: these display names deliberately differ from the member_role /
+duty_type slugs (photographer, photo_editor, …) — never hard-code skill
+names in filters; derive options from the data (see useMemberFilters).
 
 ### public.profile_skills (many-to-many)
 id uuid
@@ -312,6 +316,25 @@ RLS on member_applications:
 - UPDATE: consultant (all); creative_head (stage restricted in code to pending→shortlisted only)
 - DELETE: consultant only
 
+### public.announcement_reads
+id uuid
+announcement_id uuid (FK → announcements, CASCADE DELETE)
+profile_id uuid (FK → profiles, CASCADE DELETE)
+seen_at timestamptz default now()
+acknowledged_at timestamptz (nullable — null = seen only)
+UNIQUE(announcement_id, profile_id)
+
+Read receipts, two tiers (db/2026-announcement-reads.sql):
+- SEEN auto-recorded when an audience member opens the announcement detail
+  (client upsert with ignoreDuplicates); ACKNOWLEDGED set by the explicit
+  button. Audience = active profiles matching the announcement's visibility;
+  consultants are excluded from the denominator.
+- RLS: members insert/update ONLY their own row; SELECT own row or any row
+  for consultant/creative_head. Not audited by the activity trigger (noise).
+- UI: AnnouncementReceipt bar (audience) + Read Receipts card with name lists
+  (admins) on the detail page; "✓ x/y acknowledged" chips on the list page.
+  All receipt UI degrades gracefully until the migration is applied.
+
 ### public.activity_logs
 id uuid
 actor_id uuid (FK → profiles, ON DELETE SET NULL — nullable; null = failed sign-in)
@@ -427,14 +450,23 @@ obra-management/
 │       │   ├── MatrixSaveBar.tsx / MatrixBits.tsx / matrixTypes.ts
 │       │   └── WorkLoadCell.tsx
 │       ├── announcements/
-│       │   ├── page.tsx
+│       │   ├── page.tsx                  ← List + admin "x/y acknowledged" chips
 │       │   ├── new/page.tsx
 │       │   └── [id]/
-│       │       ├── page.tsx
+│       │       ├── page.tsx              ← Detail + Read Receipts card (admins)
+│       │       ├── AnnouncementReceipt.tsx ← Seen-on-open + Acknowledge (audience)
 │       │       ├── DeleteAnnouncementButton.tsx
 │       │       └── edit/
 │       │           ├── page.tsx
 │       │           └── EditAnnouncementForm.tsx
+│       ├── reports/
+│       │   ├── page.tsx                  ← Hub (consultant + creative_head)
+│       │   ├── MemberReportPicker.tsx    ← Member select → accomplishment report
+│       │   ├── ReportBits.tsx            ← Letterhead header + print table
+│       │   ├── ReportActions.tsx         ← Back / CSV download / print buttons
+│       │   ├── workload/page.tsx         ← AY workload summary (print + CSV)
+│       │   ├── events/page.tsx           ← Events summary (print + CSV)
+│       │   └── member/[id]/page.tsx      ← Accomplishment report (print + CSV)
 │       ├── applications/
 │       │   ├── page.tsx                  ← Split view list (server)
 │       │   ├── ApplicationsClient.tsx    ← Orchestrator (client)
@@ -627,12 +659,17 @@ Do not use URLSearchParams — it causes TypeScript JSX prop conflicts.
   decomposition of the four oversized components into hooks + view files,
   components/ui primitives (Avatar, StatusBadge, tokens), WCAG AA contrast for
   meaningful text (#6b7280), CSS hover/focus parity, next/image migration
+- Phase 18: Reports Module — /dashboard/reports hub (consultant + creative
+  heads): workload summary, events summary, member accomplishment report;
+  each print-optimized (letterhead + @media print rules) with CSV export
+  (lib/reportCsv.ts, unit-tested)
+- Phase 19: Announcement Read Receipts — seen-on-open + explicit Acknowledge,
+  admin name lists + list chips (requires db/2026-announcement-reads.sql)
 
 ### Not Yet Built / In Progress
 - db/schema.sql full dump + RLS (awaiting introspection-queries.sql results)
 - DB triggers for status-transition state machines (blocked on schema dump)
 - Generated Supabase types (dashboard copy-paste; replaces remaining `as any`)
-- Reports/exports + announcement acknowledgments (Phase C features)
 
 ---
 

@@ -13,6 +13,21 @@ export function useMemberFilters(members: Member[]) {
   const [filterStatus, setFilterStatus] = useState('all')
   const [showArchived, setShowArchived] = useState(false)
 
+  // Skill options come from the data, not a hard-coded list — the live
+  // member_skills names (Photography, Video Editing, …) differ from the old
+  // documented labels, so a static list silently matched nothing.
+  const skillOptions = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          members.flatMap(m =>
+            m.profile_skills.map(ps => ps.member_skills?.name ?? '').filter(Boolean),
+          ),
+        ),
+      ).sort(),
+    [members],
+  )
+
   const filtered = useMemo(() => {
     return members
       .filter(m => {
@@ -56,6 +71,7 @@ export function useMemberFilters(members: Member[]) {
     filterSkill, setFilterSkill,
     filterStatus, setFilterStatus,
     showArchived, setShowArchived,
+    skillOptions,
     filtered,
     archivedCount,
   }

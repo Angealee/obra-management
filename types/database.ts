@@ -75,6 +75,17 @@ export type ActivityLog = {
   created_at: string
 }
 
+// One read receipt per (announcement × member). seen_at set on first open;
+// acknowledged_at set when the member explicitly confirms. Members read/write
+// only their own row (RLS); admins read all.
+export type AnnouncementRead = {
+  id: string
+  announcement_id: string
+  profile_id: string
+  seen_at: string
+  acknowledged_at: string | null
+}
+
 export type MemberSkill = {
   id: string
   name: string

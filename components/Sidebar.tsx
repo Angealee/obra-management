@@ -10,6 +10,7 @@ import {
   PanelLeftClose, PanelLeftOpen,
   BarChart3,
   ClipboardList,
+  FileText,
   History,
   Menu, X,
 } from 'lucide-react'
@@ -32,6 +33,7 @@ const NAV = [
   { href: '/dashboard/workloads',      label: 'Workloads',      icon: BarChart2,       roles: ['consultant','creative_head'] },
   { href: '/dashboard/academic-years', label: 'Academic Years', icon: GraduationCap,   roles: ['consultant'] },
   { href: '/dashboard/applications',   label: 'Applications',   icon: ClipboardList,   roles: ['consultant','creative_head'] },
+  { href: '/dashboard/reports',        label: 'Reports',        icon: FileText,        roles: ['consultant','creative_head'] },
   { href: '/dashboard/activity',       label: 'Activity',       icon: History,         roles: ['consultant'] },
 ]
 
@@ -103,7 +105,7 @@ export default function Sidebar({ profile }: { profile: Profile }) {
     <>
       {/* Mobile top bar — visible below md breakpoint only */}
       <div
-        className="flex md:hidden"
+        className="flex md:hidden no-print"
         style={{
           height: '52px',
           flexShrink: 0,

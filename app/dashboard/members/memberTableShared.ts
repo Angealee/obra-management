@@ -28,11 +28,9 @@ export const STATUS_STYLE: Record<string, { bg: string; color: string; label: st
 
 export const YEAR_OPTIONS = ['all', '1st Year', '2nd Year', '3rd Year', '4th Year']
 export const STATUS_OPTIONS = ['all', 'active', 'inactive', 'archived']
-export const SKILL_OPTIONS = [
-  'all',
-  'Photographer', 'Photo Editor', 'Videographer',
-  'Video Editor', 'Graphic Designer', 'Animator',
-]
+// Skill filter options are data-driven (useMemberFilters.skillOptions) — the
+// live member_skills names (Photography, Video Editing, …) don't match the
+// member_role position labels, so a hard-coded list here silently broke.
 
 export type Member = {
   id: string
