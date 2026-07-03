@@ -106,6 +106,59 @@ export async function notifyEventCreated(eventId: string, creatorId: string): Pr
 }
 
 /**
+ * Duties due on `dueDate` (YYYY-MM-DD) → their assignees. Called by the daily
+ * cron (/api/cron/duty-reminders). Grouped per member: one duty gets a
+ * deep-linked reminder, several get a single summary — nobody's phone buzzes
+ * five times in a row. Only unfinished duties (pending / in progress) remind.
+ */
+export async function notifyDutiesDueOn(
+  dueDate: string,
+): Promise<{ duties: number; members: number; sent: number }> {
+  try {
+    const admin = createAdminClient()
+    const { data: duties } = await admin
+      .from('duties')
+      .select('id, title, assigned_to, events ( title )')
+      .eq('due_date', dueDate)
+      .in('status', ['pending', 'in_progress'])
+      .not('assigned_to', 'is', null)
+      .limit(1000)
+    if (!duties || duties.length === 0) return { duties: 0, members: 0, sent: 0 }
+
+    const byMember = new Map<string, typeof duties>()
+    for (const d of duties) {
+      const list = byMember.get(d.assigned_to) ?? []
+      list.push(d)
+      byMember.set(d.assigned_to, list)
+    }
+
+    let sent = 0
+    for (const [memberId, list] of byMember) {
+      const payload: PushPayload =
+        list.length === 1
+          ? {
+              title: '⏰ Duty due tomorrow',
+              body: `${list[0].title}${(list[0] as any).events?.title ? ` — ${(list[0] as any).events.title}` : ''}`,
+              url: `/dashboard/duties/${list[0].id}`,
+              tag: `due-${list[0].id}-${dueDate}`,
+            }
+          : {
+              title: '⏰ Duties due tomorrow',
+              body: `You have ${list.length} duties due tomorrow.`,
+              url: '/dashboard/duties',
+              tag: `due-multi-${dueDate}`,
+            }
+      const r = await sendPushToProfiles([memberId], 'duties', payload)
+      sent += r.sent
+    }
+    return { duties: duties.length, members: byMember.size, sent }
+  } catch (err) {
+    logError('notify_due_failed', err, { dueDate })
+    return { duties: 0, members: 0, sent: 0 }
+  }
+}
+
+/**
  * Workload outcomes recorded → each marked member. Only marks that actually
  * exist AND were recorded by `markedBy` produce a notification.
  */

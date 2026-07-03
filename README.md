@@ -43,6 +43,18 @@ and membership applications, all scoped to an **Academic Year**.
   a split-view review console, per-reviewer scoring, duplicate detection, and
   submission forensics.
 - **Dashboards** — role-specific analytics, top-contributor ranking.
+- **Reports** — print-optimized (letterhead + save-as-PDF) and CSV exports:
+  year workload summary, events summary, per-member accomplishment report.
+- **Announcement read receipts** — auto "seen" on open plus an explicit
+  Acknowledge button; admins see who has/hasn't read each post.
+- **Web push notifications** — announcements, duty assignments, new events,
+  duty outcomes, and new applications (admins), with per-category preferences,
+  delivered even when the app is closed. Sends happen server-side (`after()`),
+  dead subscriptions self-prune, and browser subscription rotation is handled.
+- **Activity log** — a tamper-resistant audit trail (DB trigger + API logging)
+  with field-level diffs, visible to consultants.
+- **Privacy compliance** — RA 10173 consent modal on `/join` with server-stamped
+  proof and a one-year retention purge for rejected/withdrawn applications.
 - **Security** — enforced CSP + HSTS, per-account rate limiting, honeypot,
   disposable-email assessment, and a manual block list.
 - **Installable PWA** — add-to-home-screen, custom install prompt, offline
@@ -81,7 +93,18 @@ GMAIL_APP_PASSWORD=your-16-char-app-password       # no spaces
 
 # OTP hashing pepper (server-only)
 OTP_PEPPER=a-long-random-secret
+
+# Web Push (generate once with: npx web-push generate-vapid-keys)
+NEXT_PUBLIC_VAPID_PUBLIC_KEY=your-vapid-public-key
+VAPID_PRIVATE_KEY=your-vapid-private-key           # server-only
+VAPID_SUBJECT=mailto:your-contact@example.com
+
+# Vercel Cron auth (any long random string; Vercel sends it automatically)
+CRON_SECRET=a-long-random-secret
 ```
+
+> **Keep the VAPID keypair stable.** Regenerating it silently invalidates every
+> existing push subscription — all users would have to re-enable notifications.
 
 > `NEXT_PUBLIC_*` values are exposed to the browser by design. Everything else is
 > server-only — never import `SUPABASE_SERVICE_ROLE_KEY` into a client component.
@@ -101,6 +124,10 @@ pages work):
 | `2026-join-forensics.sql` | Application submission forensics |
 | `2026-security-hardening.sql` | Rate-limit / OTP / block-list tables + RLS |
 | `2026-performance-indexes.sql` | Hot-path indexes (run after the above) |
+| `2026-activity-logs.sql` | Audit trail: table + SECURITY DEFINER trigger + retention |
+| `2026-privacy-consent.sql` | `/join` consent-proof columns + retention index |
+| `2026-announcement-reads.sql` | Announcement read receipts (seen / acknowledged) |
+| `2026-push-subscriptions.sql` | Web-push device subscriptions + category prefs |
 
 Then create the first **Consultant** account manually in the Supabase dashboard
 (there is no self-signup for admins).
@@ -167,11 +194,45 @@ middleware.ts           Auth/session refresh + route guarding
 
 ## Deployment
 
-- **Frontend:** Vercel. Set all environment variables in the project settings.
+- **Frontend:** Vercel. Set **all** environment variables from `.env.local` in
+  Project → Settings → Environment Variables (Production, and Preview if used).
 - **Backend:** Supabase (managed Postgres + Auth + Storage). Apply the `db/`
   migrations to the production project before first deploy.
 - Security headers (CSP, HSTS, etc.) are defined in `next.config.ts` and applied
   to every route.
+
+### Enabling push notifications on a deployment (checklist)
+
+1. Run `db/2026-push-subscriptions.sql` in the Supabase SQL editor.
+2. Add `NEXT_PUBLIC_VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, and `VAPID_SUBJECT`
+   to the Vercel environment — exact values from `.env.local`, no quotes.
+3. **Redeploy — and uncheck "Use existing Build Cache".** `NEXT_PUBLIC_*`
+   values are inlined into the client bundle at build time; a cached build
+   keeps the old (missing) value. The app also has a runtime fallback
+   (`GET /api/notifications` serves the public key), so enabling still works
+   from a stale bundle as long as the server env is set — but a clean build is
+   the correct end state.
+4. On an installed PWA, accept the **"new version available"** toast so the
+   updated service worker (push handlers) activates.
+5. Profile → **Enable on this device** → **Send test (4s delay)** → background
+   the app → the notification must arrive with the app closed.
+
+Platform truth: Android/desktop browsers support Web Push fully. **iOS requires
+16.4+ AND the app installed to the Home Screen** — a plain Safari tab cannot
+receive push; this is an Apple platform restriction, not an app limitation.
+
+### Scheduled reminders (Vercel Cron)
+
+`vercel.json` schedules `GET /api/cron/duty-reminders` daily at 01:00 UTC
+(09:00 Asia/Manila): members with unfinished duties due **tomorrow** get a push
+(one deep-linked reminder, or a single summary when several are due). Set
+`CRON_SECRET` in the Vercel env — Vercel sends it as `Authorization: Bearer …`
+automatically, and the endpoint refuses to run without it. Trigger a manual
+test run with:
+
+```bash
+curl -H "Authorization: Bearer $CRON_SECRET" https://your-app.vercel.app/api/cron/duty-reminders
+```
 
 ---
 

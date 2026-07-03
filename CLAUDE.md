@@ -50,6 +50,7 @@ SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
 NEXT_PUBLIC_VAPID_PUBLIC_KEY=web-push-public-key
 VAPID_PRIVATE_KEY=web-push-private-key   (server-only)
 VAPID_SUBJECT=mailto:contact-email
+CRON_SECRET=random-string   (server-only — auths Vercel Cron → /api/cron/*)
 
 - SUPABASE_SERVICE_ROLE_KEY and VAPID_PRIVATE_KEY are server-only. Never
   import them in client components.
@@ -348,9 +349,20 @@ Web Push (db/2026-push-subscriptions.sql + lib/push.ts):
   /api/applications/create (public join form → consultants).
 - lib/notifyEvents.ts is the single source of audience + wording per event
   type; it re-fetches records with the service role (DB truth, best-effort).
-- /api/notifications is LEGACY: 'test' powers the profile card's verification
-  button; the mutation types remain only for installed PWAs still running
-  pre-refactor cached JS. Remove all but 'test' once the fleet has updated.
+- /api/notifications POST accepts ONLY 'test' (profile card verification
+  button); the old mutation trigger types were removed 2026-07-04 after the
+  server-side refactor made them redundant.
+- DUE-DATE REMINDERS: vercel.json cron hits GET /api/cron/duty-reminders daily
+  at 01:00 UTC (09:00 PH). It pushes assignees of unfinished duties due
+  TOMORROW (grouped per member via lib/notifyEvents.notifyDutiesDueOn).
+  Auth: CRON_SECRET Bearer header (Vercel sends it automatically); the route
+  refuses to run when the secret is unset.
+- KEY DELIVERY: NEXT_PUBLIC_VAPID_PUBLIC_KEY is inlined at BUILD time, so a
+  deployment built before the env existed (or a redeploy that reused the build
+  cache) ships a bundle without it. GET /api/notifications serves the public
+  key from the server env at runtime and NotificationsCard falls back to it —
+  "Push keys are not configured" can now only mean the SERVER env is missing.
+  When adding the VAPID vars on Vercel: redeploy WITHOUT the build cache.
 - lib/push.ts sendPushToProfiles(): Promise.allSettled batching, TTL 1h,
   dead-subscription pruning on 404/410, category filtering ('test' bypasses).
 - UI: profile NotificationsCard (enable/disable device — new devices inherit

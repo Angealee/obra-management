@@ -93,8 +93,24 @@ export default function NotificationsCard({
       const reg = await navigator.serviceWorker.getRegistration()
       if (!reg) { setState('no-sw'); return }
 
-      const publicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY
-      if (!publicKey) { setError('Push keys are not configured on this deployment.'); return }
+      // Build-time inlined key first; if this bundle was built before the env
+      // var existed (or a redeploy reused the build cache), fall back to the
+      // server, which reads the env at runtime.
+      let publicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY
+      if (!publicKey) {
+        try {
+          const res = await fetch('/api/notifications')
+          const data = await res.json()
+          publicKey = data?.publicKey ?? undefined
+        } catch { /* fall through to the error below */ }
+      }
+      if (!publicKey) {
+        setError(
+          'The server has no VAPID keys. Add NEXT_PUBLIC_VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY, ' +
+          'and VAPID_SUBJECT to the deployment environment (Vercel → Settings → Environment Variables), then redeploy.',
+        )
+        return
+      }
 
       const sub = await reg.pushManager.subscribe({
         userVisibleOnly: true,

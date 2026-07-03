@@ -34,9 +34,15 @@ Only if starting from scratch (no keys anywhere yet):
 with it. (The key on this machine returned 401 on 2026-07-03; replace it from
 Supabase → Settings → API keys.)
 
-### 1.4 Redeploy after env changes
+### 1.4 Redeploy after env changes — WITHOUT the build cache
 Vercel env vars only apply to deployments made after they're set.
-`NEXT_PUBLIC_*` values are baked in at build time.
+`NEXT_PUBLIC_*` values are baked in at build time — and a redeploy that
+reuses the build cache keeps the OLD client bundle, still missing the key.
+Deployments → ⋯ → Redeploy → **uncheck "Use existing Build Cache"**.
+
+Safety net: `GET /api/notifications` serves the public key from the server
+env at runtime, and the profile card falls back to it — so enabling works
+even from a stale bundle, as long as the server env has the vars.
 
 ---
 
@@ -89,7 +95,7 @@ Repeat on: one Android phone, one iPhone (Home-Screen install), one desktop.
 
 | Symptom | Cause / fix |
 |---|---|
-| "Push keys are not configured on this deployment." | `NEXT_PUBLIC_VAPID_PUBLIC_KEY` missing at build time → set env var, redeploy. |
+| "The server has no VAPID keys…" (formerly "Push keys are not configured") | The card now checks the build-time key AND falls back to `GET /api/notifications` (runtime). Seeing this error therefore means the SERVER env itself lacks the VAPID vars → add all three in Vercel, redeploy **without build cache**. |
 | "Could not save this device …" | Migration not run in that Supabase project. |
 | Card says "Notifications activate on the production build" | You're on `npm run dev` — build & start, or use the deployed site. |
 | Enable works, test never arrives | `VAPID_PRIVATE_KEY`/`VAPID_SUBJECT` missing on the server, or the service-role key is invalid → check Vercel function logs for `push_send_failed` / `push_subscriptions_fetch_failed`. |
@@ -102,11 +108,23 @@ Server logs (Vercel → Deployments → Functions): every send logs one JSON lin
 
 ---
 
-## 6. Rollout notes for the current refactor
+## 6. Rollout notes
 
-- Old cached clients (installed PWAs that haven't refreshed) still trigger
-  notifications through the legacy `/api/notifications` route — kept on
-  purpose. Remove everything except `'test'` from that route once all users
-  have picked up the new version (the PwaController update toast drives this).
+- `/api/notifications` POST was slimmed to `'test'`-only on 2026-07-04 — the
+  mutation trigger types are gone; all real notifications are sent in-process
+  by the mutation routes. If a user somehow runs pre-refactor cached JS, their
+  mutations still succeed; only the push for that action is skipped until
+  their app updates (PwaController update toast drives this).
 - The test button in NotificationsCard is marked TEMPORARY; keep it until
   every device type in §4 has passed at least once in production.
+
+## 7. Due-date reminders (Vercel Cron)
+
+- `vercel.json` → `GET /api/cron/duty-reminders` daily at 01:00 UTC (09:00 PH).
+- Members with **unfinished duties due tomorrow** get one push (deep-linked
+  for a single duty; a summary when several are due).
+- Requires `CRON_SECRET` in the env (Vercel sends `Authorization: Bearer`
+  automatically). Manual test:
+  `curl -H "Authorization: Bearer $CRON_SECRET" https://<app>/api/cron/duty-reminders`
+- The response reports `{ dueDate, duties, members, sent }` — a zero-duty day
+  returns `{ duties: 0 }`, which is success, not failure.
