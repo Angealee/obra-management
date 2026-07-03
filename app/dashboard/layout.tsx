@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation'
 import Sidebar from '@/components/Sidebar'
 import PageWrapper from '@/components/PageWrapper'
 import YearPicker from '@/components/YearPicker'
+import EnablePushBanner from '@/components/EnablePushBanner'
 import { getAcademicYearContext } from '@/lib/academicYear'
 import { getSessionProfile } from '@/lib/auth'
 
@@ -74,6 +75,7 @@ export default async function DashboardLayout({
             <YearPicker years={years} viewYearId={viewYearId} />
           </div>
         )}
+        <EnablePushBanner />
         <PageWrapper>{children}</PageWrapper>
       </main>
     </div>

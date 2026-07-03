@@ -7,6 +7,7 @@ import { assessEmail } from '@/lib/emailSecurity'
 import { isRequestBlocked } from '@/lib/applicationBlocks'
 import { hashOtpCode } from '@/lib/otp'
 import { CONSENT_VERSION } from '@/lib/privacyPolicy'
+import { sendPushToProfiles } from '@/lib/push'
 
 // This endpoint is now the ONLY way to create a member application.
 // Anonymous INSERT on member_applications is revoked at the DB level
@@ -185,6 +186,24 @@ export async function POST(req: NextRequest) {
       console.error('Application insert error:', error)
       return NextResponse.json({ error: 'Failed to submit application.' }, { status: 500 })
     }
+
+    // Push to consultants — sent in-process (this route is the trusted server
+    // path; the public applicant never touches the notification API).
+    const { data: consultants } = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('system_role', 'consultant')
+      .eq('is_active', true)
+    await sendPushToProfiles(
+      (consultants ?? []).map(c => c.id),
+      'applications',
+      {
+        title: '📨 New membership application',
+        body: `${data.full_name} applied — ${data.positions.length} position${data.positions.length !== 1 ? 's' : ''}`,
+        url: '/dashboard/applications',
+        tag: 'new-application',
+      },
+    )
 
     return NextResponse.json({ success: true })
   } catch (err) {

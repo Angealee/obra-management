@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import { fireNotification } from '@/lib/notifyClient'
 import WorkloadBadge from '@/components/WorkLoadBadge'
 
 type Outcome = 'completed' | 'late' | 'did_not_duty'
@@ -101,6 +102,12 @@ export default function DutyActions({
       .eq('id', duty.id)
 
     if (dutyError) { setError(dutyError.message); setLoading(false); return }
+
+    // Push "your outcome was recorded" to the member (server re-verifies the
+    // mark row this reviewer just wrote before sending anything).
+    fireNotification('workload_marked', {
+      entries: [{ memberId: duty.assigned_to, eventId: duty.event_id }],
+    })
 
     router.refresh()
     setLoading(false)

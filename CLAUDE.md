@@ -47,9 +47,15 @@ Fonts: DM Sans, DM Mono, Bebas Neue (Google Fonts via CSS @import)
 NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
 SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
+NEXT_PUBLIC_VAPID_PUBLIC_KEY=web-push-public-key
+VAPID_PRIVATE_KEY=web-push-private-key   (server-only)
+VAPID_SUBJECT=mailto:contact-email
 
-- SUPABASE_SERVICE_ROLE_KEY is server-only. Never import it in client components.
+- SUPABASE_SERVICE_ROLE_KEY and VAPID_PRIVATE_KEY are server-only. Never
+  import them in client components.
 - NEXT_PUBLIC_ variables are safe for the browser.
+- VAPID keys were generated with `npx web-push generate-vapid-keys`; the same
+  keypair must be set in the Vercel env, or existing push subscriptions break.
 
 ---
 
@@ -315,6 +321,35 @@ RLS on member_applications:
 - SELECT: consultant + creative_head only
 - UPDATE: consultant (all); creative_head (stage restricted in code to pending→shortlisted only)
 - DELETE: consultant only
+
+### public.push_subscriptions
+id uuid
+profile_id uuid (FK → profiles, CASCADE DELETE)
+endpoint text unique (browser push-service URL; one row per user × device)
+p256dh text / auth text (subscription encryption keys)
+categories jsonb (per-category prefs; default all true — announcements,
+  duties, events, workload, applications)
+user_agent text (nullable)
+created_at timestamptz
+
+Web Push (db/2026-push-subscriptions.sql + lib/push.ts):
+- VAPID keys in env (see ENVIRONMENT VARIABLES). web-push npm package.
+- Service worker (public/sw.js) handles `push` (shows notification with deep
+  link in data.url) and `notificationclick` (focuses/opens the app).
+- TRIGGER MODEL: after a mutation the client fires /api/notifications with
+  only { type, id } (lib/notifyClient.ts, fire-and-forget). The route
+  re-fetches the record with the service role, verifies the caller caused it,
+  and builds the payload from DB truth — clients can never forge content.
+  Types: announcement, duty_assigned, event_created, workload_marked, test.
+  Application-submitted pushes are sent in-process from the create route.
+- lib/push.ts sendPushToProfiles(): Promise.allSettled batching, TTL 1h,
+  dead-subscription pruning on 404/410, category filtering ('test' bypasses).
+- UI: profile NotificationsCard (enable/disable device, category prefs that
+  update ALL of the user's rows, TEMPORARY test button — remove once proven)
+  + one-time EnablePushBanner on the dashboard.
+- Platform truth: iOS requires 16.4+ AND Home-Screen install; SW registers in
+  production builds only (test via `npm run build && npm start` or deploy).
+- RLS: users manage only their own rows; sends use service role. Not audited.
 
 ### public.announcement_reads
 id uuid
@@ -665,6 +700,11 @@ Do not use URLSearchParams — it causes TypeScript JSX prop conflicts.
   (lib/reportCsv.ts, unit-tested)
 - Phase 19: Announcement Read Receipts — seen-on-open + explicit Acknowledge,
   admin name lists + list chips (requires db/2026-announcement-reads.sql)
+- Phase 20: Web Push Notifications — VAPID + web-push, push_subscriptions
+  table, SW push/notificationclick handlers, verified trigger endpoint
+  (/api/notifications), five categories with per-user prefs, profile
+  NotificationsCard + dashboard banner (requires db/2026-push-subscriptions.sql
+  + VAPID env vars on Vercel)
 
 ### Not Yet Built / In Progress
 - db/schema.sql full dump + RLS (awaiting introspection-queries.sql results)

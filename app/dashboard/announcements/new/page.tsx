@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
+import { fireNotification } from '@/lib/notifyClient'
 import type { AcademicYear } from '@/types/database'
 
 export default function NewAnnouncementPage() {
@@ -41,7 +42,7 @@ export default function NewAnnouncementPage() {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) { setError('Not authenticated.'); setLoading(false); return }
 
-    const { error: insertError } = await supabase
+    const { data: created, error: insertError } = await supabase
       .from('announcements')
       .insert({
         title: title.trim(),
@@ -50,8 +51,13 @@ export default function NewAnnouncementPage() {
         academic_year_id: academicYearId || null,
         posted_by: user.id,
       })
+      .select('id')
+      .single()
 
     if (insertError) { setError(insertError.message); setLoading(false); return }
+
+    // Push to the announcement's audience (server rebuilds content from the DB).
+    if (created) fireNotification('announcement', { id: created.id })
 
     router.push('/dashboard/announcements')
     router.refresh()

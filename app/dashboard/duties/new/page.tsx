@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
+import { fireNotification } from '@/lib/notifyClient'
 import type { ObraEvent, Profile } from '@/types/database'
 import { memberRoleLabel } from '@/lib/memberRole'
 
@@ -109,7 +110,7 @@ export default function NewDutyPage() {
       const roleLabel = dutyType === 'other' ? 'General Duty' : memberRoleLabel(dutyType)
       const title = `${event.title} — ${roleLabel}`
 
-      const { error: dutyError } = await supabase
+      const { data: created, error: dutyError } = await supabase
         .from('duties')
         .insert({
           title,
@@ -122,8 +123,13 @@ export default function NewDutyPage() {
           assigned_by: user.id,
           status: 'pending',
         })
+        .select('id')
+        .single()
 
       if (dutyError) { setError(dutyError.message); setLoading(false); return }
+
+      // Push to the assignee (server verifies + rebuilds from the DB).
+      if (created) fireNotification('duty_assigned', { id: created.id })
     }
 
     router.push('/dashboard/duties')

@@ -5,6 +5,7 @@ import AvatarUpload from './AvatarUpload'
 import ProfileForm from './ProfileForm'
 import PasswordForm from './PasswordForm'
 import SkillsEditor from './SkillsEditor'
+import NotificationsCard from './NotificationsCard'
 import { memberRoleLabel } from '@/lib/memberRole'
 
 export default async function ProfilePage() {
@@ -84,6 +85,9 @@ export default async function ProfilePage() {
 
         {/* Skills (self-managed) */}
         <SkillsEditor profileId={profile.id} allSkills={allSkills ?? []} initialSkillIds={mySkillIds} />
+
+        {/* Push notifications (this device + per-category prefs) */}
+        <NotificationsCard profileId={profile.id} isConsultant={profile.system_role === 'consultant'} />
 
         {/* Password change */}
         <PasswordForm email={profile.email} />

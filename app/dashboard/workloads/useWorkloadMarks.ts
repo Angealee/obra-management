@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import { fireNotification } from '@/lib/notifyClient'
 import type { Mark, MarksMap, Matrix, PendingMap } from './matrixTypes'
 
 // The mutation heart of the workload matrix: local mark state, the
@@ -127,6 +128,17 @@ export function useWorkloadMarks({
     if (errors.length > 0) {
       setSaveError(`Some changes failed: ${errors[0]}`)
     } else {
+      // Push "your outcome was recorded" to the marked members. Cleared marks
+      // (null) don't notify. The server re-verifies each entry against the
+      // workload_marks rows this user actually wrote.
+      const entries = Object.entries(pending)
+        .filter(([, mark]) => mark !== null)
+        .map(([key]) => {
+          const [memberId, eventId] = key.split('_')
+          return { memberId, eventId }
+        })
+      if (entries.length > 0) fireNotification('workload_marked', { entries })
+
       setPending({})
       setSaveSuccess(true)
       router.refresh()
