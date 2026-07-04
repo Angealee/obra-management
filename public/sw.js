@@ -47,7 +47,12 @@ self.addEventListener('message', (event) => {
 /* ── Web Push ───────────────────────────────────────────────────────────────
  * Payloads are JSON built server-side (lib/push.ts): { title, body, url, tag }.
  * `tag` collapses repeat notifications of the same thing (e.g. re-sends).
- * Clicking focuses an existing app window and navigates it, or opens one.
+ *
+ * Foreground behavior: when an app window is VISIBLE, the push is handed to
+ * the page (postMessage → the in-app banner) and the OS notification is
+ * skipped — native-app behavior, no double-notify. Browsers exempt pushes
+ * from the "must show a notification" rule while the origin has a visible
+ * window. With no visible window, the OS notification shows as usual.
  */
 self.addEventListener('push', (event) => {
   let payload = {}
@@ -57,13 +62,25 @@ self.addEventListener('push', (event) => {
     payload = { body: event.data ? event.data.text() : '' }
   }
   const title = payload.title || 'Obra CMP'
+
   event.waitUntil(
-    self.registration.showNotification(title, {
-      body: payload.body || '',
-      icon: '/icons/icon-192.png',
-      badge: '/icons/icon-192.png',
-      tag: payload.tag || undefined,
-      data: { url: payload.url || '/dashboard' },
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then((wins) => {
+      const visible = wins.filter(
+        (w) => w.visibilityState === 'visible' && w.url.startsWith(self.location.origin)
+      )
+      if (visible.length > 0) {
+        for (const w of visible) {
+          w.postMessage({ kind: 'PUSH_RECEIVED', payload: { ...payload, title } })
+        }
+        return
+      }
+      return self.registration.showNotification(title, {
+        body: payload.body || '',
+        icon: '/icons/icon-192.png',
+        badge: '/icons/icon-192.png',
+        tag: payload.tag || undefined,
+        data: { url: payload.url || '/dashboard' },
+      })
     })
   )
 })

@@ -283,7 +283,14 @@ title text
 content text
 posted_by uuid (FK → profiles)
 visibility text CHECK ('all','creative_heads','members') default 'all'
+pinned boolean default false (db/2026-announcements-pinned.sql — pinned posts
+  render in their own top section; toggled on the detail page by whoever can
+  edit; list UI degrades gracefully pre-migration)
 created_at timestamptz
+
+List UX (July 2026): sections Pinned → This Week → Earlier; unread posts
+(audience member with no announcement_reads row) float first within each
+section with a red dot + left border; visibility pills are admin-only UI.
 
 ### public.member_applications
 id uuid
@@ -369,6 +376,11 @@ Web Push (db/2026-push-subscriptions.sql + lib/push.ts):
   the user's saved category prefs, category prefs update ALL of the user's
   rows, TEMPORARY test button — remove once proven)
   + one-time EnablePushBanner on the dashboard.
+- FOREGROUND BANNER: when an app window is VISIBLE, sw.js skips the OS
+  notification and posts { kind: 'PUSH_RECEIVED', payload } to the page;
+  components/PushForegroundBanner.tsx (mounted in the dashboard layout)
+  renders stacked in-app banners (max 3, 7s auto-dismiss, tap = deep link).
+  Hidden/closed windows get the OS notification as before.
 - Platform truth: iOS requires 16.4+ AND Home-Screen install; SW registers in
   production builds only (test via `npm run build && npm start` or deploy).
 - RLS: users manage only their own rows; sends use service role. Not audited.
@@ -736,6 +748,13 @@ Do not use URLSearchParams — it causes TypeScript JSX prop conflicts.
   (/api/notifications), five categories with per-user prefs, profile
   NotificationsCard + dashboard banner (requires db/2026-push-subscriptions.sql
   + VAPID env vars on Vercel)
+- Phase 21: UX Overhaul (July 2026) — in-app foreground push banner
+  (PushForegroundBanner + sw.js visible-client handoff); announcements unread
+  states/pinning/date groups (db/2026-announcements-pinned.sql); events
+  date-blocks + relative labels + Happening strip + staffing coverage + month
+  calendar (?view=calendar) + upcoming-order fix; duties due-date urgency
+  chips + due-date sorting + inline Start/Done quick actions
+  (lib/relativeDate.ts + dutyUrgency are unit-tested)
 
 ### Not Yet Built / In Progress
 - db/schema.sql full dump + RLS (awaiting introspection-queries.sql results)

@@ -4,6 +4,8 @@ import { createClient } from '@/lib/supabase/server'
 import type { Profile } from '@/types/database'
 import DeleteAnnouncementButton from './DeleteAnnouncementButton'
 import AnnouncementReceipt from './AnnouncementReceipt'
+import PinToggleButton from './PinToggleButton'
+import { Pin } from 'lucide-react'
 
 // Expandable name list for the admin read-receipt card.
 function NameList({ label, names, color }: { label: string; names: string[]; color: string }) {
@@ -115,8 +117,15 @@ export default async function AnnouncementDetailPage({
         {/* Header stripe */}
         <div className="px-5 pt-6 pb-5 sm:px-7 sm:pt-7" style={{ borderBottom: '1px solid rgba(0,0,0,0.05)' }}>
           <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '12px', marginBottom: '10px', flexWrap: 'wrap' }}>
-            <span style={{ fontSize: '11px', fontWeight: 600, background: bgColor, color: textColor, padding: '3px 10px', borderRadius: '99px' }}>
-              {visibilityLabel[a.visibility]}
+            <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span style={{ fontSize: '11px', fontWeight: 600, background: bgColor, color: textColor, padding: '3px 10px', borderRadius: '99px' }}>
+                {visibilityLabel[a.visibility]}
+              </span>
+              {a.pinned === true && (
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: '10.5px', fontWeight: 700, letterSpacing: '0.06em', color: '#CC0000', textTransform: 'uppercase' }}>
+                  <Pin size={11} /> Pinned
+                </span>
+              )}
             </span>
             {a.academic_years?.label && (
               <span style={{ fontSize: '11.5px', color: '#bbb' }}>{a.academic_years.label}</span>
@@ -190,11 +199,14 @@ export default async function AnnouncementDetailPage({
           <p style={{ fontSize: '10.5px', fontWeight: 600, letterSpacing: '0.07em', textTransform: 'uppercase', color: '#6b7280', marginBottom: '12px' }}>
             Actions
           </p>
-          <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'center' }}>
             {canEdit && (
               <Link href={`/dashboard/announcements/${a.id}/edit`} className="btn-secondary">
                 Edit Announcement
               </Link>
+            )}
+            {canEdit && (
+              <PinToggleButton announcementId={a.id} pinned={a.pinned === true} />
             )}
             {canDelete && (
               <DeleteAnnouncementButton announcementId={a.id} title={a.title} />

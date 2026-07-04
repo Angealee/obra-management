@@ -29,3 +29,41 @@ export const DUTY_DISPLAY_STYLE: Record<DutyDisplayStatus, [string, string]> = {
   awaiting_review: ['#fefce8', '#ca8a04'],
   reviewed: ['#f0fdf4', '#16a34a'],
 }
+
+// ── Due-date urgency ────────────────────────────────────────────────────────
+// Turns a due date into scannable priority copy. Applies only to duties the
+// member still has to act on (pending / in progress) — a submitted or
+// reviewed duty being "overdue" would just be noise.
+
+export type DutyUrgency = {
+  level: 'overdue' | 'today' | 'soon'
+  label: string
+  color: string
+  bg: string
+}
+
+export function dutyUrgency(
+  duty: { status: string; due_date?: string | null },
+  /** Whole-day difference due_date − today (see lib/relativeDate.daysFromToday). */
+  daysUntilDue: number | null,
+): DutyUrgency | null {
+  if (daysUntilDue === null) return null
+  if (duty.status !== 'pending' && duty.status !== 'in_progress') return null
+
+  if (daysUntilDue < 0) {
+    const n = -daysUntilDue
+    return { level: 'overdue', label: `Overdue by ${n} day${n !== 1 ? 's' : ''}`, color: '#CC0000', bg: '#fef2f2' }
+  }
+  if (daysUntilDue === 0) {
+    return { level: 'today', label: 'Due today', color: '#b45309', bg: '#fffbeb' }
+  }
+  if (daysUntilDue <= 3) {
+    return {
+      level: 'soon',
+      label: daysUntilDue === 1 ? 'Due tomorrow' : `Due in ${daysUntilDue} days`,
+      color: '#374151',
+      bg: '#f3f4f6',
+    }
+  }
+  return null
+}

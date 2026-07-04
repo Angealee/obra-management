@@ -3,6 +3,7 @@ import Sidebar from '@/components/Sidebar'
 import PageWrapper from '@/components/PageWrapper'
 import YearPicker from '@/components/YearPicker'
 import EnablePushBanner from '@/components/EnablePushBanner'
+import PushForegroundBanner from '@/components/PushForegroundBanner'
 import { getAcademicYearContext } from '@/lib/academicYear'
 import { getSessionProfile } from '@/lib/auth'
 
@@ -76,6 +77,7 @@ export default async function DashboardLayout({
           </div>
         )}
         <EnablePushBanner />
+        <PushForegroundBanner />
         <PageWrapper>{children}</PageWrapper>
       </main>
     </div>

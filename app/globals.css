@@ -186,6 +186,29 @@ a:focus-visible > .sidebar-user-row {
   background: rgba(255, 255, 255, 0.06);
 }
 
+/* Pulsing "live" dot for the Happening events strip. */
+@keyframes live-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(204, 0, 0, 0.55); }
+  60%      { box-shadow: 0 0 0 6px rgba(204, 0, 0, 0); }
+}
+.live-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #CC0000;
+  flex-shrink: 0;
+  animation: live-pulse 1.8s ease-out infinite;
+}
+
+/* In-app push banner: slide down + settle. */
+@keyframes push-banner-in {
+  from { opacity: 0; transform: translateY(-14px) scale(0.98); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+.push-banner-in {
+  animation: push-banner-in 0.28s cubic-bezier(0.21, 1.02, 0.73, 1) both;
+}
+
 /* ── Print rules (Reports module) ──────────────────────────────────────────
    The dashboard shell locks height to 100vh with inner scrolling — fine on
    screen, but print needs the document to flow. Chrome (sidebar, year bar,

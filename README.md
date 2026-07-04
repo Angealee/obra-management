@@ -36,9 +36,13 @@ and membership applications, all scoped to an **Academic Year**.
   members, events, duties, announcements, applications, and dashboard stats.
 - **Members** — roster per year, skills, roles, archive/unarchive, profile photos.
 - **Events & Duties** — events with assignable duties, checklists, priorities,
-  and a review workflow.
+  and a review workflow. Events get calendar-leaf date blocks, relative-time
+  labels, a "Happening" strip, per-event staffing coverage, and a month
+  calendar view; duties get due-date urgency chips ("Overdue by 2 days"),
+  deadline-first sorting, and inline Start/Done quick actions.
 - **Workload Matrix** — per-member / per-event workload marks.
-- **Announcements** — visibility-scoped posts.
+- **Announcements** — visibility-scoped posts with unread indicators, pinning,
+  and This Week / Earlier grouping.
 - **Membership Applications** — public `/join` form with OTP email verification,
   a split-view review console, per-reviewer scoring, duplicate detection, and
   submission forensics.
@@ -51,6 +55,8 @@ and membership applications, all scoped to an **Academic Year**.
   duty outcomes, and new applications (admins), with per-category preferences,
   delivered even when the app is closed. Sends happen server-side (`after()`),
   dead subscriptions self-prune, and browser subscription rotation is handled.
+  While the app is open, pushes render as in-app banners instead of hitting
+  the OS notification bar.
 - **Activity log** — a tamper-resistant audit trail (DB trigger + API logging)
   with field-level diffs, visible to consultants.
 - **Privacy compliance** — RA 10173 consent modal on `/join` with server-stamped
@@ -128,6 +134,7 @@ pages work):
 | `2026-privacy-consent.sql` | `/join` consent-proof columns + retention index |
 | `2026-announcement-reads.sql` | Announcement read receipts (seen / acknowledged) |
 | `2026-push-subscriptions.sql` | Web-push device subscriptions + category prefs |
+| `2026-announcements-pinned.sql` | Pinned-announcements flag |
 
 Then create the first **Consultant** account manually in the Supabase dashboard
 (there is no self-signup for admins).

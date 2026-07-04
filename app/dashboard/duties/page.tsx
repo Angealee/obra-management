@@ -8,8 +8,9 @@ import DutyRowActions from './DutyRowActions'
 import Pager from '@/components/Pager'
 import { getAcademicYearContext } from '@/lib/academicYear'
 import { dutyTypeLabel } from '@/lib/memberRole'
-import { dutyDisplayStatus, type DutyDisplayStatus } from '@/lib/dutyStatus'
+import { dutyDisplayStatus, dutyUrgency, type DutyDisplayStatus } from '@/lib/dutyStatus'
 import { DutyStatusBadge } from '@/components/ui/StatusBadge'
+import { daysFromToday, parseDateOnly, phTodayStr } from '@/lib/relativeDate'
 
 // Valid-format UUID that matches no row — used so "no year selected" yields an
 // empty result instead of an unscoped query.
@@ -31,11 +32,26 @@ function StatusCell({ display, mark }: { display: DutyDisplayStatus; mark: strin
 const HISTORY_PAGE_SIZE = 10
 
 const DUTY_COLUMNS = `
-  id, title, duty_type, status, reviewed_by, priority, created_at,
+  id, title, duty_type, status, reviewed_by, priority, created_at, due_date,
   event_id, assigned_to,
   events!inner ( id, title, event_date ),
   assignee:profiles!duties_assigned_to_fkey ( full_name )
 `
+
+// Small pill spelling out due-date pressure ("Overdue by 2 days", "Due today").
+function UrgencyChip({ duty, today }: { duty: any; today: Date }) {
+  const days = duty.due_date ? daysFromToday(duty.due_date, today) : null
+  const u = dutyUrgency(duty, days)
+  if (!u) return null
+  return (
+    <span style={{
+      fontSize: '10.5px', fontWeight: 600, color: u.color, background: u.bg,
+      padding: '2px 8px', borderRadius: '99px', whiteSpace: 'nowrap',
+    }}>
+      {u.label}
+    </span>
+  )
+}
 
 export default async function DutiesPage({
   searchParams,
@@ -55,11 +71,13 @@ export default async function DutiesPage({
   // duties (pending / in progress / awaiting review) are always shown in full —
   // people work from them. The REVIEWED history grows unbounded, so it is
   // fetched separately with a count and paginated (?page=).
+  // Active duties are a priority queue: nearest due date first, undated last.
   const activeQuery = supabase
     .from('duties')
     .select(DUTY_COLUMNS)
     .eq('events.academic_year_id', viewYearId ?? NONE_UUID)
     .or('status.in.(pending,in_progress),and(status.eq.completed,reviewed_by.is.null)')
+    .order('due_date', { ascending: true, nullsFirst: false })
     .order('created_at', { ascending: false })
   if (!isHead) activeQuery.eq('assigned_to', user.id)
 
@@ -109,6 +127,8 @@ export default async function DutiesPage({
     pending: 'Pending', in_progress: 'In Progress',
     awaiting_review: 'Awaiting Review', reviewed: 'Reviewed',
   }
+
+  const today = parseDateOnly(phTodayStr())
 
   return (
     <div>
@@ -170,8 +190,9 @@ export default async function DutiesPage({
                         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '8px' }}>
                           <div style={{ minWidth: 0 }}>
                             <p style={{ fontWeight: 500, color: '#111', lineHeight: 1.3, fontSize: '13.5px' }}>{duty.title}</p>
-                            <p style={{ fontSize: '11.5px', color: '#bbb', marginTop: '2px' }}>
+                            <p style={{ fontSize: '11.5px', color: '#6b7280', marginTop: '3px', display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
                               {dutyTypeLabel(duty.duty_type)}
+                              <UrgencyChip duty={duty} today={today} />
                             </p>
                           </div>
                           <span style={{ fontSize: '11px', fontWeight: 600, background: pbg, color: ptc, padding: '3px 9px', borderRadius: '99px', textTransform: 'capitalize', flexShrink: 0 }}>
@@ -197,7 +218,13 @@ export default async function DutiesPage({
 
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '10px' }}>
                           <StatusCell display={dutyDisplayStatus(duty)} mark={mark} />
-                          <DutyRowActions dutyId={duty.id} canManage={isHead} />
+                          <DutyRowActions
+                            dutyId={duty.id}
+                            canManage={isHead}
+                            isAssignee={duty.assigned_to === user.id}
+                            status={duty.status}
+                            isReviewed={dutyDisplayStatus(duty) === 'reviewed'}
+                          />
                         </div>
                       </div>
                     )
@@ -241,10 +268,11 @@ export default async function DutiesPage({
                             className="hover:bg-gray-50/60 transition-colors"
                           >
                             {/* Duty */}
-                            <td style={{ padding: '13px 20px', maxWidth: '240px' }}>
+                            <td style={{ padding: '13px 20px', maxWidth: '260px' }}>
                               <p style={{ fontWeight: 500, color: '#111', lineHeight: 1.3 }}>{duty.title}</p>
-                              <p style={{ fontSize: '11.5px', color: '#bbb', marginTop: '2px' }}>
+                              <p style={{ fontSize: '11.5px', color: '#6b7280', marginTop: '3px', display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
                                 {dutyTypeLabel(duty.duty_type)}
+                                <UrgencyChip duty={duty} today={today} />
                               </p>
                             </td>
 
@@ -279,7 +307,13 @@ export default async function DutiesPage({
 
                             {/* Actions */}
                             <td style={{ padding: '13px 20px', whiteSpace: 'nowrap' }}>
-                              <DutyRowActions dutyId={duty.id} canManage={isHead} />
+                              <DutyRowActions
+                            dutyId={duty.id}
+                            canManage={isHead}
+                            isAssignee={duty.assigned_to === user.id}
+                            status={duty.status}
+                            isReviewed={dutyDisplayStatus(duty) === 'reviewed'}
+                          />
                             </td>
                           </tr>
                         )
