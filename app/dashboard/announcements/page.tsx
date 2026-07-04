@@ -206,13 +206,14 @@ export default async function AnnouncementsPage() {
           </p>
         </div>
         {isHead && (
-          <Link href="/dashboard/announcements/new" className="btn-primary">
+          <Link href="/dashboard/announcements/new" className="btn-primary" data-tour="add-announcement">
             + Post Announcement
           </Link>
         )}
       </div>
 
       {/* List */}
+      <div data-tour="announcements-list">
       {list.length === 0 ? (
         <EmptyState
           icon={Megaphone}
@@ -241,6 +242,7 @@ export default async function AnnouncementsPage() {
           ))}
         </div>
       )}
+      </div>
     </div>
   )
 }

@@ -6,6 +6,7 @@ import ProfileForm from './ProfileForm'
 import PasswordForm from './PasswordForm'
 import SkillsEditor from './SkillsEditor'
 import NotificationsCard from './NotificationsCard'
+import TourReplayCard from './TourReplayCard'
 import { memberRoleLabel } from '@/lib/memberRole'
 
 export default async function ProfilePage() {
@@ -87,7 +88,12 @@ export default async function ProfilePage() {
         <SkillsEditor profileId={profile.id} allSkills={allSkills ?? []} initialSkillIds={mySkillIds} />
 
         {/* Push notifications (this device + per-category prefs) */}
-        <NotificationsCard profileId={profile.id} isConsultant={profile.system_role === 'consultant'} />
+        <div data-tour="notifications">
+          <NotificationsCard profileId={profile.id} isConsultant={profile.system_role === 'consultant'} />
+        </div>
+
+        {/* Replay the guided tour */}
+        <TourReplayCard />
 
         {/* Password change */}
         <PasswordForm email={profile.email} />

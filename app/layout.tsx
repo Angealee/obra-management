@@ -24,6 +24,9 @@ export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
   themeColor: '#0D0D0D',
+  // Let content extend into the notch/home-indicator area; components then use
+  // env(safe-area-inset-*) to pad themselves clear of it.
+  viewportFit: 'cover',
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

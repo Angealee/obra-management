@@ -12,7 +12,7 @@ import {
   ClipboardList,
   FileText,
   History,
-  Menu, X,
+  X,
 } from 'lucide-react'
 
 type Profile = {
@@ -74,6 +74,14 @@ export default function Sidebar({
     return () => { document.body.style.overflow = '' }
   }, [mobileOpen])
 
+  // Shared drawer channel: the bottom-nav "More" tab and the guided tour both
+  // open/close the mobile drawer through this event.
+  useEffect(() => {
+    const handler = (e: Event) => setMobileOpen(!!(e as CustomEvent).detail)
+    window.addEventListener('obra:drawer', handler)
+    return () => window.removeEventListener('obra:drawer', handler)
+  }, [])
+
   function toggle() {
     const next = !collapsed
     setCollapsed(next)
@@ -109,38 +117,20 @@ export default function Sidebar({
       <div
         className="flex md:hidden no-print"
         style={{
-          height: '52px',
+          height: 'calc(52px + env(safe-area-inset-top, 0px))',
+          paddingTop: 'env(safe-area-inset-top, 0px)',
           flexShrink: 0,
           position: 'sticky',
           top: 0,
           zIndex: 30,
           alignItems: 'center',
           justifyContent: 'space-between',
-          padding: '0 14px',
+          paddingLeft: '14px',
+          paddingRight: '14px',
           background: '#0D0D0D',
           borderBottom: '1px solid rgba(255,255,255,0.06)',
         }}
       >
-        <button
-          type="button"
-          onClick={() => setMobileOpen(true)}
-          aria-label="Open menu"
-          style={{
-            width: '34px',
-            height: '34px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            borderRadius: '8px',
-            border: '1px solid rgba(255,255,255,0.08)',
-            background: 'rgba(255,255,255,0.04)',
-            color: 'rgba(255,255,255,0.85)',
-            cursor: 'pointer',
-          }}
-        >
-          <Menu size={18} strokeWidth={2.2} />
-        </button>
-
         <Image
           src="/whiteobralogo.png"
           alt="Obra Logo"
@@ -184,7 +174,7 @@ export default function Sidebar({
 
       <aside
         className={`sidebar ${collapsed ? 'collapsed' : ''} ${mobileOpen ? 'mobile-open' : ''} shrink-0 flex flex-col h-screen sticky top-0`}
-        style={{ width, background: '#0D0D0D', borderRight: '1px solid rgba(255,255,255,0.05)' }}
+        style={{ width, background: '#0D0D0D', borderRight: '1px solid rgba(255,255,255,0.05)', paddingTop: 'env(safe-area-inset-top, 0px)' }}
       >
       {/* logo + collapse button */}
       <div
@@ -292,7 +282,7 @@ export default function Sidebar({
       </div>
 
       {/* Navigation */}
-      <nav style={{ flex: 1, padding: '8px', overflowY: 'auto', overflowX: 'hidden' }}>
+      <nav data-tour="nav" style={{ flex: 1, padding: '8px', overflowY: 'auto', overflowX: 'hidden' }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
           {visibleNav.map(item => {
             const active = isActive(item.href)

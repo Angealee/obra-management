@@ -135,12 +135,13 @@ export default async function DutiesPage({
         title={isHead ? 'All Duties' : 'My Duties'}
         subtitle={`${groups.pending.length} pending · ${groups.in_progress.length} in progress · ${groups.awaiting_review.length} awaiting review · ${reviewedTotal} reviewed`}
         actions={isHead && (
-          <Link href="/dashboard/duties/new" className="btn-primary">
+          <Link href="/dashboard/duties/new" className="btn-primary" data-tour="add-duty">
             + Assign Duty
           </Link>
         )}
       />
 
+      <div data-tour="my-duties">
       {duties.length === 0 && reviewedTotal === 0 ? (
         <EmptyState
           icon={ListChecks}
@@ -327,6 +328,7 @@ export default async function DutiesPage({
           })}
         </div>
       )}
+      </div>
     </div>
   )
 }

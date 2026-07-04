@@ -231,7 +231,7 @@ export default async function EventsPage({
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
             {toggle}
-            {canManage && <Link href="/dashboard/events/new" className="btn-primary">+ Add Event</Link>}
+            {canManage && <Link href="/dashboard/events/new" className="btn-primary" data-tour="add-event">+ Add Event</Link>}
           </div>
         </div>
 
@@ -331,7 +331,7 @@ export default async function EventsPage({
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
           {toggle}
-          {canManage && <Link href="/dashboard/events/new" className="btn-primary">+ Add Event</Link>}
+          {canManage && <Link href="/dashboard/events/new" className="btn-primary" data-tour="add-event">+ Add Event</Link>}
         </div>
       </div>
 

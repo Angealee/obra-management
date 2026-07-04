@@ -164,7 +164,7 @@ function QuickActions({ consultant }: { consultant: boolean }) {
       : []),
   ]
   return (
-    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+    <div data-tour="quick-actions" style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
       {actions.map(a => (
         <Link key={a.href} href={a.href} className="quick-action">
           <a.icon size={14} strokeWidth={2} />
@@ -398,7 +398,7 @@ export default async function DashboardPage() {
 
 
         {/* ── 4 stat cards ── */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3.5">
+        <div data-tour="stats" className="grid grid-cols-2 md:grid-cols-4 gap-3.5">
           <Stat label="Active Members" value={totalMembers ?? 0} accent="#3b82f6" icon={Users} href="/dashboard/members" />
           <Stat label="Events This AY" value={events?.length ?? 0} sub={`${upcoming} upcoming · ${ongoing} ongoing`} accent="#7c3aed" icon={CalendarDays} href="/dashboard/events" />
           <Stat label="Total Duties" value={total} sub={`${rev} reviewed`} accent="#0891b2" icon={ListChecks} href="/dashboard/duties"
@@ -578,7 +578,7 @@ export default async function DashboardPage() {
         <OverdueStrip count={teamOverdue} scope="team" />
         <QuickActions consultant={false} />
 
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3.5">
+        <div data-tour="stats" className="grid grid-cols-2 md:grid-cols-4 gap-3.5">
           <Stat label="My Pending"       value={myPending}            accent="#64748b" icon={Clock}          href="/dashboard/duties" />
           <Stat label="In Progress"      value={myInProg}             accent="#3b82f6" icon={Activity}       href="/dashboard/duties" />
           <Stat label="Awaiting Review"  value={pendingReview.length} accent="#ca8a04" icon={ClipboardCheck} href="/dashboard/duties" />

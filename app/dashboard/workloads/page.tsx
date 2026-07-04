@@ -92,15 +92,17 @@ export default async function WorkloadsPage({
         </div>
       </div>
 
-      <WorkloadMatrix
-        members={(members as any) ?? []}
-        events={events ?? []}
-        matrix={matrix}
-        initialMarksMap={marksMap}
-        canManage={canManage}
-        highlightMember={highlightMember ?? null}
-        highlightEvent={highlightEvent ?? null}
-      />
+      <div data-tour="matrix">
+        <WorkloadMatrix
+          members={(members as any) ?? []}
+          events={events ?? []}
+          matrix={matrix}
+          initialMarksMap={marksMap}
+          canManage={canManage}
+          highlightMember={highlightMember ?? null}
+          highlightEvent={highlightEvent ?? null}
+        />
+      </div>
     </div>
   )
 }

@@ -5,6 +5,8 @@ import PageWrapper from '@/components/PageWrapper'
 import YearPicker from '@/components/YearPicker'
 import EnablePushBanner from '@/components/EnablePushBanner'
 import PushForegroundBanner from '@/components/PushForegroundBanner'
+import GuidedTour from '@/components/GuidedTour'
+import BottomNav from '@/components/BottomNav'
 import { getAcademicYearContext } from '@/lib/academicYear'
 import { getSessionProfile } from '@/lib/auth'
 
@@ -52,6 +54,7 @@ export default async function DashboardLayout({
     <div className="flex flex-col md:flex-row dashboard-shell" style={{ height: '100vh', overflow: 'hidden', background: '#F7F7F5' }}>
       <Sidebar profile={profile} initialCollapsed={sidebarCollapsed} />
       <main
+        className="dashboard-main"
         style={{
           flex: 1,
           overflowY: 'auto',
@@ -84,7 +87,9 @@ export default async function DashboardLayout({
         <EnablePushBanner />
         <PushForegroundBanner />
         <PageWrapper>{children}</PageWrapper>
+        <GuidedTour role={profile.system_role} />
       </main>
+      <BottomNav role={profile.system_role} />
     </div>
   )
 }
