@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { requireProfile } from '@/lib/auth'
 import WorkloadBadge from '@/components/WorkLoadBadge'
 import EmptyState from '@/components/EmptyState'
+import PageHeader from '@/components/PageHeader'
 import { ListChecks } from 'lucide-react'
 import DutyRowActions from './DutyRowActions'
 import Pager from '@/components/Pager'
@@ -130,21 +131,15 @@ export default async function DutiesPage({
 
   return (
     <div>
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '28px', gap: '16px', flexWrap: 'wrap' }}>
-        <div>
-          <h1 style={{ fontSize: '26px', fontWeight: 700, letterSpacing: '-0.4px', color: '#111', lineHeight: 1.1 }}>
-            {isHead ? 'All Duties' : 'My Duties'}
-          </h1>
-          <p style={{ fontSize: '13px', color: '#6b7280', marginTop: '5px' }}>
-            {groups.pending.length} pending · {groups.in_progress.length} in progress · {groups.awaiting_review.length} awaiting review · {reviewedTotal} reviewed
-          </p>
-        </div>
-        {isHead && (
+      <PageHeader
+        title={isHead ? 'All Duties' : 'My Duties'}
+        subtitle={`${groups.pending.length} pending · ${groups.in_progress.length} in progress · ${groups.awaiting_review.length} awaiting review · ${reviewedTotal} reviewed`}
+        actions={isHead && (
           <Link href="/dashboard/duties/new" className="btn-primary">
             + Assign Duty
           </Link>
         )}
-      </div>
+      />
 
       {duties.length === 0 && reviewedTotal === 0 ? (
         <EmptyState

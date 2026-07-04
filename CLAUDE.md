@@ -611,11 +611,29 @@ Accent/Active:   #CC0000
 Success:         #16a34a
 Warning:         #ca8a04
 Info:            #3b82f6
+Name accent:     #1e40af  (--name-accent — member/user names ONLY, via the
+                 PersonName treatment; 8.7:1 on white. Never for links,
+                 statuses, or generic emphasis)
 
 ### Typography
 Body/UI:         DM Sans, sans-serif
 Monospace:       DM Mono, monospace
 Display/Hero:    Bebas Neue, sans-serif
+
+Type scale (July 2026 redesign — CSS variables in globals.css :root):
+--text-display   38px   Bebas masthead greeting
+--text-title     30px   page titles (.page-title)
+--text-section   16px   card/section headings (.card-title)
+--text-body      14px   table cells, list rows, inputs
+--text-secondary 13px   sublines, descriptions
+--text-caption   12px   timestamps, counts — SMALLEST readable size.
+Nothing informational renders below 12px; the 10.5px uppercase
+.section-label survives only as a decorative divider. Prefer the variables
+over hard-coded px in new/edited styles.
+
+Spacing rhythm (4px grid): --space-card 24px (20px below 640px),
+--space-section 32px between page sections, --space-header 28px below the
+page header.
 
 ### globals.css rules
 - Google Fonts @import MUST be the first line, before @import "tailwindcss"
@@ -632,9 +650,10 @@ Cards:
 .stat-card-link      link wrapper for stat-card
 .announcement-card   hoverable announcement card
 Typography:
-.page-title          26px bold, -0.5px tracking
+.page-title          30px bold, -0.5px tracking (var(--text-title))
 .page-subtitle       13px muted, margin-top 3px
-.section-label       10.5px uppercase, 0.08em tracking, #999
+.card-title          16px/600 card & section headings (var(--text-section))
+.section-label       10.5px uppercase, 0.08em tracking (decorative divider only)
 Navigation:
 .sidebar-nav-item    nav link base style
 .sidebar-nav-item.active  red left border + white text
@@ -654,6 +673,10 @@ Tables:
 - Use Tailwind only for layout utilities (flex, grid, gap, overflow)
 - Never use Tailwind for colors or font sizes — use inline styles
 - This prevents Tailwind class conflicts with the design system
+- EXCEPTION — components/ui/: shadcn/ui-derived primitives live here and
+  arrive styled with Tailwind classes; inside components/ui/ files Tailwind
+  may style everything (themed via the CSS variables in globals.css).
+  Page-level code keeps the inline-style rule above.
 
 ### Card Pattern
 ```tsx

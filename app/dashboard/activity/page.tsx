@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { requireProfile } from '@/lib/auth'
 import type { ActivityLog } from '@/types/database'
 import EmptyState from '@/components/EmptyState'
+import PageHeader from '@/components/PageHeader'
 import Pager from '@/components/Pager'
 import Avatar from '@/components/ui/Avatar'
 import { History } from 'lucide-react'
@@ -139,15 +140,14 @@ export default async function ActivityPage({
 
   return (
     <div className="page-enter">
-      {/* Header */}
-      <div style={{ marginBottom: '24px' }}>
-        <h1 className="page-title">Activity</h1>
-        <p className="page-subtitle">
-          {total === 0
+      <PageHeader
+        title="Activity"
+        subtitle={
+          total === 0
             ? 'Every change made in the system is recorded here.'
-            : `${total} entr${total !== 1 ? 'ies' : 'y'} · who did what, and when. Entries are kept for the current and previous academic year.`}
-        </p>
-      </div>
+            : `${total} entr${total !== 1 ? 'ies' : 'y'} · who did what, and when. Entries are kept for the current and previous academic year.`
+        }
+      />
 
       <ActivityFilters
         modules={Object.entries(MODULE_LABEL).map(([value, label]) => ({ value, label }))}

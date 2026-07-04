@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { requireProfile } from '@/lib/auth'
 import MembersTable from './MembersTable'
 import EmptyState from '@/components/EmptyState'
+import PageHeader from '@/components/PageHeader'
 import { CalendarRange, Users } from 'lucide-react'
 import { getAcademicYearContext } from '@/lib/academicYear'
 
@@ -48,21 +49,19 @@ export default async function MembersPage() {
 
   return (
     <div className="page-enter">
-      <div style={{ marginBottom: 24, display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
-        <div>
-          <h1 className="page-title">Members</h1>
-          <p className="page-subtitle">
-            {viewYear
-              ? <>Members active for <strong>{viewYear.label}</strong>.</>
-              : 'All Creative Heads and Members of Obra.'}
-          </p>
-        </div>
-        {canManage && (
+      <PageHeader
+        title="Members"
+        subtitle={
+          viewYear
+            ? <>Members active for <strong>{viewYear.label}</strong>.</>
+            : 'All Creative Heads and Members of Obra.'
+        }
+        actions={canManage && (
           <a href="/dashboard/members/new" className="btn-primary">
             + Add Member
           </a>
         )}
-      </div>
+      />
 
       {!viewYearId ? (
         <EmptyState

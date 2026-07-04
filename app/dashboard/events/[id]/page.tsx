@@ -6,6 +6,7 @@ import EventStatusManager from './EventStatusManager'
 import DeleteEventButton from './DeleteEventButton'
 import { dutyTypeLabel } from '@/lib/memberRole'
 import { dutyDisplayStatus, DUTY_DISPLAY_LABELS, DUTY_DISPLAY_STYLE } from '@/lib/dutyStatus'
+import WorkloadBadge from '@/components/WorkLoadBadge'
 
 export default async function EventDetailPage({
   params,
@@ -42,11 +43,22 @@ export default async function EventDetailPage({
     const { data: duties } = await supabase
     .from('duties')
     .select(`
-      id, title, duty_type, priority, status, reviewed_by,
+      id, title, duty_type, priority, status, reviewed_by, assigned_to,
       assignee:profiles!duties_assigned_to_fkey ( full_name )
     `)
     .eq('event_id', id)
     .order('created_at', { ascending: true })
+
+  // Workload outcome marks for this event (member × event). A mark set from the
+  // Workload Matrix or the duty's "Mark Outcome" is the real outcome
+  // (Completed / Late / Did Not Duty) and takes precedence over the derived
+  // duty status — same rule the Duties list uses, so the two stay in sync.
+  const { data: eventMarks } = await supabase
+    .from('workload_marks')
+    .select('member_id, mark')
+    .eq('event_id', id)
+  const markByMember: Record<string, string> = {}
+  for (const m of eventMarks ?? []) markByMember[m.member_id] = m.mark
 
   const canManage = profile.system_role === 'consultant' || profile.system_role === 'creative_head'
 
@@ -149,10 +161,14 @@ export default async function EventDetailPage({
             {dutyList.map(duty => {
               const display = dutyDisplayStatus(duty)
               const [sbg, stc] = DUTY_DISPLAY_STYLE[display]
-              const dot = {
-                reviewed: 'bg-green-500', awaiting_review: 'bg-yellow-500',
-                in_progress: 'bg-blue-500', pending: 'bg-gray-300',
-              }[display]
+              const mark = duty.assigned_to ? markByMember[duty.assigned_to] ?? null : null
+              // Dot follows the outcome mark when present, else the derived status.
+              const dot = mark
+                ? { completed: 'bg-green-500', late: 'bg-yellow-500', did_not_duty: 'bg-red-500' }[mark] ?? 'bg-gray-300'
+                : {
+                    reviewed: 'bg-green-500', awaiting_review: 'bg-yellow-500',
+                    in_progress: 'bg-blue-500', pending: 'bg-gray-300',
+                  }[display]
               return (
                 <Link
                   key={duty.id}
@@ -181,13 +197,18 @@ export default async function EventDetailPage({
                       {duty.priority}
                     </span>
 
-                    {/* Status badge */}
-                    <span
-                      className="text-xs font-medium px-2.5 py-0.5 rounded-full"
-                      style={{ background: sbg, color: stc }}
-                    >
-                      {DUTY_DISPLAY_LABELS[display]}
-                    </span>
+                    {/* Outcome mark (Completed / Late / Did Not Duty) when the
+                        duty has been marked; otherwise the derived duty status. */}
+                    {mark ? (
+                      <WorkloadBadge mark={mark} />
+                    ) : (
+                      <span
+                        className="text-xs font-medium px-2.5 py-0.5 rounded-full"
+                        style={{ background: sbg, color: stc }}
+                      >
+                        {DUTY_DISPLAY_LABELS[display]}
+                      </span>
+                    )}
 
                     <span className="text-gray-300 group-hover:text-gray-500 transition text-xs">→</span>
                   </div>

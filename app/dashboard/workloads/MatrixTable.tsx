@@ -40,34 +40,61 @@ export default function MatrixTable({
   highlightKey: string | null
   highlightRef: RefObject<HTMLTableCellElement | null>
 }) {
-  // ── Grab-and-pan: hold the mouse down and drag to scroll the wide matrix
-  // horizontally (no reaching for the scrollbar). A 5px threshold keeps
-  // ordinary cell clicks working; once a drag engages, pointer capture stops
-  // the underlying cell/link from firing, and the click that follows the
-  // release is swallowed in the capture phase. Touch devices keep their
-  // native scrolling (mouse pointers only).
+  // ── Grab-and-pan: hold the mouse down and drag to scroll the wide matrix.
+  // Horizontal moves the container's own scrollbar; vertical moves the nearest
+  // scrollable ancestor (the dashboard <main>), so one drag pans both axes with
+  // no extra scroll region or layout change. A 5px threshold keeps ordinary
+  // cell clicks working; once a drag engages, pointer capture stops the
+  // underlying cell/link from firing, and the click that follows the release is
+  // swallowed in the capture phase. Touch devices keep native scrolling.
   const scrollRef = useRef<HTMLDivElement | null>(null)
-  const drag = useRef({ active: false, startX: 0, startLeft: 0, moved: false })
+  const drag = useRef({
+    active: false, startX: 0, startY: 0, startLeft: 0, startTop: 0,
+    moved: false, vScroller: null as HTMLElement | null,
+  })
+
+  // Nearest ancestor that actually scrolls vertically (falls back to the
+  // document scroller). This is where the page's vertical scroll lives.
+  function findVerticalScroller(from: HTMLElement): HTMLElement | null {
+    let el: HTMLElement | null = from.parentElement
+    while (el) {
+      const oy = getComputedStyle(el).overflowY
+      if ((oy === 'auto' || oy === 'scroll') && el.scrollHeight > el.clientHeight) return el
+      el = el.parentElement
+    }
+    return (document.scrollingElement as HTMLElement) ?? document.documentElement
+  }
 
   function onPointerDown(e: React.PointerEvent) {
     if (e.pointerType !== 'mouse' || e.button !== 0) return
     const el = scrollRef.current
-    if (!el || el.scrollWidth <= el.clientWidth) return
-    drag.current = { active: true, startX: e.clientX, startLeft: el.scrollLeft, moved: false }
+    if (!el) return
+    const vScroller = findVerticalScroller(el)
+    const canPanX = el.scrollWidth > el.clientWidth
+    const canPanY = !!vScroller && vScroller.scrollHeight > vScroller.clientHeight
+    if (!canPanX && !canPanY) return
+    drag.current = {
+      active: true,
+      startX: e.clientX, startY: e.clientY,
+      startLeft: el.scrollLeft, startTop: vScroller ? vScroller.scrollTop : 0,
+      moved: false, vScroller,
+    }
   }
 
   function onPointerMove(e: React.PointerEvent) {
     const el = scrollRef.current
     if (!drag.current.active || !el) return
     const dx = e.clientX - drag.current.startX
+    const dy = e.clientY - drag.current.startY
     if (!drag.current.moved) {
-      if (Math.abs(dx) < 5) return
+      if (Math.hypot(dx, dy) < 5) return
       drag.current.moved = true
       el.setPointerCapture(e.pointerId)
       el.style.cursor = 'grabbing'
       document.body.style.userSelect = 'none'
     }
     el.scrollLeft = drag.current.startLeft - dx
+    if (drag.current.vScroller) drag.current.vScroller.scrollTop = drag.current.startTop - dy
   }
 
   function onPointerEnd() {
