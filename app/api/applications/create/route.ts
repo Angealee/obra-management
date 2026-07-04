@@ -198,7 +198,7 @@ export async function POST(req: NextRequest) {
       (consultants ?? []).map(c => c.id),
       'applications',
       {
-        title: '📨 New membership application',
+        title: 'New membership application',
         body: `${data.full_name} applied — ${data.positions.length} position${data.positions.length !== 1 ? 's' : ''}`,
         url: '/dashboard/applications',
         tag: 'new-application',

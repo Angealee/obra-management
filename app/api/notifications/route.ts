@@ -49,7 +49,7 @@ export async function POST(req: NextRequest) {
     // delivery does not depend on the page being open.
     await new Promise(r => setTimeout(r, 4000))
     const result = await sendPushToProfiles([user.id], 'test', {
-      title: '✅ Obra push is working',
+      title: 'Obra push is working',
       body: 'This test notification was delivered by the push service — even with the app closed.',
       url: '/dashboard/profile',
       tag: 'obra-test',

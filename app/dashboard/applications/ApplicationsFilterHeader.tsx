@@ -1,6 +1,7 @@
 'use client'
 
-import { Search, SlidersHorizontal, Trash2, X, XCircle } from 'lucide-react'
+import { Search, Trash2, X, XCircle } from 'lucide-react'
+import FilterPopover from '@/components/ui/FilterPopover'
 import type { ApplicationStatus } from '@/types/database'
 import {
   MIN_SCORE_OPTIONS, POSITION_LABELS, POSITION_OPTIONS, SORT_OPTIONS,
@@ -137,41 +138,9 @@ export default function ApplicationsFilterHeader({
             }}
           />
         </div>
-        <button
-          type="button"
-          onClick={() => f.setFiltersOpen(o => !o)}
-          title="Filters & sorting"
-          style={{
-            position: 'relative',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            width: 38, height: 38, flexShrink: 0,
-            borderRadius: 9,
-            border: f.filtersOpen ? '1px solid #CC0000' : '1px solid rgba(0,0,0,0.10)',
-            background: f.filtersOpen ? '#fef2f2' : '#F7F7F5',
-            color: f.filtersOpen ? '#CC0000' : '#555',
-            cursor: 'pointer',
-            transition: 'background 0.13s ease, border-color 0.13s ease, color 0.13s ease',
-          }}
-        >
-          <SlidersHorizontal size={15} />
-          {f.activeFilterCount > 0 && (
-            <span style={{
-              position: 'absolute', top: -5, right: -5,
-              minWidth: 16, height: 16, padding: '0 4px',
-              borderRadius: 999,
-              background: '#CC0000', color: '#fff',
-              fontFamily: 'DM Mono, monospace', fontSize: 9.5, fontWeight: 700,
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-            }}>
-              {f.activeFilterCount}
-            </span>
-          )}
-        </button>
-      </div>
-
-      {/* Filter / sort dropdowns */}
-      {f.filtersOpen && (
-        <div className="panel-reveal" style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 12 }}>
+        {/* Floating filter panel — the list below never shifts */}
+        <FilterPopover activeCount={f.activeFilterCount} panelWidth={296}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           <div className="grid grid-cols-2 gap-2.5">
             <label style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
               <span style={fieldLabelStyle}>Status</span>
@@ -220,8 +189,9 @@ export default function ApplicationsFilterHeader({
               ))}
             </select>
           </label>
-        </div>
-      )}
+          </div>
+        </FilterPopover>
+      </div>
 
       {/* Active filter chips */}
       {f.activeFilterCount > 0 && (

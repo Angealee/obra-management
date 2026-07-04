@@ -49,17 +49,19 @@ const CREATIVE_LABEL: Record<string, string> = {
   creative_director: 'Creative Director',
 }
 
-export default function Sidebar({ profile }: { profile: Profile }) {
+export default function Sidebar({
+  profile,
+  initialCollapsed = false,
+}: {
+  profile: Profile
+  initialCollapsed?: boolean
+}) {
   const pathname = usePathname()
-  const [collapsed, setCollapsed] = useState(false)
-  const [mounted, setMounted] = useState(false)
+  // Collapsed state persists in a COOKIE so the server renders the correct
+  // width on first paint — no post-mount width jump (the old localStorage
+  // approach flashed 232px before snapping to collapsed).
+  const [collapsed, setCollapsed] = useState(initialCollapsed)
   const [mobileOpen, setMobileOpen] = useState(false)
-
-  useEffect(() => {
-    const saved = localStorage.getItem('obra-sidebar-collapsed')
-    if (saved === 'true') setCollapsed(true)
-    setMounted(true)
-  }, [])
 
   // Close the mobile drawer on navigation.
   useEffect(() => {
@@ -75,7 +77,7 @@ export default function Sidebar({ profile }: { profile: Profile }) {
   function toggle() {
     const next = !collapsed
     setCollapsed(next)
-    localStorage.setItem('obra-sidebar-collapsed', String(next))
+    document.cookie = `obra-sidebar=${next ? '1' : '0'}; path=/; max-age=31536000; samesite=lax`
   }
 
   function isActive(href: string) {
@@ -95,7 +97,7 @@ export default function Sidebar({ profile }: { profile: Profile }) {
   const initials = profile.full_name
     .split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase()
 
-  const width = !mounted ? '232px' : collapsed ? '67px' : '250px'
+  const width = collapsed ? '67px' : '250px'
 
   // Inside the mobile drawer, always render as if expanded — the desktop
   // collapsed/expanded preference shouldn't affect the mobile layout.

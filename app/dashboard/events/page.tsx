@@ -255,7 +255,10 @@ export default async function EventsPage({
     academic_years ( label ),
     profiles ( full_name )
   `
-  const [{ data: openEvents }, { data: completedEvents, count: completedCount }] = viewYearId
+  // Coverage rides in the same round trip: duties are scoped through the
+  // event join by YEAR (not by the fetched ids), so the query is independent
+  // of the event queries and all three run in parallel — no waterfall.
+  const [{ data: openEvents }, { data: completedEvents, count: completedCount }, { data: yearDuties }] = viewYearId
     ? await Promise.all([
         supabase
           .from('events')
@@ -270,23 +273,22 @@ export default async function EventsPage({
           .eq('status', 'completed')
           .order('event_date', { ascending: false })
           .range((page - 1) * HISTORY_PAGE_SIZE, page * HISTORY_PAGE_SIZE - 1) as any,
+        supabase
+          .from('duties')
+          .select('event_id, assigned_to, events!inner(academic_year_id)')
+          .eq('events.academic_year_id', viewYearId)
+          .limit(5000) as any,
       ])
-    : [{ data: [] as ObraEventWithDetails[] }, { data: [] as ObraEventWithDetails[], count: 0 }]
+    : [{ data: [] as ObraEventWithDetails[] }, { data: [] as ObraEventWithDetails[], count: 0 }, { data: [] }]
 
   const open = (openEvents ?? []) as ObraEventWithDetails[]
   const completed = (completedEvents ?? []) as ObraEventWithDetails[]
 
-  // Staffing coverage for every visible event, in one duty query.
-  const visibleIds = [...open, ...completed].map(e => e.id)
+  // Staffing coverage per event, computed from the parallel duties fetch.
   const coverage = new Map<string, Coverage>()
-  if (visibleIds.length > 0) {
-    const { data: duties } = await supabase
-      .from('duties')
-      .select('event_id, assigned_to')
-      .in('event_id', visibleIds)
-      .limit(5000)
+  {
     const memberSets = new Map<string, Set<string>>()
-    for (const d of duties ?? []) {
+    for (const d of (yearDuties ?? []) as any[]) {
       const c = coverage.get(d.event_id) ?? { duties: 0, members: 0 }
       c.duties++
       coverage.set(d.event_id, c)

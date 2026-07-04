@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
+import { Check, Play } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 
 // Row-level actions on the duties list.
@@ -49,6 +50,9 @@ export default function DutyRowActions({
         onClick={() => advance(status === 'pending' ? 'in_progress' : 'completed')}
         disabled={busy}
         style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: 5,
           fontSize: '11.5px',
           fontWeight: 600,
           padding: '4px 12px',
@@ -61,7 +65,11 @@ export default function DutyRowActions({
           whiteSpace: 'nowrap',
         }}
       >
-        {busy ? '…' : status === 'pending' ? '▸ Start' : '✓ Done'}
+        {busy
+          ? '…'
+          : status === 'pending'
+            ? (<><Play size={11} strokeWidth={2.5} /> Start</>)
+            : (<><Check size={12} strokeWidth={2.5} /> Done</>)}
       </button>
     ) : null
 

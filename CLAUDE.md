@@ -568,6 +568,7 @@ obra-management/
 │   └── ui/                               ← Design-system primitives
 │       ├── Avatar.tsx                    ← Photo-or-initials avatar (next/image)
 │       ├── StatusBadge.tsx               ← Pill + EventStatusBadge + DutyStatusBadge
+│       ├── FilterPopover.tsx             ← Floating filters (no layout shift)
 │       └── tokens.ts                     ← Shared card/label/row tokens (T)
 ├── lib/
 │   ├── supabase/                         ← client.ts / server.ts / admin.ts
@@ -748,6 +749,23 @@ Do not use URLSearchParams — it causes TypeScript JSX prop conflicts.
   (/api/notifications), five categories with per-user prefs, profile
   NotificationsCard + dashboard banner (requires db/2026-push-subscriptions.sql
   + VAPID env vars on Vercel)
+- Phase 23: Dashboard identity + matrix pan (July 2026) — editorial Masthead
+  (DM Mono kicker w/ red tick + Bebas Neue greeting + ghosted filmstrip band,
+  opacity 0.05 w/ rightward fade mask); stat cards: Bebas numerals (34px),
+  CountUp roll (components/ui/CountUp, reduced-motion aware), hover accent
+  bar (.stat-accent), SVG completion Ring on Total Duties / Reviewed cards;
+  NO entrance animations (user choice). Workload matrix desktop scroller is
+  grab-and-pan (mouse only, 5px threshold, pointer capture + click-swallow so
+  cell clicks stay safe; touch keeps native scroll).
+- Phase 22: Professionalization pass (July 2026) — uniform FilterPopover
+  (Members/Workloads/Activity/Applications filters float over content, zero
+  layout shift); dashboard: overdue callout strip, quick-actions row,
+  Latest Announcements card with unread dots, readable type scale (rows 14px,
+  sublines 12.5px); EMOJI POLICY: no emoji in UI chrome or push titles —
+  lucide icons only; matrix ✓/!/✗/★ cell notation is functional and stays;
+  perf: parallel year-join queries (events coverage, duties marks), sidebar
+  collapsed state moved to a cookie (server-rendered width, no flash),
+  Google Fonts preconnect in the root layout.
 - Phase 21: UX Overhaul (July 2026) — in-app foreground push banner
   (PushForegroundBanner + sw.js visible-client handoff); announcements unread
   states/pinning/date groups (db/2026-announcements-pinned.sql); events

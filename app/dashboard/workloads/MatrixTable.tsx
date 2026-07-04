@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import type { RefObject } from 'react'
+import { useRef, type RefObject } from 'react'
 import WorkloadCell from './WorkLoadCell'
 import { EVENT_STATUS_STYLE, MemberDot, MiniBar, SkillTag } from './MatrixBits'
 import {
@@ -40,9 +40,65 @@ export default function MatrixTable({
   highlightKey: string | null
   highlightRef: RefObject<HTMLTableCellElement | null>
 }) {
+  // ── Grab-and-pan: hold the mouse down and drag to scroll the wide matrix
+  // horizontally (no reaching for the scrollbar). A 5px threshold keeps
+  // ordinary cell clicks working; once a drag engages, pointer capture stops
+  // the underlying cell/link from firing, and the click that follows the
+  // release is swallowed in the capture phase. Touch devices keep their
+  // native scrolling (mouse pointers only).
+  const scrollRef = useRef<HTMLDivElement | null>(null)
+  const drag = useRef({ active: false, startX: 0, startLeft: 0, moved: false })
+
+  function onPointerDown(e: React.PointerEvent) {
+    if (e.pointerType !== 'mouse' || e.button !== 0) return
+    const el = scrollRef.current
+    if (!el || el.scrollWidth <= el.clientWidth) return
+    drag.current = { active: true, startX: e.clientX, startLeft: el.scrollLeft, moved: false }
+  }
+
+  function onPointerMove(e: React.PointerEvent) {
+    const el = scrollRef.current
+    if (!drag.current.active || !el) return
+    const dx = e.clientX - drag.current.startX
+    if (!drag.current.moved) {
+      if (Math.abs(dx) < 5) return
+      drag.current.moved = true
+      el.setPointerCapture(e.pointerId)
+      el.style.cursor = 'grabbing'
+      document.body.style.userSelect = 'none'
+    }
+    el.scrollLeft = drag.current.startLeft - dx
+  }
+
+  function onPointerEnd() {
+    const el = scrollRef.current
+    drag.current.active = false
+    if (el) el.style.cursor = 'grab'
+    document.body.style.userSelect = ''
+    // drag.current.moved stays true until the trailing click is swallowed.
+  }
+
+  function onClickCapture(e: React.MouseEvent) {
+    if (drag.current.moved) {
+      e.preventDefault()
+      e.stopPropagation()
+      drag.current.moved = false
+    }
+  }
+
   return (
     <div className="hidden md:block" style={{ background: '#fff', border: '1px solid rgba(0,0,0,0.06)', borderRadius: 12, overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.03)' }}>
-      <div className="overflow-x-auto">
+      <div
+        ref={scrollRef}
+        className="overflow-x-auto"
+        style={{ cursor: 'grab' }}
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={onPointerEnd}
+        onPointerCancel={onPointerEnd}
+        onPointerLeave={onPointerEnd}
+        onClickCapture={onClickCapture}
+      >
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, minWidth: Math.max(700, 260 + events.length * 110) }}>
           <thead>
             <tr style={{ borderBottom: '1px solid rgba(0,0,0,0.10)' }}>

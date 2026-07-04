@@ -90,26 +90,24 @@ export default async function DutiesPage({
     .range((page - 1) * HISTORY_PAGE_SIZE, page * HISTORY_PAGE_SIZE - 1)
   if (!isHead) reviewedQuery.eq('assigned_to', user.id)
 
+  // Marks are scoped by YEAR through the event join (not by fetched duty ids),
+  // making the query independent — all three run in parallel, no waterfall.
+  const marksQuery = supabase
+    .from('workload_marks')
+    .select('member_id, event_id, mark, events!inner(academic_year_id)')
+    .eq('events.academic_year_id', viewYearId ?? NONE_UUID)
+    .limit(5000)
+  if (!isHead) marksQuery.eq('member_id', user.id)
+
   const [
     { data: activeDuties },
     { data: reviewedDuties, count: reviewedCount },
-  ] = await Promise.all([activeQuery, reviewedQuery])
+    { data: marks },
+  ] = await Promise.all([activeQuery, reviewedQuery, marksQuery])
 
   const duties = [...(activeDuties ?? []), ...(reviewedDuties ?? [])]
   const reviewedTotal = reviewedCount ?? 0
   const totalPages = Math.max(1, Math.ceil(reviewedTotal / HISTORY_PAGE_SIZE))
-
-  // Fetch workload marks
-  const eventIds  = [...new Set((duties ?? []).map((d: any) => d.event_id).filter(Boolean))]
-  const memberIds = [...new Set((duties ?? []).map((d: any) => d.assigned_to).filter(Boolean))]
-
-  const { data: marks } = eventIds.length > 0 && memberIds.length > 0
-    ? await supabase
-        .from('workload_marks')
-        .select('member_id, event_id, mark')
-        .in('event_id', eventIds)
-        .in('member_id', memberIds)
-    : { data: [] }
 
   const markMap: Record<string, string> = {}
   for (const m of marks ?? []) {

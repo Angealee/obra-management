@@ -1,4 +1,5 @@
 import { redirect } from 'next/navigation'
+import { cookies } from 'next/headers'
 import Sidebar from '@/components/Sidebar'
 import PageWrapper from '@/components/PageWrapper'
 import YearPicker from '@/components/YearPicker'
@@ -43,9 +44,13 @@ export default async function DashboardLayout({
   const hasTopBar = showYearPicker && years.length > 0
   const TOPBAR_H = 48
 
+  // Server-read sidebar preference — first paint renders the right width.
+  const cookieStore = await cookies()
+  const sidebarCollapsed = cookieStore.get('obra-sidebar')?.value === '1'
+
   return (
     <div className="flex flex-col md:flex-row dashboard-shell" style={{ height: '100vh', overflow: 'hidden', background: '#F7F7F5' }}>
-      <Sidebar profile={profile} />
+      <Sidebar profile={profile} initialCollapsed={sidebarCollapsed} />
       <main
         style={{
           flex: 1,

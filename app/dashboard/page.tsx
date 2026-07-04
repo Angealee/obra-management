@@ -4,12 +4,15 @@ import { requireProfile } from '@/lib/auth'
 import { getAcademicYearContext } from '@/lib/academicYear'
 import { dutyDisplayStatus } from '@/lib/dutyStatus'
 import Avatar from '@/components/ui/Avatar'
+import CountUp from '@/components/ui/CountUp'
 import { DutyStatusBadge, EventStatusBadge } from '@/components/ui/StatusBadge'
 import { T } from '@/components/ui/tokens'
 import {
   Users, CalendarDays, ListChecks, FileText, CheckCircle2, Clock, XCircle,
-  Activity, ClipboardCheck, Trophy, Medal, type LucideIcon,
+  Activity, ClipboardCheck, Trophy, Medal, AlertTriangle, CalendarPlus,
+  ListPlus, Megaphone, History, Pin, type LucideIcon,
 } from 'lucide-react'
+import { daysFromToday, parseDateOnly, phTodayStr } from '@/lib/relativeDate'
 
 // Valid-format UUID that matches no row — used to force an empty result set when
 // a year has no events (keeps every query uniformly a Supabase query for typing).
@@ -17,33 +20,112 @@ const NONE_UUID = '00000000-0000-0000-0000-000000000000'
 
 // Design tokens shared via components/ui/tokens.ts (card / label / row dialect).
 
-// ─── Stat card ───────────────────────────────────────────
-function Stat({ label, value, sub, href, accent, icon: Icon }: {
-  label: string; value: number | string; sub?: string; href?: string; accent: string; icon: LucideIcon
+// ─── Completion ring: one data-true graphic anchor (SVG donut) ───
+function Ring({ percent, color }: { percent: number; color: string }) {
+  const r = 15.5
+  const c = 2 * Math.PI * r
+  const p = Math.max(0, Math.min(100, percent))
+  return (
+    <svg width={40} height={40} viewBox="0 0 40 40" aria-label={`${p}% reviewed`} style={{ flexShrink: 0 }}>
+      <circle cx={20} cy={20} r={r} fill="none" stroke="rgba(0,0,0,0.07)" strokeWidth={4} />
+      <circle
+        cx={20} cy={20} r={r} fill="none"
+        stroke={color} strokeWidth={4} strokeLinecap="round"
+        strokeDasharray={`${(p / 100) * c} ${c}`}
+        transform="rotate(-90 20 20)"
+      />
+      <text x={20} y={23} textAnchor="middle" fontSize={9} fontFamily="'DM Mono', monospace" fill="#555">
+        {p}%
+      </text>
+    </svg>
+  )
+}
+
+// ─── Stat card: Bebas scoreboard numerals, count-up, hover accent bar ───
+function Stat({ label, value, sub, href, accent, icon: Icon, ring }: {
+  label: string; value: number | string; sub?: string; href?: string; accent: string; icon: LucideIcon; ring?: number
 }) {
   const inner = (
-    <div className={`${T.card} ${href ? T.cardHov : ''} group p-5 flex flex-col gap-3`}>
-      <div
-        className="transition-transform duration-200 group-hover:scale-110"
-        style={{
-          width: 36, height: 36, borderRadius: 10, flexShrink: 0,
-          background: `${accent}1a`, color: accent,
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-        }}
-      >
-        <Icon size={17} strokeWidth={2.25} />
+    <div className={`${T.card} ${href ? T.cardHov : ''} group stat-card-x p-5 flex flex-col gap-3`}>
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
+        <div
+          className="transition-transform duration-200 group-hover:scale-110"
+          style={{
+            width: 36, height: 36, borderRadius: 10, flexShrink: 0,
+            background: `${accent}1a`, color: accent,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}
+        >
+          <Icon size={17} strokeWidth={2.25} />
+        </div>
+        {ring !== undefined && <Ring percent={ring} color={accent} />}
       </div>
       <div>
         <p style={T.label}>{label}</p>
-        <p style={{ fontSize: '28px', fontWeight: 700, letterSpacing: '-0.5px', lineHeight: 1.15, color: accent, fontFamily: "'DM Sans', sans-serif", marginTop: '4px' }}>
-          {value}
+        <span className="stat-accent" aria-hidden="true" />
+        <p style={{ fontSize: '34px', fontWeight: 400, letterSpacing: '0.02em', lineHeight: 1.05, color: accent, fontFamily: "'Bebas Neue', sans-serif", marginTop: '5px' }}>
+          {typeof value === 'number' ? <CountUp value={value} /> : value}
         </p>
-        {sub && <p style={{ fontSize: '11.5px', color: '#6b7280', marginTop: '3px' }}>{sub}</p>}
+        {sub && <p style={{ fontSize: '12.5px', color: '#6b7280', marginTop: '3px' }}>{sub}</p>}
       </div>
     </div>
   )
   if (href) return <Link href={href} className="block">{inner}</Link>
   return inner
+}
+
+// ─── Editorial masthead: mono kicker + Bebas greeting + filmstrip ghost ───
+function Masthead({
+  name,
+  yearLabel,
+  aside,
+}: {
+  name: string
+  yearLabel: string | null
+  aside?: React.ReactNode
+}) {
+  const now = new Date()
+  const weekday = new Intl.DateTimeFormat('en-PH', { timeZone: 'Asia/Manila', weekday: 'long' }).format(now)
+  const date = new Intl.DateTimeFormat('en-PH', { timeZone: 'Asia/Manila', month: 'long', day: 'numeric', year: 'numeric' }).format(now)
+  const kicker = [`${weekday} · ${date}`, yearLabel].filter(Boolean).join(' · ').toUpperCase()
+
+  return (
+    <div style={{ position: 'relative', paddingBottom: 16, borderBottom: '1px solid rgba(0,0,0,0.08)' }}>
+      {/* Filmstrip ghost — the brand asset, barely there, fading out rightward */}
+      <div
+        aria-hidden="true"
+        style={{
+          position: 'absolute', top: -6, left: 0, right: 0, height: 72,
+          backgroundImage: 'url(/filmstrip.png)',
+          backgroundRepeat: 'repeat-x',
+          backgroundSize: 'auto 100%',
+          opacity: 0.05,
+          maskImage: 'linear-gradient(to right, black 30%, transparent 85%)',
+          WebkitMaskImage: 'linear-gradient(to right, black 30%, transparent 85%)',
+          pointerEvents: 'none',
+        }}
+      />
+      <div style={{ position: 'relative', display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
+        <div>
+          <p style={{
+            display: 'flex', alignItems: 'center', gap: 8,
+            fontFamily: "'DM Mono', monospace", fontSize: '10.5px', fontWeight: 500,
+            letterSpacing: '0.14em', color: '#6b7280', margin: '0 0 6px',
+          }}>
+            <span style={{ width: 8, height: 8, background: '#CC0000', flexShrink: 0 }} />
+            {kicker}
+          </p>
+          <h1 style={{
+            fontFamily: "'Bebas Neue', sans-serif", fontSize: '38px', fontWeight: 400,
+            letterSpacing: '0.015em', color: '#111', lineHeight: 0.95, margin: 0,
+          }}>
+            Good day, {name}.
+          </h1>
+        </div>
+        {aside}
+      </div>
+    </div>
+  )
 }
 
 // ─── Section heading ──────────────────────────────────────
@@ -68,6 +150,127 @@ const RANK_BADGES: { icon: LucideIcon; color: string; bg: string }[] = [
   { icon: Medal,  color: '#c2703d', bg: '#fdf1e7' }, // bronze
 ]
 
+// ─── Quick actions (admins): the three most common jobs, one click from home ─
+function QuickActions({ consultant }: { consultant: boolean }) {
+  const actions: { href: string; label: string; icon: LucideIcon }[] = [
+    { href: '/dashboard/events/new', label: 'New Event', icon: CalendarPlus },
+    { href: '/dashboard/duties/new', label: 'Assign Duty', icon: ListPlus },
+    { href: '/dashboard/announcements/new', label: 'Post Announcement', icon: Megaphone },
+    ...(consultant
+      ? [
+          { href: '/dashboard/reports', label: 'Reports', icon: FileText },
+          { href: '/dashboard/activity', label: 'Activity Log', icon: History },
+        ]
+      : []),
+  ]
+  return (
+    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+      {actions.map(a => (
+        <Link key={a.href} href={a.href} className="quick-action">
+          <a.icon size={14} strokeWidth={2} />
+          {a.label}
+        </Link>
+      ))}
+    </div>
+  )
+}
+
+// ─── Overdue callout: reuses the duties urgency system on the home screen ───
+function OverdueStrip({ count, scope }: { count: number; scope: 'you' | 'team' | 'org' }) {
+  if (count === 0) return null
+  const message =
+    scope === 'you'
+      ? `You have ${count} overdue dut${count !== 1 ? 'ies' : 'y'}.`
+      : scope === 'team'
+        ? `${count} dut${count !== 1 ? 'ies are' : 'y is'} overdue across your assignees.`
+        : `${count} dut${count !== 1 ? 'ies are' : 'y is'} overdue this year.`
+  return (
+    <Link
+      href="/dashboard/duties"
+      style={{
+        display: 'flex', alignItems: 'center', gap: 10, textDecoration: 'none',
+        background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 10,
+        padding: '11px 16px',
+      }}
+    >
+      <AlertTriangle size={15} style={{ color: '#CC0000', flexShrink: 0 }} />
+      <p style={{ fontSize: '14px', fontWeight: 600, color: '#991b1b', margin: 0, flex: 1 }}>
+        {message}
+      </p>
+      <span style={{ fontSize: '12.5px', fontWeight: 600, color: '#CC0000', flexShrink: 0 }}>Review →</span>
+    </Link>
+  )
+}
+
+// ─── Latest announcements with unread dots ──────────────────────────────────
+type MiniAnnouncement = { id: string; title: string; created_at: string; pinned?: boolean; isUnread: boolean }
+
+function AnnouncementsMini({ items }: { items: MiniAnnouncement[] }) {
+  return (
+    <div className={`${T.card} p-6`}>
+      <SectionHead title="Latest Announcements" action={{ label: 'View all →', href: '/dashboard/announcements' }} />
+      {items.length === 0 ? (
+        <p style={{ fontSize: '13px', color: '#6b7280' }}>Nothing posted yet.</p>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+          {items.map(a => (
+            <Link key={a.id} href={`/dashboard/announcements/${a.id}`} className={T.row} style={{ textDecoration: 'none' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 9, minWidth: 0 }}>
+                <span style={{
+                  width: 7, height: 7, borderRadius: '50%', flexShrink: 0,
+                  background: a.isUnread ? '#CC0000' : 'rgba(0,0,0,0.10)',
+                }} />
+                {a.pinned === true && <Pin size={11} style={{ color: '#CC0000', flexShrink: 0 }} />}
+                <p style={{
+                  fontSize: '14px', fontWeight: a.isUnread ? 650 : 500, color: '#111', margin: 0,
+                  overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                }}>
+                  {a.title}
+                </p>
+              </div>
+              <span style={{ fontSize: '12px', color: '#6b7280', flexShrink: 0, marginLeft: 10 }}>
+                {new Date(a.created_at).toLocaleDateString('en-PH', { month: 'short', day: 'numeric' })}
+              </span>
+            </Link>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+/** Latest 4 announcements for the viewing year + the viewer's unread state. */
+async function fetchLatestAnnouncements(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  yearId: string,
+  profileId: string,
+  role: string,
+): Promise<MiniAnnouncement[]> {
+  const { data } = await supabase
+    .from('announcements')
+    .select('id, title, created_at, visibility, pinned')
+    .or(`academic_year_id.eq.${yearId},academic_year_id.is.null`)
+    .order('created_at', { ascending: false })
+    .limit(4)
+  const list = (data ?? []) as any[]
+  if (list.length === 0) return []
+
+  const { data: reads } = await supabase
+    .from('announcement_reads')
+    .select('announcement_id')
+    .eq('profile_id', profileId)
+    .in('announcement_id', list.map(a => a.id))
+  const readSet = new Set((reads ?? []).map(r => r.announcement_id))
+
+  const inAudience = (a: any) =>
+    role !== 'consultant' &&
+    (a.visibility === 'all' ||
+      (a.visibility === 'creative_heads' && role === 'creative_head') ||
+      (a.visibility === 'members' && role === 'member'))
+
+  return list.map(a => ({ ...a, isUnread: inAudience(a) && !readSet.has(a.id) }))
+}
+
 export default async function DashboardPage() {
   const { user, profile } = await requireProfile()
   const supabase = await createClient()
@@ -82,6 +285,7 @@ export default async function DashboardPage() {
   // ══════════════════════════════════════════
   if (profile.system_role === 'consultant') {
     const yearId = activeAY?.id ?? NONE_UUID
+    const todayStr = phTodayStr()
 
     // Events for the year in focus — their ids scope duties + workload marks.
     const { data: events } = await supabase
@@ -114,6 +318,8 @@ export default async function DashboardPage() {
       { count: awaitingCount },
       { count: reviewedCount },
       { data: contribDuties },
+      { count: overdueCount },
+      annItems,
     ] = await Promise.all([
       supabase.from('academic_year_members').select('*', { count: 'exact', head: true }).eq('academic_year_id', yearId),
       supabase.from('member_applications').select('*', { count: 'exact', head: true }).eq('status', 'pending'),
@@ -132,6 +338,8 @@ export default async function DashboardPage() {
         .eq('events.academic_year_id', yearId)
         .not('assigned_to', 'is', null)
         .limit(2000),
+      dutyCount().in('status', ['pending', 'in_progress']).lt('due_date', todayStr),
+      fetchLatestAnnouncements(supabase, yearId, user.id, 'consultant'),
     ])
 
     // Only count marks for members who actually appear in the Workload Matrix
@@ -173,34 +381,28 @@ export default async function DashboardPage() {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: '28px' }}>
 
-        {/* ── Header ── */}
-        <div className="flex items-start justify-between gap-4 flex-wrap">
-          <div>
-            <h1 style={{ fontSize: '26px', fontWeight: 700, letterSpacing: '-0.4px', color: '#111', lineHeight: 1.1 }}>
-              Good day, {profile.full_name.split(' ')[0]}.
-            </h1>
-            <p style={{ fontSize: '13px', color: '#6b7280', marginTop: '5px' }}>
-              {activeAY
-                ? <><span style={{ color: '#bbb' }}>Active year</span> &nbsp;{activeAY.label}</>
-                : 'No active academic year set.'
-              }
-            </p>
-          </div>
-          {!activeAY && (
+        <Masthead
+          name={profile.full_name.split(' ')[0]}
+          yearLabel={activeAY?.label ?? null}
+          aside={!activeAY ? (
             <Link href="/dashboard/academic-years"
               style={{ fontSize: '12.5px', color: '#b45309', background: '#fef3c7', border: '1px solid #fde68a', borderRadius: '8px', padding: '7px 14px', textDecoration: 'none' }}>
               Set an active academic year
             </Link>
-          )}
-        </div>
+          ) : undefined}
+        />
 
-        
+        <OverdueStrip count={overdueCount ?? 0} scope="org" />
+        <QuickActions consultant />
+
+
 
         {/* ── 4 stat cards ── */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3.5">
           <Stat label="Active Members" value={totalMembers ?? 0} accent="#3b82f6" icon={Users} href="/dashboard/members" />
           <Stat label="Events This AY" value={events?.length ?? 0} sub={`${upcoming} upcoming · ${ongoing} ongoing`} accent="#7c3aed" icon={CalendarDays} href="/dashboard/events" />
-          <Stat label="Total Duties" value={total} sub={`${rev} reviewed`} accent="#0891b2" icon={ListChecks} href="/dashboard/duties" />
+          <Stat label="Total Duties" value={total} sub={`${rev} reviewed`} accent="#0891b2" icon={ListChecks} href="/dashboard/duties"
+            ring={total > 0 ? Math.round((rev / total) * 100) : undefined} />
           <Stat label="Pending Applications" value={pendingApplications ?? 0} accent="#ca8a04" icon={FileText} href="/dashboard/applications" />
         </div>
 
@@ -210,7 +412,9 @@ export default async function DashboardPage() {
           <Stat label="Marked Late"      value={lateMarks}  accent="#ca8a04" icon={Clock}        href="/dashboard/workloads" />
           <Stat label="Did Not Duty"     value={dndMarks}   accent="#CC0000" icon={XCircle}      href="/dashboard/workloads" />
         </div>
-        
+
+        <AnnouncementsMini items={annItems as MiniAnnouncement[]} />
+
         {/* ── Duty overview ── */}
         <div className={`${T.card} p-6`}>
           <SectionHead title="Duty Overview" action={{ label: 'View all →', href: '/dashboard/duties' }} />
@@ -224,7 +428,7 @@ export default async function DashboardPage() {
             ].map(item => (
               <div key={item.label} style={{ background: '#fff', padding: '16px', textAlign: 'center' }}>
                 <p style={{ fontSize: '24px', fontWeight: 700, color: item.color, letterSpacing: '-0.3px', lineHeight: 1 }}>{item.val}</p>
-                <p style={{ fontSize: '11px', color: '#6b7280', marginTop: '4px', fontWeight: 500 }}>{item.label}</p>
+                <p style={{ fontSize: '12px', color: '#6b7280', marginTop: '4px', fontWeight: 500 }}>{item.label}</p>
                 {item.note && <p style={{ fontSize: '10px', color: '#bbb', marginTop: '2px' }}>{item.note}</p>}
               </div>
             ))}
@@ -233,8 +437,8 @@ export default async function DashboardPage() {
           {total > 0 ? (
             <div>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
-                <span style={{ fontSize: '11px', color: '#bbb' }}>Progress</span>
-                <span style={{ fontSize: '11px', color: '#bbb' }}>{Math.round((rev / total) * 100)}% reviewed</span>
+                <span style={{ fontSize: '12px', color: '#6b7280' }}>Progress</span>
+                <span style={{ fontSize: '12px', color: '#6b7280' }}>{Math.round((rev / total) * 100)}% reviewed</span>
               </div>
               <div style={{ height: '5px', background: '#f0f0ee', borderRadius: '99px', display: 'flex', overflow: 'hidden' }}>
                 <div style={{ background: '#d1d5db', width: `${(pending / total) * 100}%`, transition: 'width 0.5s ease' }} />
@@ -275,8 +479,8 @@ export default async function DashboardPage() {
                     <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                       <Avatar name={data.name} src={data.avatar} size={36} bg={i === 0 ? '#111' : '#d1d5db'} />
                       <div style={{ minWidth: 0 }}>
-                        <p style={{ fontSize: '13.5px', fontWeight: 600, color: '#111', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{data.name}</p>
-                        <p style={{ fontSize: '11px', color: '#6b7280' }}>#{i + 1} contributor</p>
+                        <p style={{ fontSize: '14px', fontWeight: 600, color: '#111', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{data.name}</p>
+                        <p style={{ fontSize: '12px', color: '#6b7280' }}>#{i + 1} contributor</p>
                       </div>
                     </div>
                     <div>
@@ -284,8 +488,8 @@ export default async function DashboardPage() {
                         <div style={{ height: '100%', width: `${rate}%`, background: '#16a34a', transition: 'width 0.5s ease' }} />
                       </div>
                       <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                        <span style={{ fontSize: '11px', color: '#6b7280' }}>{data.reviewed}/{data.total} reviewed</span>
-                        <span style={{ fontSize: '11px', color: '#6b7280' }}>{data.events.size} event{data.events.size !== 1 ? 's' : ''}</span>
+                        <span style={{ fontSize: '12px', color: '#6b7280' }}>{data.reviewed}/{data.total} reviewed</span>
+                        <span style={{ fontSize: '12px', color: '#6b7280' }}>{data.events.size} event{data.events.size !== 1 ? 's' : ''}</span>
                       </div>
                     </div>
                   </Link>
@@ -303,8 +507,8 @@ export default async function DashboardPage() {
               {events.slice(0, 6).map(ev => (
                 <Link key={ev.id} href={`/dashboard/events/${ev.id}`} className={T.row} style={{ textDecoration: 'none' }}>
                   <div>
-                    <p style={{ fontSize: '13.5px', fontWeight: 500, color: '#111' }}>{ev.title}</p>
-                    <p style={{ fontSize: '11.5px', color: '#6b7280', marginTop: '2px' }}>
+                    <p style={{ fontSize: '14px', fontWeight: 500, color: '#111' }}>{ev.title}</p>
+                    <p style={{ fontSize: '12.5px', color: '#6b7280', marginTop: '2px' }}>
                       {new Date(ev.event_date).toLocaleDateString('en-PH', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}
                     </p>
                   </div>
@@ -334,11 +538,20 @@ export default async function DashboardPage() {
       { data: events },
       { data: myDuties },
       { data: allDuties },
+      annItems,
     ] = await Promise.all([
       supabase.from('events').select('id, title, event_date, status').eq('academic_year_id', yearId).in('status', ['upcoming','ongoing']).order('event_date', { ascending: true }).limit(6),
-      supabase.from('duties').select('id, title, status, reviewed_by, event_id, events!inner(title)').eq('assigned_to', user.id).eq('events.academic_year_id', yearId).order('created_at', { ascending: false }).limit(20),
-      supabase.from('duties').select('id, title, status, reviewed_by, assigned_to, event_id, assignee:profiles!duties_assigned_to_fkey(full_name), events!inner(title)').eq('assigned_by', user.id).eq('events.academic_year_id', yearId).order('created_at', { ascending: false }).limit(50),
+      supabase.from('duties').select('id, title, status, reviewed_by, due_date, event_id, events!inner(title)').eq('assigned_to', user.id).eq('events.academic_year_id', yearId).order('created_at', { ascending: false }).limit(20),
+      supabase.from('duties').select('id, title, status, reviewed_by, due_date, assigned_to, event_id, assignee:profiles!duties_assigned_to_fkey(full_name), events!inner(title)').eq('assigned_by', user.id).eq('events.academic_year_id', yearId).order('created_at', { ascending: false }).limit(50),
+      fetchLatestAnnouncements(supabase, yearId, user.id, 'creative_head'),
     ])
+
+    // Overdue across this head's assignees (active statuses + past due date).
+    const headToday = parseDateOnly(phTodayStr())
+    const teamOverdue = (allDuties ?? []).filter(d =>
+      (d.status === 'pending' || d.status === 'in_progress') &&
+      d.due_date && daysFromToday(d.due_date, headToday) < 0
+    ).length
 
     // "Awaiting review" = completed but not yet reviewed (reviewed_by unset).
     const pendingReview = allDuties?.filter(d => dutyDisplayStatus(d) === 'awaiting_review') ?? []
@@ -350,19 +563,20 @@ export default async function DashboardPage() {
 
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: '28px' }}>
-        <div>
-          <h1 style={{ fontSize: '26px', fontWeight: 700, letterSpacing: '-0.4px', color: '#111', lineHeight: 1.1 }}>
-            Good day, {profile.full_name.split(' ')[0]}.
-          </h1>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '5px' }}>
-            <p style={{ fontSize: '13px', color: '#6b7280' }}>{activeAY?.label ?? 'No active academic year'}</p>
-            {profile.creative_head_role && profile.creative_head_role !== 'none' && (
-              <span style={{ fontSize: '10.5px', fontWeight: 600, background: '#eff6ff', color: '#3b82f6', padding: '2px 9px', borderRadius: '99px', textTransform: 'capitalize' as const }}>
+        <Masthead
+          name={profile.full_name.split(' ')[0]}
+          yearLabel={activeAY?.label ?? null}
+          aside={
+            profile.creative_head_role && profile.creative_head_role !== 'none' ? (
+              <span style={{ fontSize: '10.5px', fontWeight: 600, background: '#eff6ff', color: '#3b82f6', padding: '3px 10px', borderRadius: '99px', textTransform: 'capitalize' as const, marginBottom: 4 }}>
                 {profile.creative_head_role.replace('_', ' ')}
               </span>
-            )}
-          </div>
-        </div>
+            ) : undefined
+          }
+        />
+
+        <OverdueStrip count={teamOverdue} scope="team" />
+        <QuickActions consultant={false} />
 
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3.5">
           <Stat label="My Pending"       value={myPending}            accent="#64748b" icon={Clock}          href="/dashboard/duties" />
@@ -370,6 +584,8 @@ export default async function DashboardPage() {
           <Stat label="Awaiting Review"  value={pendingReview.length} accent="#ca8a04" icon={ClipboardCheck} href="/dashboard/duties" />
           <Stat label="Upcoming Events"  value={events?.length ?? 0}  accent="#7c3aed" icon={CalendarDays}   href="/dashboard/events" />
         </div>
+
+        <AnnouncementsMini items={annItems as MiniAnnouncement[]} />
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-3.5">
           <div className={`${T.card} p-6`}>
@@ -382,14 +598,14 @@ export default async function DashboardPage() {
               )}
             </div>
             {pendingReview.length === 0 ? (
-              <p style={{ fontSize: '13px', color: '#bbb' }}>Nothing to review ✓</p>
+              <p style={{ fontSize: '13px', color: '#bbb' }}>Nothing to review.</p>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
                 {pendingReview.slice(0, 5).map(d => (
                   <Link key={d.id} href={`/dashboard/duties/${d.id}`} className={T.row} style={{ textDecoration: 'none' }}>
                     <div>
-                      <p style={{ fontSize: '13.5px', fontWeight: 500, color: '#111' }}>{d.title}</p>
-                      <p style={{ fontSize: '11.5px', color: '#6b7280', marginTop: '2px' }}>
+                      <p style={{ fontSize: '14px', fontWeight: 500, color: '#111' }}>{d.title}</p>
+                      <p style={{ fontSize: '12.5px', color: '#6b7280', marginTop: '2px' }}>
                         {(d as any).assignee?.full_name} · {(d as any).events?.title}
                       </p>
                     </div>
@@ -409,8 +625,8 @@ export default async function DashboardPage() {
                 {events.map(ev => (
                   <Link key={ev.id} href={`/dashboard/events/${ev.id}`} className={T.row} style={{ textDecoration: 'none' }}>
                     <div>
-                      <p style={{ fontSize: '13.5px', fontWeight: 500, color: '#111' }}>{ev.title}</p>
-                      <p style={{ fontSize: '11.5px', color: '#6b7280', marginTop: '2px' }}>
+                      <p style={{ fontSize: '14px', fontWeight: 500, color: '#111' }}>{ev.title}</p>
+                      <p style={{ fontSize: '12.5px', color: '#6b7280', marginTop: '2px' }}>
                         {new Date(ev.event_date).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' })}
                       </p>
                     </div>
@@ -429,8 +645,8 @@ export default async function DashboardPage() {
               {myActiveDuties.map(d => (
                 <Link key={d.id} href={`/dashboard/duties/${d.id}`} className={T.row} style={{ textDecoration: 'none' }}>
                   <div>
-                    <p style={{ fontSize: '13.5px', fontWeight: 500, color: '#111' }}>{d.title}</p>
-                    <p style={{ fontSize: '11.5px', color: '#6b7280', marginTop: '2px' }}>{(d as any).events?.title}</p>
+                    <p style={{ fontSize: '14px', fontWeight: 500, color: '#111' }}>{d.title}</p>
+                    <p style={{ fontSize: '12.5px', color: '#6b7280', marginTop: '2px' }}>{(d as any).events?.title}</p>
                   </div>
                   <DutyStatusBadge display={dutyDisplayStatus(d)} />
                 </Link>
@@ -448,13 +664,20 @@ export default async function DashboardPage() {
   const yearId = activeAY?.id ?? NONE_UUID
 
   // Year scoping via inner join on the duty's event (no pre-fetch of event ids).
-  const [{ data: myDuties }, { data: myEvents }] = await Promise.all([
+  const [{ data: myDuties }, { data: myEvents }, memberAnnItems] = await Promise.all([
     supabase.from('duties').select('id, title, status, reviewed_by, duty_type, priority, due_date, events!inner(id, title, event_date)')
       .eq('assigned_to', user.id).eq('events.academic_year_id', yearId).order('created_at', { ascending: false }),
     supabase.from('events').select('id, title, event_date, status')
       .eq('academic_year_id', yearId).in('status', ['upcoming','ongoing'])
       .order('event_date', { ascending: true }).limit(5),
+    fetchLatestAnnouncements(supabase, yearId, user.id, 'member'),
   ])
+
+  const memberToday = parseDateOnly(phTodayStr())
+  const myOverdue = (myDuties ?? []).filter(d =>
+    (d.status === 'pending' || d.status === 'in_progress') &&
+    d.due_date && daysFromToday(d.due_date, memberToday) < 0
+  ).length
 
   const mPend = myDuties?.filter(d => d.status === 'pending').length ?? 0
   const mProg = myDuties?.filter(d => d.status === 'in_progress').length ?? 0
@@ -465,25 +688,28 @@ export default async function DashboardPage() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '28px' }}>
-      <div>
-        <h1 style={{ fontSize: '26px', fontWeight: 700, letterSpacing: '-0.4px', color: '#111', lineHeight: 1.1 }}>
-          Good day, {profile.full_name.split(' ')[0]}.
-        </h1>
-        <p style={{ fontSize: '13px', color: '#6b7280', marginTop: '5px' }}>{activeAY?.label ?? 'No active academic year'}</p>
-      </div>
+      <Masthead
+        name={profile.full_name.split(' ')[0]}
+        yearLabel={activeAY?.label ?? null}
+      />
+
+      <OverdueStrip count={myOverdue} scope="you" />
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3.5">
         <Stat label="Pending"     value={mPend} accent="#64748b" icon={Clock}        href="/dashboard/duties" />
         <Stat label="In Progress" value={mProg} accent="#3b82f6" icon={Activity}     href="/dashboard/duties" />
         <Stat label="Awaiting Review" value={mComp} accent="#ca8a04" icon={CheckCircle2} href="/dashboard/duties" />
-        <Stat label="Reviewed"    value={mRev}  accent="#16a34a" icon={Trophy}       href="/dashboard/duties" />
+        <Stat label="Reviewed"    value={mRev}  accent="#16a34a" icon={Trophy}       href="/dashboard/duties"
+          ring={mTotal > 0 ? Math.round((mRev / mTotal) * 100) : undefined} />
       </div>
+
+      <AnnouncementsMini items={memberAnnItems as MiniAnnouncement[]} />
 
       {mTotal > 0 && (
         <div className={`${T.card} p-6`}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
             <p style={T.label}>My Progress</p>
-            <span style={{ fontSize: '12px', color: '#bbb' }}>{mRev} of {mTotal} reviewed</span>
+            <span style={{ fontSize: '12px', color: '#6b7280' }}>{mRev} of {mTotal} reviewed</span>
           </div>
           <div style={{ height: '5px', background: '#f0f0ee', borderRadius: '99px', display: 'flex', overflow: 'hidden', marginBottom: '10px' }}>
             <div style={{ background: '#d1d5db', width: `${(mPend / mTotal) * 100}%` }} />
@@ -495,7 +721,7 @@ export default async function DashboardPage() {
             {[['#d1d5db','Pending'],['#93c5fd','In Progress'],['#fde047','Awaiting Review'],['#4ade80','Reviewed']].map(([c,l]) => (
               <div key={l} style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
                 <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: c, flexShrink: 0 }} />
-                <span style={{ fontSize: '11px', color: '#bbb' }}>{l}</span>
+                <span style={{ fontSize: '12px', color: '#6b7280' }}>{l}</span>
               </div>
             ))}
           </div>
@@ -512,8 +738,8 @@ export default async function DashboardPage() {
               {active.slice(0, 5).map(d => (
                 <Link key={d.id} href={`/dashboard/duties/${d.id}`} className={T.row} style={{ textDecoration: 'none' }}>
                   <div style={{ minWidth: 0 }}>
-                    <p style={{ fontSize: '13.5px', fontWeight: 500, color: '#111', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{d.title}</p>
-                    <p style={{ fontSize: '11.5px', color: '#6b7280', marginTop: '2px' }}>
+                    <p style={{ fontSize: '14px', fontWeight: 500, color: '#111', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{d.title}</p>
+                    <p style={{ fontSize: '12.5px', color: '#6b7280', marginTop: '2px' }}>
                       {(d as any).events?.title}
                       {d.due_date && ` · Due ${new Date(d.due_date).toLocaleDateString('en-PH', { month: 'short', day: 'numeric' })}`}
                     </p>
@@ -534,8 +760,8 @@ export default async function DashboardPage() {
               {myEvents.map(ev => (
                 <Link key={ev.id} href={`/dashboard/events/${ev.id}`} className={T.row} style={{ textDecoration: 'none' }}>
                   <div>
-                    <p style={{ fontSize: '13.5px', fontWeight: 500, color: '#111' }}>{ev.title}</p>
-                    <p style={{ fontSize: '11.5px', color: '#6b7280', marginTop: '2px' }}>
+                    <p style={{ fontSize: '14px', fontWeight: 500, color: '#111' }}>{ev.title}</p>
+                    <p style={{ fontSize: '12.5px', color: '#6b7280', marginTop: '2px' }}>
                       {new Date(ev.event_date).toLocaleDateString('en-PH', { weekday: 'short', month: 'short', day: 'numeric' })}
                     </p>
                   </div>
@@ -554,10 +780,10 @@ export default async function DashboardPage() {
             {myDuties?.filter(d => dutyDisplayStatus(d) === 'reviewed').slice(0, 5).map(d => (
               <Link key={d.id} href={`/dashboard/duties/${d.id}`} className={T.row} style={{ textDecoration: 'none' }}>
                 <div>
-                  <p style={{ fontSize: '13.5px', fontWeight: 500, color: '#111' }}>{d.title}</p>
-                  <p style={{ fontSize: '11.5px', color: '#6b7280', marginTop: '2px' }}>{(d as any).events?.title}</p>
+                  <p style={{ fontSize: '14px', fontWeight: 500, color: '#111' }}>{d.title}</p>
+                  <p style={{ fontSize: '12.5px', color: '#6b7280', marginTop: '2px' }}>{(d as any).events?.title}</p>
                 </div>
-                <span style={{ fontSize: '11px', fontWeight: 600, color: '#16a34a', background: '#f0fdf4', padding: '3px 9px', borderRadius: '6px' }}>Reviewed ★</span>
+                <span style={{ fontSize: '11px', fontWeight: 600, color: '#16a34a', background: '#f0fdf4', padding: '3px 9px', borderRadius: '6px' }}>Reviewed</span>
               </Link>
             ))}
           </div>

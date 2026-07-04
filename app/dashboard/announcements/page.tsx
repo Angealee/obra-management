@@ -86,7 +86,7 @@ function AnnouncementCard({
           {ackChip && (
             <>
               <span style={{ color: '#ddd' }}>·</span>
-              <p style={{ fontSize: '11.5px', color: ackChip.startsWith('✓ 0') ? '#bbb' : '#16a34a' }}>{ackChip}</p>
+              <p style={{ fontSize: '11.5px', color: ackChip.startsWith('0/') ? '#bbb' : '#16a34a' }}>{ackChip}</p>
             </>
           )}
         </div>
@@ -169,7 +169,7 @@ export default async function AnnouncementsPage() {
       const members = (activeProfiles ?? []).filter(p => p.system_role === 'member').length
       const audienceFor = (v: string) =>
         v === 'creative_heads' ? heads : v === 'members' ? members : heads + members
-      ackChipFor = a => `✓ ${counts[a.id] ?? 0}/${audienceFor(a.visibility)} acknowledged`
+      ackChipFor = a => `${counts[a.id] ?? 0}/${audienceFor(a.visibility)} acknowledged`
     }
   }
 

@@ -8,9 +8,9 @@ import WorkloadBadge from '@/components/WorkLoadBadge'
 type Outcome = 'completed' | 'late' | 'did_not_duty'
 
 const OUTCOME_BUTTONS: { value: Outcome; label: string; bg: string; hover: string }[] = [
-  { value: 'completed',    label: '✓ Completed',    bg: '#16a34a', hover: '#15803d' },
-  { value: 'late',         label: '⏰ Late',         bg: '#ca8a04', hover: '#a16207' },
-  { value: 'did_not_duty', label: '✗ Did Not Duty', bg: '#CC0000', hover: '#a30000' },
+  { value: 'completed',    label: 'Completed',    bg: '#16a34a', hover: '#15803d' },
+  { value: 'late',         label: 'Late',         bg: '#ca8a04', hover: '#a16207' },
+  { value: 'did_not_duty', label: 'Did Not Duty', bg: '#CC0000', hover: '#a30000' },
 ]
 
 export default function DutyActions({
@@ -164,7 +164,7 @@ export default function DutyActions({
       {/* Assignee waiting note — completed but not yet reviewed by a head */}
       {isAssignee && !isHead && !isReviewed && status === 'completed' && (
         <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4 sm:p-6">
-          <p className="text-yellow-700 text-sm font-medium">⏳ Submitted — awaiting review.</p>
+          <p className="text-yellow-700 text-sm font-medium">Submitted — awaiting review.</p>
           <p className="text-yellow-600 text-xs mt-1">A creative head will record the outcome for this duty.</p>
         </div>
       )}

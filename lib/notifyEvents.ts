@@ -41,7 +41,7 @@ export async function notifyAnnouncementCreated(announcementId: string): Promise
       (recipients ?? []).map(r => r.id),
       'announcements',
       {
-        title: '📣 New announcement',
+        title: 'New announcement',
         body: a.title,
         url: `/dashboard/announcements/${a.id}`,
         tag: `announcement-${a.id}`,
@@ -65,7 +65,7 @@ export async function notifyDutyAssigned(dutyId: string): Promise<void> {
 
     const eventTitle = (d as any).events?.title
     await sendPushToProfiles([d.assigned_to], 'duties', {
-      title: '📋 New duty assigned',
+      title: 'New duty assigned',
       body: `${d.title}${eventTitle ? ` — ${eventTitle}` : ''}`,
       url: `/dashboard/duties/${d.id}`,
       tag: `duty-${d.id}`,
@@ -95,7 +95,7 @@ export async function notifyEventCreated(eventId: string, creatorId: string): Pr
 
     const when = new Date(ev.event_date).toLocaleDateString('en-PH', { month: 'long', day: 'numeric' })
     await sendPushToProfiles(recipients, 'events', {
-      title: '📅 New event',
+      title: 'New event',
       body: `${ev.title} · ${when}`,
       url: `/dashboard/events/${ev.id}`,
       tag: `event-${ev.id}`,
@@ -137,13 +137,13 @@ export async function notifyDutiesDueOn(
       const payload: PushPayload =
         list.length === 1
           ? {
-              title: '⏰ Duty due tomorrow',
+              title: 'Duty due tomorrow',
               body: `${list[0].title}${(list[0] as any).events?.title ? ` — ${(list[0] as any).events.title}` : ''}`,
               url: `/dashboard/duties/${list[0].id}`,
               tag: `due-${list[0].id}-${dueDate}`,
             }
           : {
-              title: '⏰ Duties due tomorrow',
+              title: 'Duties due tomorrow',
               body: `You have ${list.length} duties due tomorrow.`,
               url: '/dashboard/duties',
               tag: `due-multi-${dueDate}`,
@@ -190,7 +190,7 @@ export async function notifyWorkloadMarked(
       if (!requested.has(`${m.member_id}_${m.event_id}`)) continue
       const label = WORKLOAD_LABEL[m.mark] ?? m.mark
       const payload: PushPayload = {
-        title: '⭐ Duty outcome recorded',
+        title: 'Duty outcome recorded',
         body: `Your duty for ${eventTitle.get(m.event_id) ?? 'an event'} was marked: ${label}`,
         url: `/dashboard/workloads?member=${m.member_id}&event=${m.event_id}`,
         tag: `mark-${m.member_id}-${m.event_id}`,

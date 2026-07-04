@@ -46,7 +46,9 @@ and membership applications, all scoped to an **Academic Year**.
 - **Membership Applications** — public `/join` form with OTP email verification,
   a split-view review console, per-reviewer scoring, duplicate detection, and
   submission forensics.
-- **Dashboards** — role-specific analytics, top-contributor ranking.
+- **Dashboards** — role-specific analytics with overdue-duty callouts, admin
+  quick actions, latest-announcements card (unread-aware), and
+  top-contributor ranking.
 - **Reports** — print-optimized (letterhead + save-as-PDF) and CSV exports:
   year workload summary, events summary, per-member accomplishment report.
 - **Announcement read receipts** — auto "seen" on open plus an explicit
