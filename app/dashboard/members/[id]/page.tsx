@@ -2,7 +2,7 @@ import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
 import { createClient } from '@/lib/supabase/server'
-import type { Profile } from '@/types/database'
+import { requireProfile } from '@/lib/auth'
 import ToggleActiveButton from './ToggleActiveButton'
 import WorkloadBadge from '@/components/WorkLoadBadge'
 import ArchiveMemberButton from './ArchiveMemberButton'
@@ -18,38 +18,33 @@ export default async function MemberDetailPage({
   const { id } = await params
   const supabase = await createClient()
 
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) redirect('/login')
+  const { profile: viewer } = await requireProfile()
+  if (viewer.system_role === 'member') redirect('/dashboard')
 
-  const { data: viewer } = await supabase
-    .from('profiles').select('*').eq('id', user.id).single() as { data: Profile | null }
-  if (!viewer || viewer.system_role === 'member') redirect('/dashboard')
-
-  // Fetch member with skills
-  const { data: member } = await supabase
-    .from('profiles')
-    .select(`*, member_status, profile_skills ( skill_id, member_skills ( id, name ) )`)
-    .eq('id', id)
-    .single() as { data: any | null }
+  // Member profile, their duties, and their marks are all keyed by the route
+  // param — independent queries, one parallel round trip.
+  const [{ data: member }, { data: duties }, { data: marks }] = await Promise.all([
+    supabase
+      .from('profiles')
+      .select(`*, member_status, profile_skills ( skill_id, member_skills ( id, name ) )`)
+      .eq('id', id)
+      .single() as any,
+    supabase
+      .from('duties')
+      .select(`
+        id, title, duty_type, status, reviewed_by, completed_at, created_at,
+        event_id,
+        events ( id, title, event_date, status )
+      `)
+      .eq('assigned_to', id)
+      .order('created_at', { ascending: false }) as any,
+    supabase
+      .from('workload_marks')
+      .select('event_id, mark')
+      .eq('member_id', id) as any,
+  ])
 
   if (!member) redirect('/dashboard/members')
-
-  // Fetch all duties for this member with event info
-  const { data: duties } = await supabase
-    .from('duties')
-    .select(`
-      id, title, duty_type, status, reviewed_by, completed_at, created_at,
-      event_id,
-      events ( id, title, event_date, status )
-    `)
-    .eq('assigned_to', id)
-    .order('created_at', { ascending: false })
-
-  // Fetch workload marks for this member
-  const { data: marks } = await supabase
-    .from('workload_marks')
-    .select('event_id, mark')
-    .eq('member_id', id)
 
   // Academic years this member is active for (+ all years, for the panel)
   const [{ data: memberYearRows }, { data: allYearRows }] = await Promise.all([
@@ -104,7 +99,7 @@ export default async function MemberDetailPage({
 
   // Stats
   const totalDuties   = duties?.length ?? 0
-  const reviewedCount = duties?.filter(d => dutyDisplayStatus(d) === 'reviewed').length ?? 0
+  const reviewedCount = duties?.filter((d: any) => dutyDisplayStatus(d) === 'reviewed').length ?? 0
   const lateCount     = Object.values(markMap).filter(m => m === 'late').length
   const dndCount      = Object.values(markMap).filter(m => m === 'did_not_duty').length
 

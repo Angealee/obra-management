@@ -324,6 +324,13 @@ a:focus-visible > .sidebar-user-row {
   body {
     background: #fff !important;
   }
+  /* Report tables scroll on phones; on paper they must lay out in full. */
+  .report-table-scroll {
+    overflow: visible !important;
+  }
+  .report-table-scroll table {
+    min-width: 0 !important;
+  }
   .dashboard-shell {
     height: auto !important;
     overflow: visible !important;

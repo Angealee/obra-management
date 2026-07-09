@@ -1,8 +1,9 @@
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
+import { requireProfile } from '@/lib/auth'
 import SetActiveButton from './SetActiveButton'
-import type { AcademicYear, Profile } from '@/types/database'
+import type { AcademicYear } from '@/types/database'
 import DeleteAcademicYearButton from './DeleteAcademicYearButton'
 import EditAcademicYearForm from './EditAcademicYearForm'
 
@@ -14,16 +15,8 @@ export default async function AcademicYearDetailPage({
   const { id } = await params
   const supabase = await createClient()
 
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) redirect('/login')
-
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('*')
-    .eq('id', user.id)
-    .single() as { data: Profile | null }
-
-  if (!profile || profile.system_role !== 'consultant') {
+  const { profile } = await requireProfile()
+  if (profile.system_role !== 'consultant') {
     redirect('/dashboard')
   }
 
