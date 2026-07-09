@@ -9,6 +9,8 @@ import { dutyTypeLabel } from '@/lib/memberRole'
 import { dutyDisplayStatus } from '@/lib/dutyStatus'
 import { DutyStatusBadge, EventStatusBadge } from '@/components/ui/StatusBadge'
 import WorkloadBadge from '@/components/WorkLoadBadge'
+import DutyDetailBody, { fetchDutyDetail } from '../../duties/[id]/DutyDetailBody'
+import SlideOver from '@/components/SlideOver'
 
 const priorityStyle: Record<string, [string, string]> = {
   low:    ['#f9fafb', '#9ca3af'],
@@ -19,10 +21,13 @@ const priorityStyle: Record<string, [string, string]> = {
 
 export default async function EventDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>
+  searchParams: Promise<{ duty?: string }>
 }) {
   const { id } = await params
+  const { duty: dutyParam } = await searchParams
   const { profile } = await requireProfile()
   const supabase = await createClient()
 
@@ -71,6 +76,11 @@ export default async function EventDetailPage({
     reviewed:        dutyList.filter(d => dutyDisplayStatus(d) === 'reviewed').length,
   }
   const alreadyAssignedIds = dutyList.map(d => d.assigned_to).filter(Boolean) as string[]
+
+  // ?duty= slide-over (admins only — members navigate to the full page).
+  const dutyDetail = canManage && dutyParam
+    ? await fetchDutyDetail(supabase, dutyParam)
+    : null
 
   const detailRows: [string, string][] = [
     ['Date', new Date(event.event_date).toLocaleDateString('en-PH', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })],
@@ -166,7 +176,7 @@ export default async function EventDetailPage({
                 return (
                   <Link
                     key={duty.id}
-                    href={`/dashboard/duties/${duty.id}`}
+                    href={canManage ? `/dashboard/events/${event.id}?duty=${duty.id}` : `/dashboard/duties/${duty.id}`}
                     className="group flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 hover:bg-gray-50/60 transition-colors"
                     style={{
                       padding: '11px 12px', borderRadius: 10,
@@ -219,6 +229,45 @@ export default async function EventDetailPage({
           </div>
         )}
       </div>
+
+      {/* ── Duty slide-over (?duty=) ── */}
+      {canManage && dutyParam && (
+        <SlideOver
+          closeHref={`/dashboard/events/${event.id}`}
+          fullPageHref={dutyDetail ? `/dashboard/duties/${dutyParam}` : undefined}
+        >
+          {dutyDetail ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              <div>
+                <h2 style={{ fontSize: '18px', fontWeight: 700, letterSpacing: '-0.3px', color: '#111', lineHeight: 1.2, margin: 0 }}>
+                  {dutyDetail.duty.title}
+                </h2>
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 8 }}>
+                  {(() => {
+                    const [pbg, ptc] = priorityStyle[dutyDetail.duty.priority] ?? priorityStyle.normal
+                    return (
+                      <span style={{ fontSize: '11px', fontWeight: 600, background: pbg, color: ptc, padding: '3px 10px', borderRadius: 99, textTransform: 'capitalize' }}>
+                        {dutyDetail.duty.priority}
+                      </span>
+                    )
+                  })()}
+                  <DutyStatusBadge display={dutyDisplayStatus(dutyDetail.duty)} />
+                </div>
+              </div>
+              <DutyDetailBody
+                duty={dutyDetail.duty}
+                workloadMark={dutyDetail.workloadMark}
+                profile={profile}
+                isHead
+              />
+            </div>
+          ) : (
+            <p style={{ fontSize: '13.5px', color: '#6b7280', margin: 0 }}>
+              This duty no longer exists.
+            </p>
+          )}
+        </SlideOver>
+      )}
     </div>
   )
 }

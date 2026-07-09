@@ -8,6 +8,17 @@ import { phTodayStr } from '@/lib/relativeDate'
 import EventsCalendar from './EventsCalendar'
 import EventsList from './EventsList'
 import DutiesBoard, { fetchDutiesBoardData } from '../duties/DutiesBoard'
+import DutyDetailBody, { fetchDutyDetail } from '../duties/[id]/DutyDetailBody'
+import SlideOver from '@/components/SlideOver'
+import { dutyDisplayStatus } from '@/lib/dutyStatus'
+import { DutyStatusBadge } from '@/components/ui/StatusBadge'
+
+const priorityStyle: Record<string, [string, string]> = {
+  low:    ['#f9fafb', '#9ca3af'],
+  normal: ['#f3f4f6', '#6b7280'],
+  high:   ['#fff7ed', '#ea580c'],
+  urgent: ['#fff1f2', '#CC0000'],
+}
 
 // The DUTIES & EVENTS hub (admins only — members use /dashboard/duties and
 // their dashboard). One page, three bodies, dispatched by URL params:
@@ -51,7 +62,7 @@ function TabStrip({ active }: { active: 'events' | 'duties' }) {
 export default async function DutiesEventsHub({
   searchParams,
 }: {
-  searchParams: Promise<{ tab?: string; page?: string; dpage?: string; view?: string; month?: string }>
+  searchParams: Promise<{ tab?: string; page?: string; dpage?: string; view?: string; month?: string; duty?: string }>
 }) {
   const { user, profile } = await requireProfile()
   if (profile.system_role === 'member') redirect('/dashboard')
@@ -73,6 +84,13 @@ export default async function DutiesEventsHub({
   // default Events tab pays nothing for it.
   const dutiesData = isDuties
     ? await fetchDutiesBoardData(supabase, { viewYearId, userId: user.id, isHead: true, page: dpage })
+    : null
+
+  // ?duty= opens a slide-over with the duty's full detail (standalone page
+  // stays the push deep-link target). URLs keep tab + pagination intact.
+  const dutiesBase = '/dashboard/events?tab=duties' + (dpage > 1 ? `&dpage=${dpage}` : '')
+  const dutyDetail = isDuties && params.duty
+    ? await fetchDutyDetail(supabase, params.duty)
     : null
 
   const subtitle = dutiesData
@@ -148,6 +166,7 @@ export default async function DutiesEventsHub({
           userId={user.id}
           page={dpage}
           pagerHrefFor={p => '/dashboard/events?tab=duties' + (p > 1 ? `&dpage=${p}` : '')}
+          dutyHrefFor={id => `${dutiesBase}&duty=${id}`}
           empty={{
             title: 'No duties this year yet',
             description: 'Assign a duty to a member for one of this year’s events.',
@@ -166,6 +185,45 @@ export default async function DutiesEventsHub({
           page={page}
           canManage={canManage}
         />
+      )}
+
+      {/* ── Duty slide-over (?duty=) ── */}
+      {isDuties && params.duty && (
+        <SlideOver
+          closeHref={dutiesBase}
+          fullPageHref={dutyDetail ? `/dashboard/duties/${params.duty}` : undefined}
+        >
+          {dutyDetail ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              <div>
+                <h2 style={{ fontSize: '18px', fontWeight: 700, letterSpacing: '-0.3px', color: '#111', lineHeight: 1.2, margin: 0 }}>
+                  {dutyDetail.duty.title}
+                </h2>
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 8 }}>
+                  {(() => {
+                    const [pbg, ptc] = priorityStyle[dutyDetail.duty.priority] ?? priorityStyle.normal
+                    return (
+                      <span style={{ fontSize: '11px', fontWeight: 600, background: pbg, color: ptc, padding: '3px 10px', borderRadius: 99, textTransform: 'capitalize' }}>
+                        {dutyDetail.duty.priority}
+                      </span>
+                    )
+                  })()}
+                  <DutyStatusBadge display={dutyDisplayStatus(dutyDetail.duty)} />
+                </div>
+              </div>
+              <DutyDetailBody
+                duty={dutyDetail.duty}
+                workloadMark={dutyDetail.workloadMark}
+                profile={profile}
+                isHead
+              />
+            </div>
+          ) : (
+            <p style={{ fontSize: '13.5px', color: '#6b7280', margin: 0 }}>
+              This duty no longer exists.
+            </p>
+          )}
+        </SlideOver>
       )}
     </div>
   )
