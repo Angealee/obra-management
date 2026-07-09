@@ -13,6 +13,7 @@ import {
   ListPlus, Megaphone, History, Pin, type LucideIcon,
 } from 'lucide-react'
 import { daysFromToday, parseDateOnly, phTodayStr } from '@/lib/relativeDate'
+import DashboardGreeting from './DashboardGreeting'
 
 // Valid-format UUID that matches no row — used to force an empty result set when
 // a year has no events (keeps every query uniformly a Supabase query for typing).
@@ -89,6 +90,12 @@ function Masthead({
   const date = new Intl.DateTimeFormat('en-PH', { timeZone: 'Asia/Manila', month: 'long', day: 'numeric', year: 'numeric' }).format(now)
   const kicker = [`${weekday} · ${date}`, yearLabel].filter(Boolean).join(' · ').toUpperCase()
 
+  // Manila wall-clock hour, computed on the server so the greeting's first
+  // client render matches the server HTML (see DashboardGreeting).
+  const serverHour = Number(
+    new Intl.DateTimeFormat('en-GB', { timeZone: 'Asia/Manila', hour: '2-digit', hourCycle: 'h23' }).format(now)
+  )
+
   return (
     <div style={{ position: 'relative', paddingBottom: 16, borderBottom: '1px solid rgba(0,0,0,0.08)' }}>
       {/* Filmstrip ghost — the brand asset, barely there, fading out rightward */}
@@ -115,12 +122,7 @@ function Masthead({
             <span style={{ width: 8, height: 8, background: '#CC0000', flexShrink: 0 }} />
             {kicker}
           </p>
-          <h1 style={{
-            fontFamily: "'Bebas Neue', sans-serif", fontSize: '38px', fontWeight: 400,
-            letterSpacing: '0.015em', color: '#111', lineHeight: 0.95, margin: 0,
-          }}>
-            Good day, {name}.
-          </h1>
+          <DashboardGreeting name={name} serverHour={serverHour} />
         </div>
         {aside}
       </div>
