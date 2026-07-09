@@ -74,129 +74,104 @@ export default function NewEventPage() {
   }
 
   return (
-    <div className="max-w-2xl">
-      <div className="mb-8">
-        <Link href="/dashboard/events" className="text-gray-400 hover:text-gray-600 text-sm mb-2 inline-block">
-          ← Back to Events
+    <div style={{ maxWidth: 640 }}>
+      <div style={{ marginBottom: 24 }}>
+        <Link href="/dashboard/events" style={{ fontSize: '13px', color: '#6b7280', textDecoration: 'none', display: 'inline-block', marginBottom: 8 }}>
+          ← Back to Duties &amp; Events
         </Link>
-        <h1 className="text-2xl font-bold text-gray-800">Add Event</h1>
-        <p className="text-gray-500 text-sm mt-1">Create a new event for Obra to cover.</p>
+        <h1 className="page-title">Add Event</h1>
+        <p className="page-subtitle">Create a new event for Obra to cover.</p>
       </div>
 
-      <div className="space-y-6">
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
         {/* Event Details */}
-        <div className="bg-white rounded-xl shadow-sm p-6 space-y-4">
-          <h2 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">Event Details</h2>
+        <div className="dash-card" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <p className="section-label">Event Details</p>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Event Title <span className="text-red-500">*</span>
+            <label className="obra-label">
+              Event Title <span style={{ color: '#CC0000' }}>*</span>
             </label>
             <input
               type="text"
               value={title}
               onChange={e => setTitle(e.target.value)}
               placeholder="CCS Freshmen Orientation 2026"
-              className="w-full border border-gray-300 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-400"
+              className="obra-input"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Description
-            </label>
+            <label className="obra-label">Description</label>
             <textarea
               value={description}
               onChange={e => setDescription(e.target.value)}
               placeholder="Brief description of the event..."
               rows={3}
-              className="w-full border border-gray-300 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-400 resize-none"
+              className="obra-input"
+              style={{ resize: 'none' }}
             />
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Date <span className="text-red-500">*</span>
+              <label className="obra-label">
+                Date <span style={{ color: '#CC0000' }}>*</span>
               </label>
-              <input
-                type="date"
-                value={eventDate}
-                onChange={e => setEventDate(e.target.value)}
-                className="w-full border border-gray-300 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-400"
-              />
+              <input type="date" value={eventDate} onChange={e => setEventDate(e.target.value)} className="obra-input" />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Time
-              </label>
-              <input
-                type="time"
-                value={eventTime}
-                onChange={e => setEventTime(e.target.value)}
-                className="w-full border border-gray-300 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-400"
-              />
+              <label className="obra-label">Time</label>
+              <input type="time" value={eventTime} onChange={e => setEventTime(e.target.value)} className="obra-input" />
             </div>
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Location
-            </label>
+            <label className="obra-label">Location</label>
             <input
               type="text"
               value={location}
               onChange={e => setLocation(e.target.value)}
               placeholder="MPH, 4th Floor, OLF Building"
-              className="w-full border border-gray-300 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-400"
+              className="obra-input"
             />
           </div>
         </div>
 
         {/* Academic Year */}
-        <div className="bg-white rounded-xl shadow-sm p-6 space-y-4">
-          <h2 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">Academic Year</h2>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Academic Year <span className="text-red-500">*</span>
-            </label>
-            <select
-              value={academicYearId}
-              onChange={e => setAcademicYearId(e.target.value)}
-              className="w-full border border-gray-300 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-400"
-            >
-              <option value="">Select academic year</option>
-              {academicYears.map(ay => (
-                <option key={ay.id} value={ay.id}>
-                  {ay.label}{ay.is_active ? ' (Active)' : ''}
-                </option>
-              ))}
-            </select>
-            <p className="text-gray-400 text-xs mt-1">
-              The active academic year is pre-selected.
-            </p>
-          </div>
+        <div className="dash-card">
+          <p className="section-label" style={{ marginBottom: 12 }}>Academic Year</p>
+          <label className="obra-label">
+            Academic Year <span style={{ color: '#CC0000' }}>*</span>
+          </label>
+          <select
+            value={academicYearId}
+            onChange={e => setAcademicYearId(e.target.value)}
+            className="obra-input"
+          >
+            <option value="">Select academic year</option>
+            {academicYears.map(ay => (
+              <option key={ay.id} value={ay.id}>
+                {ay.label}{ay.is_active ? ' (Active)' : ''}
+              </option>
+            ))}
+          </select>
+          <p style={{ fontSize: '12px', color: '#6b7280', margin: '6px 0 0' }}>
+            The active academic year is pre-selected.
+          </p>
         </div>
 
         {error && (
-          <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-3">
-            <p className="text-red-600 text-sm">{error}</p>
+          <div style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 8, padding: '10px 14px' }}>
+            <p style={{ color: '#dc2626', fontSize: '13px', margin: 0 }}>{error}</p>
           </div>
         )}
 
-        <div className="flex gap-3">
-          <button
-            onClick={handleSubmit}
-            disabled={loading}
-            className="bg-gray-900 text-white px-6 py-2 rounded-lg text-sm hover:bg-gray-700 transition disabled:opacity-50"
-          >
+        <div style={{ display: 'flex', gap: 10 }}>
+          <button onClick={handleSubmit} disabled={loading} className="btn-primary">
             {loading ? 'Saving...' : 'Create Event'}
           </button>
-          <Link
-            href="/dashboard/events"
-            className="px-6 py-2 rounded-lg text-sm border border-gray-300 text-gray-600 hover:bg-gray-50 transition"
-          >
+          <Link href="/dashboard/events" className="btn-secondary">
             Cancel
           </Link>
         </div>
