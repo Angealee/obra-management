@@ -62,13 +62,11 @@ function StatusTag({ style }: { style: { bg: string; color: string; label: strin
       flexShrink: 0,
       background: style.bg,
       color: style.color,
-      fontFamily: 'DM Mono, monospace',
-      fontSize: 9,
-      fontWeight: 700,
-      padding: '2px 8px',
-      borderRadius: 4,
-      textTransform: 'uppercase',
-      letterSpacing: '0.06em',
+      fontSize: 12,
+      fontWeight: 600,
+      padding: '3px 10px',
+      borderRadius: 99,
+      whiteSpace: 'nowrap',
     }}>
       {style.label}
     </span>

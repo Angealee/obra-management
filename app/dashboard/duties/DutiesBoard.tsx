@@ -270,7 +270,7 @@ export default function DutiesBoard({
                       'Status',
                       '',
                     ].filter(Boolean).map((col, i) => (
-                      <th key={i} style={{ textAlign: 'left', padding: '11px 20px', fontSize: '11px', fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', color: '#bbb' }}>
+                      <th key={i} style={{ textAlign: 'left', padding: '11px 20px', fontSize: '12px', fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', color: '#6b7280' }}>
                         {col}
                       </th>
                     ))}

@@ -28,8 +28,8 @@ function DateBlock({ dateStr, muted = false }: { dateStr: string; muted?: boolea
       background: '#fff', opacity: muted ? 0.55 : 1,
     }}>
       <div style={{
-        background: '#0D0D0D', color: '#fff', fontSize: 8.5, fontWeight: 700,
-        letterSpacing: '0.12em', padding: '3px 0', textTransform: 'uppercase',
+        background: '#0D0D0D', color: '#fff', fontSize: 10, fontWeight: 700,
+        letterSpacing: '0.1em', padding: '3px 0', textTransform: 'uppercase',
         fontFamily: "'DM Mono', monospace",
       }}>
         {d.toLocaleDateString('en-PH', { month: 'short' })}

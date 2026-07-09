@@ -76,8 +76,8 @@ export default async function MembersPage() {
           title={`No one is active for ${viewYear?.label} yet`}
           description={
             canManage
-              ? 'Add a member while this year is active, or mark an existing member active for this year from their profile.'
-              : 'The roster for this academic year hasn’t been set up yet. Check back once members are added.'
+              ? 'Add a member, or mark an existing one active for this year from their profile.'
+              : 'No members active for this year yet.'
           }
           action={canManage ? { label: '+ Add a member', href: '/dashboard/members/new' } : undefined}
         />

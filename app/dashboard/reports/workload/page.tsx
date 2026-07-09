@@ -110,9 +110,8 @@ export default async function WorkloadReportPage() {
         ) : (
           <>
             <ReportTable headers={headers} rows={[...rows, totalsRow]} numericFrom={3} />
-            <p style={{ fontSize: 11, color: '#6b7280', marginTop: 14, lineHeight: 1.6 }}>
-              Completion = reviewed duties ÷ assigned duties. Marks (Completed / Late / Did Not Duty)
-              come from the Workload Matrix and can exist independently of duty records.
+            <p style={{ fontSize: 12, color: '#6b7280', marginTop: 14, lineHeight: 1.6 }}>
+              Completion = reviewed ÷ assigned.
             </p>
           </>
         )}

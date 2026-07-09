@@ -431,7 +431,7 @@ export default async function DashboardPage() {
               <div key={item.label} style={{ background: '#fff', padding: '16px', textAlign: 'center' }}>
                 <p style={{ fontSize: '24px', fontWeight: 700, color: item.color, letterSpacing: '-0.3px', lineHeight: 1 }}>{item.val}</p>
                 <p style={{ fontSize: '12px', color: '#6b7280', marginTop: '4px', fontWeight: 500 }}>{item.label}</p>
-                {item.note && <p style={{ fontSize: '10px', color: '#bbb', marginTop: '2px' }}>{item.note}</p>}
+                {item.note && <p style={{ fontSize: '11px', color: '#6b7280', marginTop: '2px' }}>{item.note}</p>}
               </div>
             ))}
           </div>
@@ -450,7 +450,7 @@ export default async function DashboardPage() {
               </div>
             </div>
           ) : (
-            <p style={{ fontSize: '13px', color: '#bbb' }}>No duties assigned for this academic year yet.</p>
+            <p style={{ fontSize: '13px', color: '#6b7280' }}>No duties assigned for this academic year yet.</p>
           )}
         </div>
 
@@ -458,7 +458,7 @@ export default async function DashboardPage() {
         <div className={`${T.card} p-6`}>
           <SectionHead title="Top Contributors" />
           {topMembers.length === 0 ? (
-            <p style={{ fontSize: '13px', color: '#bbb' }}>Members rank here once their duties start getting reviewed.</p>
+            <p style={{ fontSize: '13px', color: '#6b7280' }}>Members rank here once their duties start getting reviewed.</p>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
               {topMembers.map(([id, data], i) => {
@@ -600,7 +600,7 @@ export default async function DashboardPage() {
               )}
             </div>
             {pendingReview.length === 0 ? (
-              <p style={{ fontSize: '13px', color: '#bbb' }}>Nothing to review.</p>
+              <p style={{ fontSize: '13px', color: '#6b7280' }}>Nothing to review.</p>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
                 {pendingReview.slice(0, 5).map(d => (
@@ -621,7 +621,7 @@ export default async function DashboardPage() {
           <div className={`${T.card} p-6`}>
             <SectionHead title="Upcoming Events" action={{ label: 'View all →', href: '/dashboard/events' }} />
             {!events || events.length === 0 ? (
-              <p style={{ fontSize: '13px', color: '#bbb' }}>No upcoming events.</p>
+              <p style={{ fontSize: '13px', color: '#6b7280' }}>No upcoming events.</p>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
                 {events.map(ev => (
@@ -734,7 +734,7 @@ export default async function DashboardPage() {
         <div className={`${T.card} p-6`}>
           <SectionHead title="My Active Duties" action={{ label: 'View all →', href: '/dashboard/duties' }} />
           {active.length === 0 ? (
-            <p style={{ fontSize: '13px', color: '#bbb' }}>No active duties right now.</p>
+            <p style={{ fontSize: '13px', color: '#6b7280' }}>No active duties right now.</p>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
               {active.slice(0, 5).map(d => (
@@ -756,7 +756,7 @@ export default async function DashboardPage() {
         <div className={`${T.card} p-6`}>
           <SectionHead title="Upcoming Events" action={{ label: 'View all →', href: '/dashboard/events' }} />
           {!myEvents || myEvents.length === 0 ? (
-            <p style={{ fontSize: '13px', color: '#bbb' }}>No upcoming events.</p>
+            <p style={{ fontSize: '13px', color: '#6b7280' }}>No upcoming events.</p>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
               {myEvents.map(ev => (
