@@ -1,12 +1,21 @@
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
-import type { Profile } from '@/types/database'
+import { requireProfile } from '@/lib/auth'
 import EventStatusManager from './EventStatusManager'
 import DeleteEventButton from './DeleteEventButton'
+import AssignDutiesPanel from './AssignDutiesPanel'
 import { dutyTypeLabel } from '@/lib/memberRole'
-import { dutyDisplayStatus, DUTY_DISPLAY_LABELS, DUTY_DISPLAY_STYLE } from '@/lib/dutyStatus'
+import { dutyDisplayStatus } from '@/lib/dutyStatus'
+import { DutyStatusBadge, EventStatusBadge } from '@/components/ui/StatusBadge'
 import WorkloadBadge from '@/components/WorkLoadBadge'
+
+const priorityStyle: Record<string, [string, string]> = {
+  low:    ['#f9fafb', '#9ca3af'],
+  normal: ['#f3f4f6', '#6b7280'],
+  high:   ['#fff7ed', '#ea580c'],
+  urgent: ['#fff1f2', '#CC0000'],
+}
 
 export default async function EventDetailPage({
   params,
@@ -14,49 +23,40 @@ export default async function EventDetailPage({
   params: Promise<{ id: string }>
 }) {
   const { id } = await params
+  const { profile } = await requireProfile()
   const supabase = await createClient()
 
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) redirect('/login')
-
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('*')
-    .eq('id', user.id)
-    .single() as { data: Profile | null }
-
-  if (!profile) redirect('/login')
-
-  // Fetch event with related data
-  const { data: event } = await supabase
-    .from('events')
-    .select(`
-      *,
-      academic_years ( label ),
-      profiles ( full_name )
-    `)
-    .eq('id', id)
-    .single()
+  // Event, its duties, and its outcome marks are all keyed by the route param —
+  // independent queries, one parallel round trip.
+  const [{ data: event }, { data: duties }, { data: eventMarks }] = await Promise.all([
+    supabase
+      .from('events')
+      .select(`
+        *,
+        academic_years ( label ),
+        profiles ( full_name )
+      `)
+      .eq('id', id)
+      .single(),
+    supabase
+      .from('duties')
+      .select(`
+        id, title, duty_type, priority, status, reviewed_by, assigned_to,
+        assignee:profiles!duties_assigned_to_fkey ( full_name )
+      `)
+      .eq('event_id', id)
+      .order('created_at', { ascending: true }),
+    // A mark set from the Workload Matrix or the duty's "Mark Outcome" is the
+    // real outcome (Completed / Late / Did Not Duty) and takes precedence over
+    // the derived duty status — same rule the duties board uses.
+    supabase
+      .from('workload_marks')
+      .select('member_id, mark')
+      .eq('event_id', id),
+  ])
 
   if (!event) redirect('/dashboard/events')
-  
-    const { data: duties } = await supabase
-    .from('duties')
-    .select(`
-      id, title, duty_type, priority, status, reviewed_by, assigned_to,
-      assignee:profiles!duties_assigned_to_fkey ( full_name )
-    `)
-    .eq('event_id', id)
-    .order('created_at', { ascending: true })
 
-  // Workload outcome marks for this event (member × event). A mark set from the
-  // Workload Matrix or the duty's "Mark Outcome" is the real outcome
-  // (Completed / Late / Did Not Duty) and takes precedence over the derived
-  // duty status — same rule the Duties list uses, so the two stay in sync.
-  const { data: eventMarks } = await supabase
-    .from('workload_marks')
-    .select('member_id, mark')
-    .eq('event_id', id)
   const markByMember: Record<string, string> = {}
   for (const m of eventMarks ?? []) markByMember[m.member_id] = m.mark
 
@@ -70,179 +70,155 @@ export default async function EventDetailPage({
     awaiting_review: dutyList.filter(d => dutyDisplayStatus(d) === 'awaiting_review').length,
     reviewed:        dutyList.filter(d => dutyDisplayStatus(d) === 'reviewed').length,
   }
+  const alreadyAssignedIds = dutyList.map(d => d.assigned_to).filter(Boolean) as string[]
 
-  const statusStyles: Record<string, string> = {
-    upcoming:  'bg-blue-100 text-blue-700',
-    ongoing:   'bg-yellow-100 text-yellow-700',
-    completed: 'bg-green-100 text-green-700',
-    cancelled: 'bg-gray-100 text-gray-500',
-  }
-
-  const statusLabels: Record<string, string> = {
-    upcoming:  'Upcoming',
-    ongoing:   'Ongoing',
-    completed: 'Completed',
-    cancelled: 'Cancelled',
-  }
+  const detailRows: [string, string][] = [
+    ['Date', new Date(event.event_date).toLocaleDateString('en-PH', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })],
+    ['Time', event.event_time ? event.event_time.slice(0, 5) : '—'],
+    ['Location', event.location ?? '—'],
+    ['Academic Year', event.academic_years?.label ?? '—'],
+    ['Created By', event.profiles?.full_name ?? '—'],
+    ['Created', new Date(event.created_at).toLocaleDateString('en-PH', { year: 'numeric', month: 'long', day: 'numeric' })],
+  ]
 
   return (
-    <div className="max-w-2xl">
+    <div style={{ maxWidth: 640 }}>
       {/* Header */}
-      <div className="mb-8">
-        <Link href="/dashboard/events" className="text-gray-400 hover:text-gray-600 text-sm mb-2 inline-block">
-          ← Back to Events
+      <div style={{ marginBottom: 28 }}>
+        <Link
+          href="/dashboard/events"
+          style={{ fontSize: '13px', color: '#6b7280', textDecoration: 'none', display: 'inline-block', marginBottom: 8 }}
+        >
+          ← Back to Duties &amp; Events
         </Link>
-        <div className="flex items-start justify-between gap-4">
-          <h1 className="text-2xl font-bold text-gray-800">{event.title}</h1>
-          <div className="flex items-center gap-3 shrink-0">
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16 }}>
+          <h1 style={{ fontSize: '24px', fontWeight: 700, letterSpacing: '-0.4px', color: '#111', lineHeight: 1.15, margin: 0 }}>
+            {event.title}
+          </h1>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
             {canManage && (
               <Link
                 href={`/dashboard/events/${event.id}/edit`}
-                className="text-xs text-gray-500 hover:text-gray-800 underline transition"
+                className="btn-secondary"
+                style={{ fontSize: '12px', padding: '5px 12px' }}
               >
                 Edit Event
               </Link>
             )}
-            <span className={`text-xs font-medium px-3 py-1 rounded-full ${statusStyles[event.status]}`}>
-              {statusLabels[event.status]}
-            </span>
+            <EventStatusBadge status={event.status} />
           </div>
         </div>
         {event.description && (
-          <p className="text-gray-500 text-sm mt-2">{event.description}</p>
+          <p style={{ fontSize: '13.5px', color: '#555', marginTop: 8, lineHeight: 1.55 }}>{event.description}</p>
         )}
       </div>
 
-      {/* Event Info */}
-      <div className="bg-white rounded-xl shadow-sm p-4 sm:p-6 mb-6">
-        <h2 className="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-4">Details</h2>
-        {[
-          ['Date', new Date(event.event_date).toLocaleDateString('en-PH', { weekday:'long', year:'numeric', month:'long', day:'numeric' })],
-          ['Time', event.event_time ? event.event_time.slice(0, 5) : '—'],
-          ['Location', event.location ?? '—'],
-          ['Academic Year', event.academic_years?.label ?? '—'],
-          ['Created By', event.profiles?.full_name ?? '—'],
-          ['Created', new Date(event.created_at).toLocaleDateString('en-PH', { year:'numeric', month:'long', day:'numeric' })],
-        ].map(([label, value]) => (
-          <div key={label} className="flex justify-between items-center py-2 border-b border-gray-50 last:border-0">
-            <span className="text-sm text-gray-500">{label}</span>
-            <span className="text-sm text-gray-800 font-medium">{value}</span>
-          </div>
-        ))}
-      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
 
-      {/* Duties */}
-      <div className="bg-white rounded-xl shadow-sm p-4 sm:p-6 mb-6">
-        <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
-          <div>
-            <h2 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">Duties</h2>
-            <p className="text-gray-400 text-xs mt-0.5">
+        {/* Event Info */}
+        <div className="dash-card">
+          <p className="section-label" style={{ marginBottom: 12 }}>Details</p>
+          {detailRows.map(([label, value], i) => (
+            <div
+              key={label}
+              style={{
+                display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                padding: '9px 0',
+                borderTop: i > 0 ? '1px solid rgba(0,0,0,0.05)' : 'none',
+              }}
+            >
+              <span style={{ fontSize: '13px', color: '#6b7280' }}>{label}</span>
+              <span style={{ fontSize: '13.5px', color: '#111', fontWeight: 500, textAlign: 'right' }}>{value}</span>
+            </div>
+          ))}
+        </div>
+
+        {/* Duties */}
+        <div className="dash-card">
+          <div style={{ marginBottom: 4 }}>
+            <p className="section-label">Duties</p>
+            <p style={{ fontSize: '12.5px', color: '#6b7280', margin: '4px 0 0' }}>
               {dutyList.length > 0
                 ? `${dutyList.length} assigned · ${outcomeCounts.pending} pending · ${outcomeCounts.in_progress} in progress · ${outcomeCounts.awaiting_review} awaiting review · ${outcomeCounts.reviewed} reviewed`
                 : 'No duties assigned yet'}
             </p>
           </div>
+
+          {/* Inline assignment — the event is implicit */}
           {canManage && (
-            <Link
-              href={`/dashboard/duties/new?event=${event.id}`}
-              className="text-xs bg-gray-900 text-white px-3 py-1.5 rounded-lg hover:bg-gray-700 transition"
-            >
-              + Assign Duty
-            </Link>
+            <AssignDutiesPanel eventId={event.id} alreadyAssignedIds={alreadyAssignedIds} />
+          )}
+
+          {dutyList.length === 0 ? (
+            <p style={{ fontSize: '13px', color: '#6b7280', margin: '8px 0 0' }}>
+              Duties assigned for this event appear here.
+            </p>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {dutyList.map(duty => {
+                const display = dutyDisplayStatus(duty)
+                const mark = duty.assigned_to ? markByMember[duty.assigned_to] ?? null : null
+                // Dot follows the outcome mark when present, else the derived status.
+                const dotColor = mark
+                  ? ({ completed: '#22c55e', late: '#eab308', did_not_duty: '#ef4444' } as Record<string, string>)[mark] ?? '#d1d5db'
+                  : ({ reviewed: '#22c55e', awaiting_review: '#eab308', in_progress: '#3b82f6', pending: '#d1d5db' } as Record<string, string>)[display]
+                const [pbg, ptc] = priorityStyle[duty.priority] ?? ['#f3f4f6', '#6b7280']
+                return (
+                  <Link
+                    key={duty.id}
+                    href={`/dashboard/duties/${duty.id}`}
+                    className="group flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 hover:bg-gray-50/60 transition-colors"
+                    style={{
+                      padding: '11px 12px', borderRadius: 10,
+                      border: '1px solid rgba(0,0,0,0.06)', textDecoration: 'none',
+                    }}
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <span aria-hidden="true" style={{ width: 8, height: 8, borderRadius: '50%', flexShrink: 0, background: dotColor }} />
+                      <div style={{ minWidth: 0 }}>
+                        <p className="truncate" style={{ fontSize: '13.5px', fontWeight: 500, color: '#111', margin: 0 }}>{duty.title}</p>
+                        <p style={{ fontSize: '12px', color: '#6b7280', margin: '2px 0 0' }}>
+                          {dutyTypeLabel(duty.duty_type)} · {duty.assignee?.full_name ?? '—'}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-3 shrink-0 pl-5 sm:pl-0">
+                      <span style={{ fontSize: '11px', fontWeight: 600, background: pbg, color: ptc, padding: '3px 9px', borderRadius: 99, textTransform: 'capitalize' }}>
+                        {duty.priority}
+                      </span>
+                      {mark ? <WorkloadBadge mark={mark} /> : <DutyStatusBadge display={display} />}
+                      <span className="text-gray-300 group-hover:text-gray-500 transition text-xs">→</span>
+                    </div>
+                  </Link>
+                )
+              })}
+            </div>
           )}
         </div>
 
-        {!duties || duties.length === 0 ? (
-          <p className="text-gray-400 text-sm">
-            No duties assigned yet. Duties will appear here once assigned.
-          </p>
-        ) : (
-          <div className="space-y-2">
-            {dutyList.map(duty => {
-              const display = dutyDisplayStatus(duty)
-              const [sbg, stc] = DUTY_DISPLAY_STYLE[display]
-              const mark = duty.assigned_to ? markByMember[duty.assigned_to] ?? null : null
-              // Dot follows the outcome mark when present, else the derived status.
-              const dot = mark
-                ? { completed: 'bg-green-500', late: 'bg-yellow-500', did_not_duty: 'bg-red-500' }[mark] ?? 'bg-gray-300'
-                : {
-                    reviewed: 'bg-green-500', awaiting_review: 'bg-yellow-500',
-                    in_progress: 'bg-blue-500', pending: 'bg-gray-300',
-                  }[display]
-              return (
-                <Link
-                  key={duty.id}
-                  href={`/dashboard/duties/${duty.id}`}
-                  className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 p-3 rounded-lg border border-gray-100 hover:bg-gray-50 transition group"
-                >
-                  <div className="flex items-center gap-3 min-w-0">
-                    {/* Status dot */}
-                    <span className={`w-2 h-2 rounded-full shrink-0 ${dot}`} />
+        {/* Status Manager */}
+        {canManage && (
+          <div className="dash-card">
+            <p className="section-label" style={{ marginBottom: 4 }}>Update Status</p>
+            <p style={{ fontSize: '12.5px', color: '#6b7280', margin: '0 0 14px' }}>
+              Move this event through its lifecycle.
+            </p>
+            <EventStatusManager eventId={event.id} currentStatus={event.status} />
+          </div>
+        )}
 
-                    <div className="min-w-0">
-                      <p className="text-sm font-medium text-gray-800 truncate">{duty.title}</p>
-                      <p className="text-xs text-gray-400 mt-0.5">
-                        {dutyTypeLabel(duty.duty_type)} · {duty.assignee?.full_name ?? '—'}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-3 shrink-0 pl-5 sm:pl-0">
-                    {/* Priority badge */}
-                    <span className={`text-xs font-medium px-2 py-0.5 rounded-full capitalize ${
-                      duty.priority === 'urgent' ? 'bg-red-100 text-red-600'    :
-                      duty.priority === 'high'   ? 'bg-orange-100 text-orange-600' :
-                      'bg-gray-100 text-gray-500'
-                    }`}>
-                      {duty.priority}
-                    </span>
-
-                    {/* Outcome mark (Completed / Late / Did Not Duty) when the
-                        duty has been marked; otherwise the derived duty status. */}
-                    {mark ? (
-                      <WorkloadBadge mark={mark} />
-                    ) : (
-                      <span
-                        className="text-xs font-medium px-2.5 py-0.5 rounded-full"
-                        style={{ background: sbg, color: stc }}
-                      >
-                        {DUTY_DISPLAY_LABELS[display]}
-                      </span>
-                    )}
-
-                    <span className="text-gray-300 group-hover:text-gray-500 transition text-xs">→</span>
-                  </div>
-                </Link>
-              )
-            })}
+        {/* Delete — consultant only */}
+        {profile.system_role === 'consultant' && (
+          <div className="dash-card" style={{ borderColor: 'rgba(204,0,0,0.15)' }}>
+            <p className="section-label" style={{ marginBottom: 4, color: '#CC0000' }}>Danger Zone</p>
+            <p style={{ fontSize: '12.5px', color: '#6b7280', margin: '0 0 14px' }}>
+              Permanently delete this event and all its duties.
+            </p>
+            <DeleteEventButton eventId={event.id} eventTitle={event.title} />
           </div>
         )}
       </div>
-
-      {/* Status Manager */}
-      {canManage && (
-        <div className="bg-white rounded-xl shadow-sm p-4 sm:p-6 mb-6">
-          <h2 className="text-sm font-medium text-gray-700 mb-1">Update Status</h2>
-          <p className="text-gray-400 text-xs mb-4">
-            Move this event through its lifecycle.
-          </p>
-          <EventStatusManager
-            eventId={event.id}
-            currentStatus={event.status}
-          />
-        </div>
-      )}
-
-      {/* Delete — consultant only */}
-      {profile.system_role === 'consultant' && (
-        <div className="bg-white rounded-xl shadow-sm p-6">
-          <h2 className="text-sm font-medium text-gray-700 mb-1">Danger Zone</h2>
-          <p className="text-gray-400 text-xs mb-4">
-            Permanently delete this event and all its duties.
-          </p>
-          <DeleteEventButton eventId={event.id} eventTitle={event.title} />
-        </div>
-      )}
     </div>
   )
 }

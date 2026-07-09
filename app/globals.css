@@ -874,6 +874,11 @@ button, a, [role="button"], .position-chip, .filter-chip {
   font-size: 10.5px;
   font-weight: 600;
   letter-spacing: 0.01em;
+  /* Long tab labels (Duties·Events) must never wrap the bar taller. */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
 }
 /* Desktop uses the sidebar — hide the bar here. This lives unlayered (like
    .bottom-nav) so it reliably beats Tailwind's layered md:hidden utility. */

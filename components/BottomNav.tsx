@@ -4,8 +4,8 @@ import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import { usePathname } from 'next/navigation'
 import {
-  LayoutDashboard, Calendar, CheckSquare, Megaphone, User,
-  MoreHorizontal, type LucideIcon,
+  LayoutDashboard, CalendarCheck, CheckSquare, Megaphone, User,
+  BarChart2, MoreHorizontal, type LucideIcon,
 } from 'lucide-react'
 
 // Mobile primary navigation. Fixed bottom tab bar (thumb reach); the desktop
@@ -21,9 +21,15 @@ const dash: Tab = {
   kind: 'link', href: '/dashboard', label: 'Home', icon: LayoutDashboard,
   match: p => p === '/dashboard',
 }
-const events: Tab = {
-  kind: 'link', href: '/dashboard/events', label: 'Events', icon: Calendar,
-  match: p => p.startsWith('/dashboard/events'),
+// Admin hub tab — also lights up on duty deep links (push notifications land
+// on /dashboard/duties/[id], which is part of the hub's territory for admins).
+const hub: Tab = {
+  kind: 'link', href: '/dashboard/events', label: 'Duties·Events', icon: CalendarCheck,
+  match: p => p.startsWith('/dashboard/events') || p.startsWith('/dashboard/duties'),
+}
+const workloads: Tab = {
+  kind: 'link', href: '/dashboard/workloads', label: 'Workloads', icon: BarChart2,
+  match: p => p.startsWith('/dashboard/workloads'),
 }
 const duties: Tab = {
   kind: 'link', href: '/dashboard/duties', label: 'Duties', icon: CheckSquare,
@@ -40,8 +46,8 @@ const profile: Tab = {
 const more: Tab = { kind: 'more', label: 'More', icon: MoreHorizontal }
 
 const TABS_BY_ROLE: Record<string, Tab[]> = {
-  consultant:    [dash, events, duties, more],
-  creative_head: [dash, events, duties, more],
+  consultant:    [dash, hub, workloads, more],
+  creative_head: [dash, hub, workloads, more],
   member:        [dash, duties, announcements, profile],
 }
 
