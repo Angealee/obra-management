@@ -145,7 +145,7 @@ export default async function ActivityPage({
         subtitle={
           total === 0
             ? 'Every change made in the system is recorded here.'
-            : `${total} entr${total !== 1 ? 'ies' : 'y'} · who did what, and when. Entries are kept for the current and previous academic year.`
+            : `${total} entr${total !== 1 ? 'ies' : 'y'} · who did what, and when.`
         }
       />
 
@@ -163,15 +163,18 @@ export default async function ActivityPage({
           description={
             hasFilters
               ? 'Try removing a filter — entries older than the previous academic year are pruned automatically.'
-              : 'Entries appear here as soon as someone creates, updates, or deletes a record. Run the db/2026-activity-logs.sql migration if this stays empty after changes are made.'
+              : 'Activity appears here as records change.'
           }
         />
       ) : (
         <>
           {/* Mobile: stacked cards */}
-          <div className="md:hidden bg-white rounded-xl border border-black/6 overflow-hidden">
-            {rows.map(log => (
-              <div key={log.id} className="px-4 py-3.5 border-b border-gray-50 last:border-0">
+          <div
+            className="md:hidden"
+            style={{ background: '#fff', border: '1px solid rgba(0,0,0,0.06)', borderRadius: 10, overflow: 'hidden' }}
+          >
+            {rows.map((log, i) => (
+              <div key={log.id} style={{ padding: '13px 16px', borderTop: i > 0 ? '1px solid rgba(0,0,0,0.04)' : 'none' }}>
                 <div className="flex items-start justify-between gap-2">
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
                     <Avatar name={log.actor?.full_name ?? 'System'} src={log.actor?.avatar_url ?? null} size={26} />
@@ -191,24 +194,31 @@ export default async function ActivityPage({
           </div>
 
           {/* Desktop: flat table */}
-          <div className="hidden md:block bg-white rounded-xl border border-black/6 overflow-hidden">
-            <table className="w-full text-sm">
+          <div
+            className="hidden md:block"
+            style={{ background: '#fff', border: '1px solid rgba(0,0,0,0.06)', borderRadius: 10, overflow: 'hidden' }}
+          >
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13.5px' }}>
               <thead>
-                <tr className="border-b border-gray-100">
-                  <th className="text-left px-6 py-4 text-gray-500 font-medium" style={{ width: '160px' }}>When</th>
-                  <th className="text-left px-6 py-4 text-gray-500 font-medium" style={{ width: '190px' }}>Who</th>
-                  <th className="text-left px-6 py-4 text-gray-500 font-medium">Activity</th>
-                  <th className="text-left px-6 py-4 text-gray-500 font-medium" style={{ width: '130px' }}>Module</th>
-                  <th className="text-left px-6 py-4 text-gray-500 font-medium" style={{ width: '120px' }}>Action</th>
+                <tr style={{ borderBottom: '1px solid rgba(0,0,0,0.06)' }}>
+                  {([['When', 160], ['Who', 190], ['Activity', undefined], ['Module', 130], ['Action', 120]] as [string, number | undefined][]).map(([col, w]) => (
+                    <th key={col} style={{ width: w, textAlign: 'left', padding: '11px 20px', fontSize: '12px', fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', color: '#6b7280' }}>
+                      {col}
+                    </th>
+                  ))}
                 </tr>
               </thead>
               <tbody>
-                {rows.map(log => (
-                  <tr key={log.id} className="border-b border-gray-50 hover:bg-gray-50 transition last:border-0" style={{ verticalAlign: 'top' }}>
-                    <td className="px-6 py-4 text-gray-500" style={{ whiteSpace: 'nowrap', fontSize: '12.5px' }}>
+                {rows.map((log, i) => (
+                  <tr
+                    key={log.id}
+                    className="hover:bg-gray-50/60 transition-colors"
+                    style={{ verticalAlign: 'top', borderTop: i > 0 ? '1px solid rgba(0,0,0,0.04)' : 'none' }}
+                  >
+                    <td style={{ padding: '13px 20px', whiteSpace: 'nowrap', fontSize: '12.5px', color: '#6b7280' }}>
                       {fmtWhen(log.created_at)}
                     </td>
-                    <td className="px-6 py-4">
+                    <td style={{ padding: '13px 20px' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
                         <Avatar name={log.actor?.full_name ?? 'System'} src={log.actor?.avatar_url ?? null} size={26} />
                         <span style={{ fontSize: '12.5px', fontWeight: 500, color: '#333', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
@@ -216,14 +226,14 @@ export default async function ActivityPage({
                         </span>
                       </div>
                     </td>
-                    <td className="px-6 py-4">
+                    <td style={{ padding: '13px 20px' }}>
                       <p style={{ fontSize: '13px', color: '#444', margin: 0 }}>{sentence(log)}</p>
                       {log.details?.diff && <DiffList diff={log.details.diff} />}
                     </td>
-                    <td className="px-6 py-4 text-gray-500" style={{ fontSize: '12px' }}>
+                    <td style={{ padding: '13px 20px', fontSize: '12px', color: '#6b7280' }}>
                       {MODULE_LABEL[log.target_table] ?? log.target_table}
                     </td>
-                    <td className="px-6 py-4">
+                    <td style={{ padding: '13px 20px' }}>
                       <ActionBadge action={log.action} />
                     </td>
                   </tr>

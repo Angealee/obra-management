@@ -7,11 +7,23 @@ import WorkloadBadge from '@/components/WorkLoadBadge'
 
 type Outcome = 'completed' | 'late' | 'did_not_duty'
 
-const OUTCOME_BUTTONS: { value: Outcome; label: string; bg: string; hover: string }[] = [
-  { value: 'completed',    label: 'Completed',    bg: '#16a34a', hover: '#15803d' },
-  { value: 'late',         label: 'Late',         bg: '#ca8a04', hover: '#a16207' },
-  { value: 'did_not_duty', label: 'Did Not Duty', bg: '#CC0000', hover: '#a30000' },
+const OUTCOME_BUTTONS: { value: Outcome; label: string; bg: string }[] = [
+  { value: 'completed',    label: 'Completed',    bg: '#16a34a' },
+  { value: 'late',         label: 'Late',         bg: '#ca8a04' },
+  { value: 'did_not_duty', label: 'Did Not Duty', bg: '#CC0000' },
 ]
+
+const actionBtn = (bg: string): React.CSSProperties => ({
+  background: bg,
+  color: '#fff',
+  border: 'none',
+  borderRadius: 8,
+  padding: '8px 18px',
+  fontSize: '13px',
+  fontWeight: 500,
+  cursor: 'pointer',
+  fontFamily: "'DM Sans', sans-serif",
+})
 
 export default function DutyActions({
   duty,
@@ -110,17 +122,19 @@ export default function DutyActions({
   }
 
   return (
-    <div className="space-y-4">
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
 
       {/* ── Member actions (only while not yet reviewed) ── */}
       {isAssignee && !isReviewed && status === 'pending' && (
-        <div className="bg-white rounded-xl shadow-sm p-4 sm:p-6">
-          <h2 className="text-sm font-medium text-gray-700 mb-1">Start this duty</h2>
-          <p className="text-gray-400 text-xs mb-4">Mark it as in progress when you begin working on it.</p>
+        <div className="dash-card">
+          <p className="section-label" style={{ marginBottom: 4 }}>Start this duty</p>
+          <p style={{ fontSize: '12.5px', color: '#6b7280', margin: '0 0 14px' }}>
+            Mark it as in progress when you begin working on it.
+          </p>
           <button
             onClick={() => updateStatus('in_progress')}
             disabled={loading}
-            className="bg-blue-600 text-white px-6 py-2 rounded-lg text-sm hover:bg-blue-700 transition disabled:opacity-50"
+            style={{ ...actionBtn('#3b82f6'), opacity: loading ? 0.5 : 1 }}
           >
             {loading ? 'Updating...' : 'Start Duty'}
           </button>
@@ -128,34 +142,45 @@ export default function DutyActions({
       )}
 
       {isAssignee && !isReviewed && status === 'in_progress' && (
-        <div className="bg-white rounded-xl shadow-sm p-4 sm:p-6 space-y-3">
-          <h2 className="text-sm font-medium text-gray-700 mb-1">Mark as Completed</h2>
-          <p className="text-gray-400 text-xs mb-2">
-            Submit this duty for review when you&apos;re done with all tasks.
-          </p>
-          <div className="flex gap-3 flex-wrap">
+        <div className="dash-card" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <div>
+            <p className="section-label" style={{ marginBottom: 4 }}>Mark as Completed</p>
+            <p style={{ fontSize: '12.5px', color: '#6b7280', margin: 0 }}>
+              Submit this duty for review when you&apos;re done.
+            </p>
+          </div>
+          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
             <button
               onClick={() => updateStatus('completed', { completed_at: new Date().toISOString() })}
               disabled={loading}
-              className="bg-yellow-500 text-white px-6 py-2 rounded-lg text-sm hover:bg-yellow-600 transition disabled:opacity-50"
+              style={{ ...actionBtn('#ca8a04'), opacity: loading ? 0.5 : 1 }}
             >
               {loading ? 'Updating...' : 'Mark as Completed'}
             </button>
-            <button
-              onClick={() => setShowRevert(!showRevert)}
-              className="px-6 py-2 rounded-lg text-sm border border-gray-300 text-gray-400 hover:text-gray-600 hover:border-gray-400 transition"
-            >
+            <button onClick={() => setShowRevert(!showRevert)} className="btn-secondary">
               ↩ Revert to Pending
             </button>
           </div>
           {showRevert && (
-            <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 flex gap-3 items-center flex-wrap">
-              <p className="text-sm text-gray-600">Revert this duty back to Pending?</p>
-              <button onClick={() => updateStatus('pending', { completed_at: null })} disabled={loading}
-                className="bg-gray-900 text-white px-4 py-1 rounded text-sm hover:bg-gray-700 disabled:opacity-50">
+            <div style={{
+              background: '#F7F7F5', border: '1px solid rgba(0,0,0,0.08)', borderRadius: 8,
+              padding: '10px 14px', display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap',
+            }}>
+              <p style={{ fontSize: '13px', color: '#555', margin: 0 }}>Revert this duty back to Pending?</p>
+              <button
+                onClick={() => updateStatus('pending', { completed_at: null })}
+                disabled={loading}
+                className="btn-primary"
+                style={{ fontSize: '12px', padding: '5px 14px' }}
+              >
                 {loading ? '...' : 'Yes, Revert'}
               </button>
-              <button onClick={() => setShowRevert(false)} className="text-sm text-gray-500">No</button>
+              <button
+                onClick={() => setShowRevert(false)}
+                style={{ fontSize: '13px', color: '#6b7280', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+              >
+                No
+              </button>
             </div>
           )}
         </div>
@@ -163,44 +188,44 @@ export default function DutyActions({
 
       {/* Assignee waiting note — completed but not yet reviewed by a head */}
       {isAssignee && !isHead && !isReviewed && status === 'completed' && (
-        <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4 sm:p-6">
-          <p className="text-yellow-700 text-sm font-medium">Submitted — awaiting review.</p>
-          <p className="text-yellow-600 text-xs mt-1">A creative head will record the outcome for this duty.</p>
+        <div style={{ background: '#fefce8', border: '1px solid #fde68a', borderRadius: 12, padding: '18px 22px' }}>
+          <p style={{ fontSize: '13.5px', fontWeight: 600, color: '#a16207', margin: 0 }}>Submitted — awaiting review.</p>
+          <p style={{ fontSize: '12.5px', color: '#ca8a04', margin: '4px 0 0' }}>A creative head will record the outcome for this duty.</p>
         </div>
       )}
 
       {/* ── Head: Mark Outcome (the review step) ── */}
       {isHead && !isReviewed && (
-        <div className="bg-white rounded-xl shadow-sm p-4 sm:p-6 space-y-4">
+        <div className="dash-card" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           <div>
-            <h2 className="text-sm font-medium text-gray-700 mb-1">Mark Outcome</h2>
-            <p className="text-gray-400 text-xs">
-              Record how this duty turned out. This sets the member&apos;s workload mark for the
-              event and marks the duty as reviewed.
+            <p className="section-label" style={{ marginBottom: 4 }}>Mark Outcome</p>
+            <p style={{ fontSize: '12.5px', color: '#6b7280', margin: 0 }}>
+              Recording an outcome sets the member&apos;s workload mark and marks this duty reviewed.
             </p>
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Remarks <span className="text-gray-400 font-normal">(optional)</span>
+            <label className="obra-label">
+              Remarks <span style={{ color: '#9ca3af', fontWeight: 400 }}>(optional)</span>
             </label>
             <textarea
               value={remarks}
               onChange={e => setRemarks(e.target.value)}
               placeholder="Leave feedback or notes for this member..."
               rows={3}
-              className="w-full border border-gray-300 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-400 resize-none"
+              className="obra-input"
+              style={{ resize: 'none' }}
             />
           </div>
 
-          <div className="flex gap-3 flex-wrap">
+          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
             {OUTCOME_BUTTONS.map(b => (
               <button
                 key={b.value}
                 onClick={() => markOutcome(b.value)}
                 disabled={loading}
-                style={{ background: b.bg }}
-                className="text-white px-5 py-2 rounded-lg text-sm transition disabled:opacity-50 hover:opacity-90"
+                style={{ ...actionBtn(b.bg), opacity: loading ? 0.5 : 1 }}
+                className="hover:opacity-90 transition"
               >
                 {b.label}
               </button>
@@ -211,19 +236,19 @@ export default function DutyActions({
 
       {/* ── Reviewed — locked panel with recorded outcome ── */}
       {isReviewed && (
-        <div className="bg-green-50 border border-green-200 rounded-xl p-4 sm:p-6 space-y-3">
-          <div className="flex items-center gap-3 flex-wrap">
-            <p className="text-green-700 text-sm font-medium">Outcome recorded:</p>
+        <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 12, padding: '18px 22px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+            <p style={{ fontSize: '13.5px', fontWeight: 600, color: '#15803d', margin: 0 }}>Outcome recorded:</p>
             <WorkloadBadge mark={workloadMark} />
           </div>
-          {(duty as any).reviewer?.full_name && (
-            <p className="text-green-600 text-xs">Reviewed by {(duty as any).reviewer.full_name}</p>
+          {duty.reviewer?.full_name && (
+            <p style={{ fontSize: '12.5px', color: '#16a34a', margin: 0 }}>Reviewed by {duty.reviewer.full_name}</p>
           )}
           {duty.remarks && (
-            <p className="text-sm text-gray-700 bg-white border border-green-100 rounded-lg p-3">
-              <span className="text-xs text-gray-400 block mb-1">Reviewer note</span>
-              {duty.remarks}
-            </p>
+            <div style={{ background: '#fff', border: '1px solid #dcfce7', borderRadius: 8, padding: '10px 14px' }}>
+              <p style={{ fontSize: '12px', color: '#6b7280', margin: '0 0 3px' }}>Reviewer note</p>
+              <p style={{ fontSize: '13.5px', color: '#333', margin: 0, whiteSpace: 'pre-wrap' }}>{duty.remarks}</p>
+            </div>
           )}
 
           {/* Consultant-only revert */}
@@ -231,18 +256,25 @@ export default function DutyActions({
             <>
               <button
                 onClick={() => setShowRevert(!showRevert)}
-                className="text-xs text-gray-400 hover:text-gray-600 underline transition"
+                style={{ fontSize: '12.5px', color: '#6b7280', textDecoration: 'underline', background: 'none', border: 'none', cursor: 'pointer', padding: 0, alignSelf: 'flex-start' }}
               >
                 ↩ Revert review
               </button>
               {showRevert && (
-                <div className="bg-white border border-gray-200 rounded-lg p-3 flex gap-3 items-center flex-wrap">
-                  <p className="text-sm text-gray-600">Clear this review? The workload mark stays unless re-marked.</p>
-                  <button onClick={revertReview} disabled={loading}
-                    className="bg-gray-900 text-white px-4 py-1 rounded text-sm hover:bg-gray-700 disabled:opacity-50">
+                <div style={{
+                  background: '#fff', border: '1px solid rgba(0,0,0,0.08)', borderRadius: 8,
+                  padding: '10px 14px', display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap',
+                }}>
+                  <p style={{ fontSize: '13px', color: '#555', margin: 0 }}>Clear this review? The workload mark stays unless re-marked.</p>
+                  <button onClick={revertReview} disabled={loading} className="btn-primary" style={{ fontSize: '12px', padding: '5px 14px' }}>
                     {loading ? '...' : 'Yes, Revert'}
                   </button>
-                  <button onClick={() => setShowRevert(false)} className="text-sm text-gray-500">No</button>
+                  <button
+                    onClick={() => setShowRevert(false)}
+                    style={{ fontSize: '13px', color: '#6b7280', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+                  >
+                    No
+                  </button>
                 </div>
               )}
             </>
@@ -250,7 +282,7 @@ export default function DutyActions({
         </div>
       )}
 
-      {error && <p className="text-red-500 text-sm">{error}</p>}
+      {error && <p style={{ color: '#dc2626', fontSize: '13px', margin: 0 }}>{error}</p>}
     </div>
   )
 }

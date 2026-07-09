@@ -12,7 +12,7 @@ export default function WorkloadBadge({ mark }: { mark: string | null | undefine
 
   return (
     <span style={{
-      fontSize: '11px', fontWeight: 600,
+      fontSize: '12px', fontWeight: 600,
       background: c.bg, color: c.color,
       padding: '3px 10px', borderRadius: '99px',
       whiteSpace: 'nowrap',

@@ -74,20 +74,24 @@ function EventSection({
       <h2 className="section-label" style={{ marginBottom: 10 }}>{title}</h2>
 
       {/* Mobile: stacked cards */}
-      <div className={`md:hidden bg-white rounded-xl border border-black/6 overflow-hidden ${muted ? 'opacity-60' : ''}`}>
-        {events.map(event => {
+      <div
+        className="md:hidden"
+        style={{ background: '#fff', border: '1px solid rgba(0,0,0,0.06)', borderRadius: 10, overflow: 'hidden', opacity: muted ? 0.6 : 1 }}
+      >
+        {events.map((event, i) => {
           const rel = relativeDayLabel(event.event_date, today)
           return (
             <Link
               key={event.id}
               href={`/dashboard/events/${event.id}`}
-              className="block px-4 py-3.5 border-b border-gray-50 last:border-0 hover:bg-gray-50 transition"
+              className="block hover:bg-gray-50/60 transition-colors"
+              style={{ padding: '13px 16px', borderTop: i > 0 ? '1px solid rgba(0,0,0,0.04)' : 'none', textDecoration: 'none' }}
             >
               <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
                 <DateBlock dateStr={event.event_date} muted={muted} />
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div className="flex items-start justify-between gap-2">
-                    <p className="font-medium text-gray-800 text-sm">{event.title}</p>
+                    <p style={{ fontSize: '13.5px', fontWeight: 500, color: '#111', margin: 0 }}>{event.title}</p>
                     <EventStatusBadge status={event.status} />
                   </div>
                   <p style={{ fontSize: 12, color: '#6b7280', margin: '3px 0 0' }}>
@@ -106,27 +110,34 @@ function EventSection({
       </div>
 
       {/* Desktop: Table */}
-      <div className={`hidden md:block bg-white rounded-xl border border-black/6 overflow-hidden ${muted ? 'opacity-60' : ''}`}>
-        <table className="w-full text-sm">
+      <div
+        className="hidden md:block"
+        style={{ background: '#fff', border: '1px solid rgba(0,0,0,0.06)', borderRadius: 10, overflow: 'hidden', opacity: muted ? 0.6 : 1 }}
+      >
+        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13.5px' }}>
           <thead>
-            <tr className="border-b border-gray-100">
-              <th className="text-left px-6 py-4 text-gray-500 font-medium">Event</th>
-              <th className="text-left px-6 py-4 text-gray-500 font-medium">Location</th>
-              <th className="text-left px-6 py-4 text-gray-500 font-medium">Coverage</th>
-              <th className="text-left px-6 py-4 text-gray-500 font-medium">Status</th>
-              <th className="text-left px-6 py-4 text-gray-500 font-medium"></th>
+            <tr style={{ borderBottom: '1px solid rgba(0,0,0,0.06)' }}>
+              {['Event', 'Location', 'Coverage', 'Status', ''].map((col, i) => (
+                <th key={i} style={{ textAlign: 'left', padding: '11px 20px', fontSize: '12px', fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', color: '#6b7280' }}>
+                  {col}
+                </th>
+              ))}
             </tr>
           </thead>
           <tbody>
-            {events.map(event => {
+            {events.map((event, i) => {
               const rel = relativeDayLabel(event.event_date, today)
               return (
-                <tr key={event.id} className="border-b border-gray-50 hover:bg-gray-50 transition last:border-0">
-                  <td className="px-6 py-3.5">
+                <tr
+                  key={event.id}
+                  className="hover:bg-gray-50/60 transition-colors"
+                  style={{ borderTop: i > 0 ? '1px solid rgba(0,0,0,0.04)' : 'none' }}
+                >
+                  <td style={{ padding: '13px 20px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
                       <DateBlock dateStr={event.event_date} muted={muted} />
                       <div style={{ minWidth: 0 }}>
-                        <p className="font-medium text-gray-800">{event.title}</p>
+                        <p style={{ fontSize: '13.5px', fontWeight: 500, color: '#111', margin: 0 }}>{event.title}</p>
                         <p style={{ fontSize: 12, color: '#6b7280', margin: '2px 0 0' }}>
                           {rel && <strong style={{ color: rel === 'Today' ? '#CC0000' : '#374151', fontWeight: 600 }}>{rel}</strong>}
                           {rel && (event.event_time || event.description) && ' · '}
@@ -138,15 +149,19 @@ function EventSection({
                       </div>
                     </div>
                   </td>
-                  <td className="px-6 py-3.5 text-gray-500">{event.location ?? '—'}</td>
-                  <td className="px-6 py-3.5">
+                  <td style={{ padding: '13px 20px', color: '#555', fontSize: '13px' }}>{event.location ?? '—'}</td>
+                  <td style={{ padding: '13px 20px' }}>
                     <CoverageLine c={coverage.get(event.id)} upcoming={event.status === 'upcoming'} />
                   </td>
-                  <td className="px-6 py-3.5">
+                  <td style={{ padding: '13px 20px' }}>
                     <EventStatusBadge status={event.status} />
                   </td>
-                  <td className="px-6 py-3.5">
-                    <Link href={`/dashboard/events/${event.id}`} className="text-gray-500 hover:text-gray-900 underline text-xs">
+                  <td style={{ padding: '13px 20px' }}>
+                    <Link
+                      href={`/dashboard/events/${event.id}`}
+                      style={{ fontSize: '12px', color: '#6b7280', textDecoration: 'none' }}
+                      className="hover:text-gray-700 transition-colors"
+                    >
                       View
                     </Link>
                   </td>
