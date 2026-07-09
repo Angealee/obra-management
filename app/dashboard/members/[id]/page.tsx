@@ -2,7 +2,7 @@ import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
 import { createClient } from '@/lib/supabase/server'
-import type { Profile } from '@/types/database'
+import { requireProfile } from '@/lib/auth'
 import ToggleActiveButton from './ToggleActiveButton'
 import WorkloadBadge from '@/components/WorkLoadBadge'
 import ArchiveMemberButton from './ArchiveMemberButton'
@@ -18,38 +18,33 @@ export default async function MemberDetailPage({
   const { id } = await params
   const supabase = await createClient()
 
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) redirect('/login')
+  const { profile: viewer } = await requireProfile()
+  if (viewer.system_role === 'member') redirect('/dashboard')
 
-  const { data: viewer } = await supabase
-    .from('profiles').select('*').eq('id', user.id).single() as { data: Profile | null }
-  if (!viewer || viewer.system_role === 'member') redirect('/dashboard')
-
-  // Fetch member with skills
-  const { data: member } = await supabase
-    .from('profiles')
-    .select(`*, member_status, profile_skills ( skill_id, member_skills ( id, name ) )`)
-    .eq('id', id)
-    .single() as { data: any | null }
+  // Member profile, their duties, and their marks are all keyed by the route
+  // param — independent queries, one parallel round trip.
+  const [{ data: member }, { data: duties }, { data: marks }] = await Promise.all([
+    supabase
+      .from('profiles')
+      .select(`*, member_status, profile_skills ( skill_id, member_skills ( id, name ) )`)
+      .eq('id', id)
+      .single() as any,
+    supabase
+      .from('duties')
+      .select(`
+        id, title, duty_type, status, reviewed_by, completed_at, created_at,
+        event_id,
+        events ( id, title, event_date, status )
+      `)
+      .eq('assigned_to', id)
+      .order('created_at', { ascending: false }) as any,
+    supabase
+      .from('workload_marks')
+      .select('event_id, mark')
+      .eq('member_id', id) as any,
+  ])
 
   if (!member) redirect('/dashboard/members')
-
-  // Fetch all duties for this member with event info
-  const { data: duties } = await supabase
-    .from('duties')
-    .select(`
-      id, title, duty_type, status, reviewed_by, completed_at, created_at,
-      event_id,
-      events ( id, title, event_date, status )
-    `)
-    .eq('assigned_to', id)
-    .order('created_at', { ascending: false })
-
-  // Fetch workload marks for this member
-  const { data: marks } = await supabase
-    .from('workload_marks')
-    .select('event_id, mark')
-    .eq('member_id', id)
 
   // Academic years this member is active for (+ all years, for the panel)
   const [{ data: memberYearRows }, { data: allYearRows }] = await Promise.all([
@@ -104,7 +99,7 @@ export default async function MemberDetailPage({
 
   // Stats
   const totalDuties   = duties?.length ?? 0
-  const reviewedCount = duties?.filter(d => dutyDisplayStatus(d) === 'reviewed').length ?? 0
+  const reviewedCount = duties?.filter((d: any) => dutyDisplayStatus(d) === 'reviewed').length ?? 0
   const lateCount     = Object.values(markMap).filter(m => m === 'late').length
   const dndCount      = Object.values(markMap).filter(m => m === 'did_not_duty').length
 
@@ -129,7 +124,7 @@ export default async function MemberDetailPage({
     <div style={{ maxWidth: '780px' }}>
       {/* Back */}
       <Link href="/dashboard/members"
-        style={{ fontSize: '13px', color: '#bbb', textDecoration: 'none', display: 'inline-block', marginBottom: '20px' }}
+        style={{ fontSize: '13px', color: '#6b7280', textDecoration: 'none', display: 'inline-block', marginBottom: '20px' }}
         className="hover:text-gray-600 transition-colors">
         ← Back to Members
       </Link>
@@ -152,7 +147,7 @@ export default async function MemberDetailPage({
                 {member.full_name}
               </h1>
               {member.username && (
-                <span style={{ fontSize: '13px', color: '#bbb' }}>@{member.username}</span>
+                <span style={{ fontSize: '13px', color: '#6b7280' }}>@{member.username}</span>
               )}
               <span style={{ fontSize: '11px', fontWeight: 600, background: member.is_active ? '#f0fdf4' : '#f3f4f6', color: member.is_active ? '#16a34a' : '#9ca3af', padding: '3px 10px', borderRadius: '99px' }}>
                 {member.is_active ? 'Active' : 'Inactive'}
@@ -167,7 +162,7 @@ export default async function MemberDetailPage({
                   {memberRoleLabel(member.member_role)}
                 </span>
               )}
-              <span style={{ fontSize: '12px', color: '#bbb' }}>{member.email}</span>
+              <span style={{ fontSize: '12px', color: '#6b7280' }}>{member.email}</span>
             </div>
           </div>
 
@@ -251,7 +246,7 @@ export default async function MemberDetailPage({
         </p>
 
         {eventGroups.length === 0 ? (
-          <p style={{ fontSize: '13px', color: '#bbb' }}>No duties assigned yet.</p>
+          <p style={{ fontSize: '13px', color: '#6b7280' }}>No duties assigned yet.</p>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
             {eventGroups.map(({ event, duties: eventDuties }) => {
@@ -265,7 +260,7 @@ export default async function MemberDetailPage({
                         className="hover:text-gray-600 transition-colors">
                         {event.title}
                       </Link>
-                      <p style={{ fontSize: '11.5px', color: '#bbb', marginTop: '2px' }}>
+                      <p style={{ fontSize: '12px', color: '#6b7280', marginTop: '2px' }}>
                         {new Date(event.event_date).toLocaleDateString('en-PH', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' })}
                       </p>
                     </div>
@@ -283,7 +278,7 @@ export default async function MemberDetailPage({
                           className="hover:bg-gray-50 transition-colors">
                           <div>
                             <p style={{ fontSize: '13px', fontWeight: 500, color: '#333' }}>{d.title}</p>
-                            <p style={{ fontSize: '11.5px', color: '#bbb', marginTop: '2px' }}>
+                            <p style={{ fontSize: '12px', color: '#6b7280', marginTop: '2px' }}>
                               {dutyTypeLabel(d.duty_type)}
                             </p>
                           </div>

@@ -67,27 +67,32 @@ export function ReportTable({
   numericFrom?: number
 }) {
   return (
-    <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-      <thead>
-        <tr>
-          {headers.map((h, i) => (
-            <th key={h} style={{ ...th, textAlign: numericFrom != null && i >= numericFrom ? 'right' : 'left' }}>
-              {h}
-            </th>
-          ))}
-        </tr>
-      </thead>
-      <tbody>
-        {rows.map((row, ri) => (
-          <tr key={ri}>
-            {row.map((cell, ci) => (
-              <td key={ci} style={{ ...td, textAlign: numericFrom != null && ci >= numericFrom ? 'right' : 'left' }}>
-                {cell}
-              </td>
+    // On phones the wide tables scroll inside this container instead of
+    // crushing; the print stylesheet resets overflow so paper output is
+    // unaffected (report-table-scroll rule in globals.css).
+    <div className="report-table-scroll" style={{ overflowX: 'auto' }}>
+      <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: Math.max(560, headers.length * 96) }}>
+        <thead>
+          <tr>
+            {headers.map((h, i) => (
+              <th key={h} style={{ ...th, textAlign: numericFrom != null && i >= numericFrom ? 'right' : 'left' }}>
+                {h}
+              </th>
             ))}
           </tr>
-        ))}
-      </tbody>
-    </table>
+        </thead>
+        <tbody>
+          {rows.map((row, ri) => (
+            <tr key={ri}>
+              {row.map((cell, ci) => (
+                <td key={ci} style={{ ...td, textAlign: numericFrom != null && ci >= numericFrom ? 'right' : 'left' }}>
+                  {cell}
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
   )
 }

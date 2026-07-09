@@ -15,7 +15,7 @@ export function Pill({ label, bg, color }: { label: string; bg: string; color: s
       style={{
         background: bg,
         color,
-        fontSize: '11px',
+        fontSize: '12px',
         fontWeight: 600,
         padding: '3px 10px',
         borderRadius: '99px',

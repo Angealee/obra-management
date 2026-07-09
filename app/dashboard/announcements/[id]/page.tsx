@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
-import type { Profile } from '@/types/database'
+import { requireProfile } from '@/lib/auth'
 import DeleteAnnouncementButton from './DeleteAnnouncementButton'
 import AnnouncementReceipt from './AnnouncementReceipt'
 import PinToggleButton from './PinToggleButton'
@@ -39,12 +39,7 @@ export default async function AnnouncementDetailPage({
   const { id } = await params
   const supabase = await createClient()
 
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) redirect('/login')
-
-  const { data: profile } = await supabase
-    .from('profiles').select('*').eq('id', user.id).single() as { data: Profile | null }
-  if (!profile) redirect('/login')
+  const { user, profile } = await requireProfile()
 
   const { data: a } = await supabase
     .from('announcements')

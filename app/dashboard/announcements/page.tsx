@@ -220,8 +220,8 @@ export default async function AnnouncementsPage() {
           title="Nothing posted yet"
           description={
             isHead
-              ? 'Post an announcement to reach members and creative heads. It shows up here and on their dashboards.'
-              : 'Announcements from your creative heads will appear here once they’re posted.'
+              ? 'Post your first announcement.'
+              : 'Announcements appear here once posted.'
           }
           action={isHead ? { label: '+ Post an announcement', href: '/dashboard/announcements/new' } : undefined}
         />

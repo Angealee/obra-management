@@ -54,7 +54,7 @@ export default function MatrixMobile({
               <div className="flex-1 min-w-0">
                 <p className="truncate" style={{ fontSize: 13.5, fontWeight: 600, color: '#111', margin: 0 }}>{member.full_name}</p>
                 <div className="flex items-center gap-1.5 flex-wrap" style={{ marginTop: 3 }}>
-                  <span style={{ fontSize: 11, color: '#bbb' }}>{member.course_section ?? '—'}</span>
+                  <span style={{ fontSize: 12, color: '#6b7280' }}>{member.course_section ?? '—'}</span>
                   {skills.slice(0, 2).map(s => <SkillTag key={s} name={s} />)}
                 </div>
               </div>
@@ -103,7 +103,7 @@ export default function MatrixMobile({
                           canEdit={canManage}
                           onClick={() => onCellClick(member.id, event.id)}
                         />
-                        <p style={{ fontSize: 9.5, color: '#bbb', textAlign: 'center', lineHeight: 1.3, margin: 0 }}>
+                        <p style={{ fontSize: 12, color: '#6b7280', textAlign: 'center', lineHeight: 1.3, margin: 0 }}>
                           {event.title.length > 14 ? `${event.title.slice(0, 13)}…` : event.title}
                         </p>
                       </div>

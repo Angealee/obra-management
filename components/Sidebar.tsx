@@ -5,7 +5,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { usePathname } from 'next/navigation'
 import {
-  LayoutDashboard, Users, Calendar, CheckSquare,
+  LayoutDashboard, Users, CalendarCheck, CheckSquare,
   BarChart2, GraduationCap, LogOut,
   PanelLeftClose, PanelLeftOpen,
   BarChart3,
@@ -13,6 +13,7 @@ import {
   FileText,
   History,
   X,
+  type LucideIcon,
 } from 'lucide-react'
 
 type Profile = {
@@ -24,17 +25,49 @@ type Profile = {
   avatar_url: string | null
 }
 
-const NAV = [
-  { href: '/dashboard',                label: 'Dashboard',      icon: LayoutDashboard, roles: ['consultant','creative_head','member'] },
-  { href: '/dashboard/announcements', label: 'Announcements', icon:  BarChart3,       roles: ['consultant','creative_head','member'] },
-  { href: '/dashboard/members',        label: 'Members',        icon: Users,           roles: ['consultant','creative_head'] },
-  { href: '/dashboard/events',         label: 'Events',         icon: Calendar,        roles: ['consultant','creative_head'] },
-  { href: '/dashboard/duties',         label: 'Duties',         icon: CheckSquare,     roles: ['consultant','creative_head','member'] },
-  { href: '/dashboard/workloads',      label: 'Workloads',      icon: BarChart2,       roles: ['consultant','creative_head'] },
-  { href: '/dashboard/academic-years', label: 'Academic Years', icon: GraduationCap,   roles: ['consultant'] },
-  { href: '/dashboard/applications',   label: 'Applications',   icon: ClipboardList,   roles: ['consultant','creative_head'] },
-  { href: '/dashboard/reports',        label: 'Reports',        icon: FileText,        roles: ['consultant','creative_head'] },
-  { href: '/dashboard/activity',       label: 'Activity',       icon: History,         roles: ['consultant'] },
+type NavItem = {
+  href: string
+  label: string
+  icon: LucideIcon
+  roles: string[]
+  /** Extra pathname prefixes that highlight this item (e.g. duty deep links → hub). */
+  match?: string[]
+}
+
+// Grouped navigation. Admins see thin section headers; when a role's filtered
+// nav is small (members: 3 items), the headers drop and the list renders flat.
+const NAV_GROUPS: { label: string; items: NavItem[] }[] = [
+  {
+    label: 'Operate',
+    items: [
+      { href: '/dashboard',           label: 'Dashboard',       icon: LayoutDashboard, roles: ['consultant','creative_head','member'] },
+      { href: '/dashboard/events',    label: 'Duties & Events', icon: CalendarCheck,   roles: ['consultant','creative_head'],
+        match: ['/dashboard/events', '/dashboard/duties'] },
+      { href: '/dashboard/duties',    label: 'My Duties',       icon: CheckSquare,     roles: ['member'] },
+      { href: '/dashboard/workloads', label: 'Workloads',       icon: BarChart2,       roles: ['consultant','creative_head'] },
+    ],
+  },
+  {
+    label: 'People',
+    items: [
+      { href: '/dashboard/members',      label: 'Members',      icon: Users,         roles: ['consultant','creative_head'] },
+      { href: '/dashboard/applications', label: 'Applications', icon: ClipboardList, roles: ['consultant','creative_head'] },
+    ],
+  },
+  {
+    label: 'Comms',
+    items: [
+      { href: '/dashboard/announcements', label: 'Announcements', icon: BarChart3, roles: ['consultant','creative_head','member'] },
+    ],
+  },
+  {
+    label: 'Admin',
+    items: [
+      { href: '/dashboard/academic-years', label: 'Academic Years', icon: GraduationCap, roles: ['consultant'] },
+      { href: '/dashboard/reports',        label: 'Reports',        icon: FileText,      roles: ['consultant','creative_head'] },
+      { href: '/dashboard/activity',       label: 'Activity',       icon: History,       roles: ['consultant'] },
+    ],
+  },
 ]
 
 const ROLE_LABEL: Record<string, string> = {
@@ -88,12 +121,17 @@ export default function Sidebar({
     document.cookie = `obra-sidebar=${next ? '1' : '0'}; path=/; max-age=31536000; samesite=lax`
   }
 
-  function isActive(href: string) {
-    if (href === '/dashboard') return pathname === '/dashboard'
-    return pathname.startsWith(href)
+  function isActive(item: NavItem) {
+    if (item.href === '/dashboard') return pathname === '/dashboard'
+    const prefixes = item.match ?? [item.href]
+    return prefixes.some(p => pathname.startsWith(p))
   }
 
-  const visibleNav = NAV.filter(item => item.roles.includes(profile.system_role))
+  // Role-filter each group, drop empty groups; small navs render flat.
+  const visibleGroups = NAV_GROUPS
+    .map(g => ({ ...g, items: g.items.filter(item => item.roles.includes(profile.system_role)) }))
+    .filter(g => g.items.length > 0)
+  const showHeaders = visibleGroups.length >= 3
 
   const displayRole =
     profile.system_role === 'creative_head' &&
@@ -284,25 +322,47 @@ export default function Sidebar({
       {/* Navigation */}
       <nav data-tour="nav" style={{ flex: 1, padding: '8px', overflowY: 'auto', overflowX: 'hidden' }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-          {visibleNav.map(item => {
-            const active = isActive(item.href)
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={`sidebar-nav-item ${active ? 'active' : ''}`}
-              >
-                <item.icon
-                  size={effectiveCollapsed ? 18 : 16}
-                  style={{ flexShrink: 0 }}
-                  strokeWidth={active ? 2.2 : 1.75}
-                  color={active ? '#CC0000' : 'rgba(255,255,255,0.55)'}
-                />
-                <span className="sidebar-label">{item.label}</span>
-                <span className="nav-tooltip">{item.label}</span>
-              </Link>
-            )
-          })}
+          {visibleGroups.map((group, gi) => (
+            <div key={group.label} style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+              {/* Group header — thin mono label when expanded, hairline when collapsed */}
+              {showHeaders && (
+                effectiveCollapsed ? (
+                  gi > 0 && (
+                    <div aria-hidden="true" style={{ height: 1, background: 'rgba(255,255,255,0.07)', margin: '8px 10px' }} />
+                  )
+                ) : (
+                  <p style={{
+                    fontFamily: "'DM Mono', monospace", fontSize: '10px', fontWeight: 500,
+                    letterSpacing: '0.14em', textTransform: 'uppercase',
+                    color: 'rgba(255,255,255,0.28)',
+                    padding: gi === 0 ? '6px 12px 3px' : '14px 12px 3px',
+                    margin: 0, whiteSpace: 'nowrap',
+                  }}>
+                    {group.label}
+                  </p>
+                )
+              )}
+              {group.items.map(item => {
+                const active = isActive(item)
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    className={`sidebar-nav-item ${active ? 'active' : ''}`}
+                  >
+                    <item.icon
+                      size={effectiveCollapsed ? 18 : 16}
+                      style={{ flexShrink: 0 }}
+                      strokeWidth={active ? 2.2 : 1.75}
+                      color={active ? '#CC0000' : 'rgba(255,255,255,0.55)'}
+                    />
+                    <span className="sidebar-label">{item.label}</span>
+                    <span className="nav-tooltip">{item.label}</span>
+                  </Link>
+                )
+              })}
+            </div>
+          ))}
         </div>
       </nav>
 

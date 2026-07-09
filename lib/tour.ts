@@ -108,7 +108,7 @@ export const TOUR_STEPS: TourStep[] = [
     selector: '[data-tour="nav"]',
     openDrawerOnMobile: true,
     title: 'Your navigation',
-    body: 'Every section of the system lives in this menu — Members, Events, Duties, and more. On phones, tap the ☰ menu button to open it.',
+    body: 'Every section of the system lives in this menu — your dashboard, duties and events, announcements, and more. On phones, tap the ☰ menu button to open it.',
   },
   {
     id: 'stats',
@@ -135,16 +135,18 @@ export const TOUR_STEPS: TourStep[] = [
     route: '/dashboard/events',
     selector: '[data-tour="add-event"]',
     title: 'Start with an event',
-    body: 'An event is the container everything hangs on. Press “+ Add Event” to create one — give it a title, date, and place. Duties get attached to it next.',
+    body: 'This hub holds your events and every duty. An event is the container everything hangs on — press “+ Add Event” to create one. Duties get attached to it next.',
   },
   {
     id: 'duties-manage',
     type: 'spotlight',
     roles: ADMINS,
-    route: '/dashboard/duties',
+    // The add-duty anchor lives on the hub header (both tabs) — the engine
+    // matches routes by pathname only, so never put a query string here.
+    route: '/dashboard/events',
     selector: '[data-tour="add-duty"]',
     title: 'Assign the work',
-    body: 'Press “+ Assign Duty” to give a member a task for an event. They mark it in progress and done; you review it afterwards.',
+    body: 'Press “+ Assign Duty” to give a member a task, or assign straight from an event’s page. The All Duties tab tracks every assignment.',
   },
   {
     id: 'duties-member',

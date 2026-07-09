@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
-import type { Profile } from '@/types/database'
+import { requireProfile } from '@/lib/auth'
 import EditAnnouncementForm from './EditAnnouncementForm'
 
 export default async function EditAnnouncementPage({
@@ -11,12 +11,7 @@ export default async function EditAnnouncementPage({
   const { id } = await params
   const supabase = await createClient()
 
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) redirect('/login')
-
-  const { data: profile } = await supabase
-    .from('profiles').select('*').eq('id', user.id).single() as { data: Profile | null }
-  if (!profile) redirect('/login')
+  const { user, profile } = await requireProfile()
 
   const { data: announcement } = await supabase
     .from('announcements').select('*').eq('id', id).single()

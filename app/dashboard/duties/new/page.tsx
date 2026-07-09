@@ -4,11 +4,14 @@ import { useState, useEffect } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
-import type { ObraEvent, Profile } from '@/types/database'
+import type { ObraEvent } from '@/types/database'
+import MemberMultiSelect, { type MemberWithSkills } from '@/components/MemberMultiSelect'
 
-type MemberWithSkills = Profile & {
-  profile_skills: { member_skills: { name: string } }[]
-}
+// Standalone event-agnostic Assign Duty form (dashboard quick action + hub
+// header). Assigning for a specific event is also available inline on the
+// event's own page (AssignDutiesPanel). Only heads reach this page, so all
+// exits target the hub's All Duties tab.
+const HUB_DUTIES = '/dashboard/events?tab=duties'
 
 export default function NewDutyPage() {
   const router = useRouter()
@@ -116,136 +119,82 @@ export default function NewDutyPage() {
       return
     }
 
-    router.push('/dashboard/duties')
+    router.push(HUB_DUTIES)
     router.refresh()
   }
 
-  // Group members by role for display
-  const creativeHeads = members.filter(m => m.system_role === 'creative_head')
-  const regularMembers = members.filter(m => m.system_role === 'member')
-
   return (
-    <div className="max-w-2xl">
-      <div className="mb-8">
-        <Link href="/dashboard/duties" className="text-gray-400 hover:text-gray-600 text-sm mb-2 inline-block">
-          ← Back to Duties
+    <div style={{ maxWidth: 640 }}>
+      <div style={{ marginBottom: 24 }}>
+        <Link href={HUB_DUTIES} style={{ fontSize: '13px', color: '#6b7280', textDecoration: 'none', display: 'inline-block', marginBottom: 8 }}>
+          ← Back to Duties &amp; Events
         </Link>
-        <h1 className="text-2xl font-bold text-gray-800">Assign Duty</h1>
-        <p className="text-gray-500 text-sm mt-1">
-          Pick an event and the members handling it. Each member’s duty title and type are set
-          automatically from their creative role.
+        <h1 className="page-title">Assign Duty</h1>
+        <p className="page-subtitle">
+          Duty title and type are set automatically from each member’s creative role.
         </p>
       </div>
 
-      <div className="space-y-6">
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
 
         {/* Event Selection */}
-        <div className="bg-white rounded-xl shadow-sm p-4 sm:p-6 space-y-4">
-          <h2 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">Event</h2>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Select Event <span className="text-red-500">*</span>
-            </label>
-            <select
-              value={eventId}
-              onChange={e => setEventId(e.target.value)}
-              className="w-full border border-gray-300 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-400"
-            >
-              <option value="">Choose an event...</option>
-              {events.map(ev => (
-                <option key={ev.id} value={ev.id}>
-                  {ev.title} — {new Date(ev.event_date).toLocaleDateString('en-PH', {
-                    month: 'short', day: 'numeric', year: 'numeric'
-                  })}
-                </option>
-              ))}
-            </select>
-          </div>
+        <div className="dash-card">
+          <p className="section-label" style={{ marginBottom: 12 }}>Event</p>
+          <label className="obra-label">
+            Select Event <span style={{ color: '#CC0000' }}>*</span>
+          </label>
+          <select
+            value={eventId}
+            onChange={e => setEventId(e.target.value)}
+            className="obra-input"
+          >
+            <option value="">Choose an event...</option>
+            {events.map(ev => (
+              <option key={ev.id} value={ev.id}>
+                {ev.title} — {new Date(ev.event_date).toLocaleDateString('en-PH', {
+                  month: 'short', day: 'numeric', year: 'numeric'
+                })}
+              </option>
+            ))}
+          </select>
         </div>
 
         {/* Member Selection */}
-        <div className="bg-white rounded-xl shadow-sm p-4 sm:p-6 space-y-4">
-          <div>
-            <h2 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">Assign To</h2>
-            <p className="text-gray-400 text-xs mt-1">
-              {eventId
-                ? 'Select the members who will handle this duty. Members already assigned for this event are disabled.'
-                : 'Select an event first, then choose the members who will handle this duty.'}
-            </p>
-          </div>
-
-          {members.length === 0 ? (
-            <p className="text-gray-400 text-sm">No active members found.</p>
-          ) : (
-            <div className="space-y-4">
-
-              {/* Creative Heads group */}
-              {creativeHeads.length > 0 && (
-                <div>
-                  <p className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-2">
-                    Creative Heads
-                  </p>
-                  <div className="space-y-2">
-                    {creativeHeads.map(member => (
-                      <MemberCard
-                        key={member.id}
-                        member={member}
-                        selected={assignedTo.includes(member.id)}
-                        disabled={alreadyAssigned.has(member.id)}
-                        onSelect={() => toggleMember(member.id)}
-                      />
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Members group */}
-              {regularMembers.length > 0 && (
-                <div>
-                  <p className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-2">
-                    Members
-                  </p>
-                  <div className="space-y-2">
-                    {regularMembers.map(member => (
-                      <MemberCard
-                        key={member.id}
-                        member={member}
-                        selected={assignedTo.includes(member.id)}
-                        disabled={alreadyAssigned.has(member.id)}
-                        onSelect={() => toggleMember(member.id)}
-                      />
-                    ))}
-                  </div>
-                </div>
-              )}
-
-            </div>
-          )}
+        <div className="dash-card">
+          <p className="section-label" style={{ marginBottom: 4 }}>Assign To</p>
+          <p style={{ fontSize: '12.5px', color: '#6b7280', margin: '0 0 14px' }}>
+            {eventId
+              ? 'Members already assigned for this event are disabled.'
+              : 'Select an event first.'}
+          </p>
+          <MemberMultiSelect
+            members={members}
+            selectedIds={assignedTo}
+            disabledIds={alreadyAssigned}
+            onToggle={toggleMember}
+          />
         </div>
 
         {/* Duty Details */}
-        <div className="bg-white rounded-xl shadow-sm p-4 sm:p-6 space-y-4">
-          <h2 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">Duty Details</h2>
+        <div className="dash-card" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <p className="section-label">Duty Details</p>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+            <label className="obra-label">Description</label>
             <textarea
               value={description}
               onChange={e => setDescription(e.target.value)}
               placeholder="Additional instructions or context..."
               rows={3}
-              className="w-full border border-gray-300 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-400 resize-none"
+              className="obra-input"
+              style={{ resize: 'none' }}
             />
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Priority</label>
-              <select
-                value={priority}
-                onChange={e => setPriority(e.target.value)}
-                className="w-full border border-gray-300 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-400"
-              >
+              <label className="obra-label">Priority</label>
+              <select value={priority} onChange={e => setPriority(e.target.value)} className="obra-input">
                 <option value="low">Low</option>
                 <option value="normal">Normal</option>
                 <option value="high">High</option>
@@ -253,126 +202,26 @@ export default function NewDutyPage() {
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Due Date</label>
-              <input
-                type="date"
-                value={dueDate}
-                onChange={e => setDueDate(e.target.value)}
-                className="w-full border border-gray-300 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-400"
-              />
+              <label className="obra-label">Due Date</label>
+              <input type="date" value={dueDate} onChange={e => setDueDate(e.target.value)} className="obra-input" />
             </div>
           </div>
         </div>
 
         {error && (
-          <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-3">
-            <p className="text-red-600 text-sm">{error}</p>
+          <div style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 8, padding: '10px 14px' }}>
+            <p style={{ color: '#dc2626', fontSize: '13px', margin: 0 }}>{error}</p>
           </div>
         )}
 
-        <div className="flex gap-3">
-          <button
-            onClick={handleSubmit}
-            disabled={loading}
-            className="bg-gray-900 text-white px-6 py-2 rounded-lg text-sm hover:bg-gray-700 transition disabled:opacity-50"
-          >
+        <div style={{ display: 'flex', gap: 10 }}>
+          <button onClick={handleSubmit} disabled={loading} className="btn-primary">
             {loading ? 'Assigning...' : 'Assign Duty'}
           </button>
-          <Link href="/dashboard/duties" className="px-6 py-2 rounded-lg text-sm border border-gray-300 text-gray-600 hover:bg-gray-50 transition">
+          <Link href={HUB_DUTIES} className="btn-secondary">
             Cancel
           </Link>
         </div>
-      </div>
-    </div>
-  )
-}
-
-// ── Member card component ──
-function MemberCard({
-  member,
-  selected,
-  disabled = false,
-  onSelect,
-}: {
-  member: MemberWithSkills
-  selected: boolean
-  disabled?: boolean
-  onSelect: () => void
-}) {
-  const skills = member.profile_skills?.map(ps => ps.member_skills?.name).filter(Boolean) ?? []
-
-  const roleLabels: Record<string, string> = {
-    creative_head: 'Creative Head',
-    member: 'Member',
-  }
-
-  const creativeRoleLabels: Record<string, string> = {
-    creative_producer: 'Creative Producer',
-    creative_writer: 'Creative Writer',
-    creative_director: 'Creative Director',
-    none: '',
-  }
-
-  const displayRole = member.system_role === 'creative_head' && member.creative_head_role !== 'none'
-    ? creativeRoleLabels[member.creative_head_role ?? 'none']
-    : roleLabels[member.system_role]
-
-  return (
-    <div
-      onClick={disabled ? undefined : onSelect}
-      className={`flex items-center gap-4 p-4 rounded-xl border-2 transition ${
-        disabled
-          ? 'border-gray-100 bg-gray-50 opacity-60 cursor-not-allowed'
-          : selected
-            ? 'border-gray-900 bg-gray-50 cursor-pointer'
-            : 'border-gray-100 hover:border-gray-300 bg-white cursor-pointer'
-      }`}
-    >
-      {/* Checkbox circle */}
-      <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 transition ${
-        selected ? 'border-gray-900 bg-gray-900' : 'border-gray-300'
-      }`}>
-        {selected && (
-          <svg width="8" height="7" viewBox="0 0 8 7" fill="none">
-            <path d="M1 3.5L3 5.5L7 1" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-          </svg>
-        )}
-      </div>
-
-      {/* Avatar initial */}
-      <div className={`w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold shrink-0 ${
-        selected ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-600'
-      }`}>
-        {member.full_name.charAt(0).toUpperCase()}
-      </div>
-
-      {/* Info */}
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2">
-          <p className={`text-sm font-medium truncate ${selected ? 'text-gray-900' : 'text-gray-800'}`}>
-            {member.full_name}
-          </p>
-          {disabled && (
-            <span className="bg-gray-200 text-gray-500 text-[10px] font-medium px-2 py-0.5 rounded-full shrink-0 uppercase tracking-wide">
-              Already assigned
-            </span>
-          )}
-        </div>
-        <p className="text-xs text-gray-400 mt-0.5">{displayRole}</p>
-
-        {/* Skill badges */}
-        {skills.length > 0 && (
-          <div className="flex flex-wrap gap-1 mt-2">
-            {skills.map(skill => (
-              <span
-                key={skill}
-                className="bg-gray-100 text-gray-500 text-xs px-2 py-0.5 rounded-full"
-              >
-                {skill}
-              </span>
-            ))}
-          </div>
-        )}
       </div>
     </div>
   )

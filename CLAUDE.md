@@ -503,20 +503,27 @@ obra-management/
 │       │       ├── page.tsx
 │       │       ├── ToggleActiveButton.tsx
 │       │       └── ArchiveMemberButton.tsx ← Archive/unarchive (consultant only)
-│       ├── events/
-│       │   ├── page.tsx
+│       ├── events/                        ← "DUTIES & EVENTS" hub (admins)
+│       │   ├── page.tsx                  ← Tab dispatcher: Events | All Duties (+?duty= slide-over)
+│       │   ├── EventsList.tsx            ← Events tab body (Happening/Upcoming/Completed)
+│       │   ├── EventsCalendar.tsx        ← ?view=calendar month grid
 │       │   ├── new/page.tsx
 │       │   └── [id]/
-│       │       ├── page.tsx
+│       │       ├── page.tsx              ← Detail + duty rows + ?duty= slide-over
+│       │       ├── AssignDutiesPanel.tsx ← Inline assign (lazy load → /api/duties/create)
 │       │       ├── EventStatusManager.tsx
-│       │       └── DeleteEventButton.tsx
-│       ├── duties/
-│       │   ├── page.tsx
-│       │   ├── new/page.tsx
+│       │       ├── DeleteEventButton.tsx
+│       │       └── edit/                 ← page.tsx + EditEventForm.tsx
+│       ├── duties/                        ← MEMBER-ONLY list (admins → hub redirect)
+│       │   ├── page.tsx                  ← "My Duties" (heads redirect to hub ?tab=duties)
+│       │   ├── DutiesBoard.tsx           ← Shared board + fetchDutiesBoardData (hub + members)
+│       │   ├── DutyRowActions.tsx        ← Start/Done quick actions + View/Remove
+│       │   ├── new/page.tsx              ← Standalone assign (event-agnostic; exits → hub)
 │       │   └── [id]/
-│       │       ├── page.tsx
+│       │       ├── page.tsx              ← Standalone detail (push deep-link target)
+│       │       ├── DutyDetailBody.tsx    ← Shared body + fetchDutyDetail (page + slide-over)
 │       │       ├── DutyActions.tsx
-│       │       └── ChecklistPanel.tsx
+│       │       └── DutyDetailsForm.tsx
 │       ├── workloads/
 │       │   ├── page.tsx
 │       │   ├── WorkLoadMatrix.tsx        ← Orchestrator (hooks + views below)
@@ -557,7 +564,9 @@ obra-management/
 │           ├── ActivityFilters.tsx       ← Module/action/actor selects (client)
 │           └── loading.tsx
 ├── components/
-│   ├── Sidebar.tsx                       ← Nav + mobile drawer (roles-aware)
+│   ├── Sidebar.tsx                       ← Grouped nav (Operate/People/Comms/Admin) + mobile drawer
+│   ├── MemberMultiSelect.tsx             ← Shared member picker (assign form + inline panel)
+│   ├── SlideOver.tsx                     ← URL-param right panel (?duty= duty detail)
 │   ├── PageWrapper.tsx
 │   ├── WorkLoadBadge.tsx
 │   ├── EmptyState.tsx                    ← Shared humanized empty state
@@ -772,6 +781,30 @@ Do not use URLSearchParams — it causes TypeScript JSX prop conflicts.
   (/api/notifications), five categories with per-user prefs, profile
   NotificationsCard + dashboard banner (requires db/2026-push-subscriptions.sql
   + VAPID env vars on Vercel)
+- Phase 24: Duties & Events hub (July 2026, pre-annual-meeting overhaul) —
+  /dashboard/events is now the ADMIN HUB "Duties & Events" with tabs
+  Events | All Duties (?tab=duties; events history pagination stays ?page=,
+  duties history uses ?dpage= — deliberately distinct). /dashboard/duties is
+  MEMBER-ONLY ("My Duties"); heads are redirected to the hub tab (single
+  choke point that also fixes all legacy admin links + push targets).
+  DutiesBoard.tsx + fetchDutiesBoardData are shared by both surfaces.
+  Assigning: inline AssignDutiesPanel on event detail (lazy member load,
+  POST /api/duties/create) + the standalone /dashboard/duties/new (event-
+  agnostic; exits target the hub). components/MemberMultiSelect.tsx is the
+  shared picker. Duty detail: ?duty=<id> opens a SlideOver (components/
+  SlideOver.tsx) on the hub + event detail for admins; /dashboard/duties/[id]
+  REMAINS a full page (push deep-link target; members' normal view) via the
+  shared DutyDetailBody.tsx + fetchDutyDetail. Sidebar: grouped sections
+  (Operate/People/Comms/Admin, DM Mono headers; members render flat) with
+  match[] prefixes so duty deep links highlight the hub item. BottomNav
+  admin tabs: Home · Duties·Events · Workloads · More. Tour: duties-manage
+  step docks on the hub header (route must stay pathname-only). Also in this
+  pass: token-dialect restyles (events detail/new, duty detail stack,
+  academic-years + activity tables, EventsList), readability floor (informational
+  text ≥12px, #bbb → #6b7280, pills 12px), copy diet, requireProfile +
+  Promise.all on 7 more detail pages, report tables scroll on mobile
+  (.report-table-scroll, print resets it), time-aware hydration-safe
+  DashboardGreeting (DM Sans 700).
 - Phase 23: Dashboard identity + matrix pan (July 2026) — editorial Masthead
   (DM Mono kicker w/ red tick + Bebas Neue greeting + ghosted filmstrip band,
   opacity 0.05 w/ rightward fade mask); stat cards: Bebas numerals (34px),

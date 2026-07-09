@@ -1,35 +1,32 @@
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
-import type { AcademicYear, Profile } from '@/types/database'
+import type { AcademicYear } from '@/types/database'
+import { requireProfile } from '@/lib/auth'
 import EmptyState from '@/components/EmptyState'
+import { Pill } from '@/components/ui/StatusBadge'
 import { CalendarRange } from 'lucide-react'
 
 export default async function AcademicYearsPage() {
-  const supabase = await createClient()
-
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) redirect('/login')
-
-  // Get profile to check role
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('*')
-    .eq('id', user.id)
-    .single() as { data: Profile | null }
+  const { profile } = await requireProfile()
 
   // Only consultants can access this page
-  if (!profile || profile.system_role !== 'consultant') {
+  if (profile.system_role !== 'consultant') {
     redirect('/dashboard')
   }
+
+  const supabase = await createClient()
 
   // Fetch all academic years, newest first
   const { data: academicYears } = await supabase
     .from('academic_years')
     .select('*')
     .order('is_active', { ascending: false })   // active year always first
-    .order('start_date', { ascending: false }) 
+    .order('start_date', { ascending: false })
     .order('created_at', { ascending: false }) as { data: AcademicYear[] | null }
+
+  const dateRange = (ay: AcademicYear, style: 'short' | 'long') =>
+    `${new Date(ay.start_date).toLocaleDateString('en-PH', { year: 'numeric', month: style, day: 'numeric' })}`
 
   return (
     <div className="page-enter">
@@ -38,7 +35,7 @@ export default async function AcademicYearsPage() {
         <div>
           <h1 className="page-title">Academic Years</h1>
           <p className="page-subtitle">
-            Each year keeps its own roster, events, and duties. The active year is what new records attach to.
+            Each year keeps its own roster, events, and duties.
           </p>
         </div>
         <Link href="/dashboard/academic-years/new" className="btn-primary">
@@ -50,86 +47,74 @@ export default async function AcademicYearsPage() {
       {!academicYears || academicYears.length === 0 ? (
         <EmptyState
           icon={CalendarRange}
-          title="No academic years set up yet"
-          description="Create your first academic year — for example “A.Y. 2026–2027” — then set it active so members, events, and duties have a year to attach to."
+          title="No academic years yet"
+          description="Create one — e.g. “A.Y. 2026–2027” — then set it active."
           action={{ label: '+ Add your first academic year', href: '/dashboard/academic-years/new' }}
         />
       ) : (
         <>
           {/* Mobile: stacked cards */}
-          <div className="md:hidden bg-white rounded-xl border border-black/[0.06] overflow-hidden">
-            {academicYears.map((ay) => (
+          <div
+            className="md:hidden"
+            style={{ background: '#fff', border: '1px solid rgba(0,0,0,0.06)', borderRadius: 10, overflow: 'hidden' }}
+          >
+            {academicYears.map((ay, i) => (
               <Link
                 key={ay.id}
                 href={`/dashboard/academic-years/${ay.id}`}
-                className="block px-4 py-3.5 border-b border-gray-50 last:border-0 hover:bg-gray-50 transition"
+                className="block hover:bg-gray-50/60 transition-colors"
+                style={{ padding: '13px 16px', borderTop: i > 0 ? '1px solid rgba(0,0,0,0.04)' : 'none', textDecoration: 'none' }}
               >
                 <div className="flex items-start justify-between gap-2">
-                  <p className="font-medium text-gray-800 text-sm">{ay.label}</p>
-                  {ay.is_active ? (
-                    <span className="bg-green-100 text-green-700 text-xs font-medium px-3 py-1 rounded-full shrink-0">
-                      Active
-                    </span>
-                  ) : (
-                    <span className="bg-gray-100 text-gray-500 text-xs font-medium px-3 py-1 rounded-full shrink-0">
-                      Inactive
-                    </span>
-                  )}
+                  <p style={{ fontSize: '13.5px', fontWeight: 500, color: '#111', margin: 0 }}>{ay.label}</p>
+                  <Pill label={ay.is_active ? 'Active' : 'Inactive'} bg={ay.is_active ? '#f0fdf4' : '#f3f4f6'} color={ay.is_active ? '#16a34a' : '#6b7280'} />
                 </div>
-                <p className="text-xs text-gray-500 mt-1.5">
-                  {new Date(ay.start_date).toLocaleDateString('en-PH', {
-                    year: 'numeric', month: 'short', day: 'numeric'
-                  })}
+                <p style={{ fontSize: '12px', color: '#6b7280', margin: '5px 0 0' }}>
+                  {new Date(ay.start_date).toLocaleDateString('en-PH', { year: 'numeric', month: 'short', day: 'numeric' })}
                   {' – '}
-                  {new Date(ay.end_date).toLocaleDateString('en-PH', {
-                    year: 'numeric', month: 'short', day: 'numeric'
-                  })}
+                  {new Date(ay.end_date).toLocaleDateString('en-PH', { year: 'numeric', month: 'short', day: 'numeric' })}
                 </p>
               </Link>
             ))}
           </div>
 
           {/* Desktop: Table */}
-          <div className="hidden md:block bg-white rounded-xl border border-black/[0.06] overflow-hidden">
-            <table className="w-full text-sm">
+          <div
+            className="hidden md:block"
+            style={{ background: '#fff', border: '1px solid rgba(0,0,0,0.06)', borderRadius: 10, overflow: 'hidden' }}
+          >
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13.5px' }}>
               <thead>
-                <tr className="border-b border-gray-100">
-                  <th className="text-left px-6 py-4 text-gray-500 font-medium">Label</th>
-                  <th className="text-left px-6 py-4 text-gray-500 font-medium">Start Date</th>
-                  <th className="text-left px-6 py-4 text-gray-500 font-medium">End Date</th>
-                  <th className="text-left px-6 py-4 text-gray-500 font-medium">Status</th>
-                  <th className="text-left px-6 py-4 text-gray-500 font-medium">Actions</th>
+                <tr style={{ borderBottom: '1px solid rgba(0,0,0,0.06)' }}>
+                  {['Label', 'Start Date', 'End Date', 'Status', 'Actions'].map(col => (
+                    <th key={col} style={{ textAlign: 'left', padding: '11px 20px', fontSize: '12px', fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', color: '#6b7280' }}>
+                      {col}
+                    </th>
+                  ))}
                 </tr>
               </thead>
               <tbody>
-                {academicYears.map((ay) => (
-                  <tr key={ay.id} className="border-b border-gray-50 hover:bg-gray-50 transition">
-                    <td className="px-6 py-4 font-medium text-gray-800">{ay.label}</td>
-                    <td className="px-6 py-4 text-gray-600">
-                      {new Date(ay.start_date).toLocaleDateString('en-PH', {
-                        year: 'numeric', month: 'long', day: 'numeric'
-                      })}
+                {academicYears.map((ay, i) => (
+                  <tr
+                    key={ay.id}
+                    className="hover:bg-gray-50/60 transition-colors"
+                    style={{ borderTop: i > 0 ? '1px solid rgba(0,0,0,0.04)' : 'none' }}
+                  >
+                    <td style={{ padding: '13px 20px', fontWeight: 500, color: '#111' }}>{ay.label}</td>
+                    <td style={{ padding: '13px 20px', color: '#555', fontSize: '13px' }}>
+                      {new Date(ay.start_date).toLocaleDateString('en-PH', { year: 'numeric', month: 'long', day: 'numeric' })}
                     </td>
-                    <td className="px-6 py-4 text-gray-600">
-                      {new Date(ay.end_date).toLocaleDateString('en-PH', {
-                        year: 'numeric', month: 'long', day: 'numeric'
-                      })}
+                    <td style={{ padding: '13px 20px', color: '#555', fontSize: '13px' }}>
+                      {new Date(ay.end_date).toLocaleDateString('en-PH', { year: 'numeric', month: 'long', day: 'numeric' })}
                     </td>
-                    <td className="px-6 py-4">
-                      {ay.is_active ? (
-                        <span className="bg-green-100 text-green-700 text-xs font-medium px-3 py-1 rounded-full">
-                          Active
-                        </span>
-                      ) : (
-                        <span className="bg-gray-100 text-gray-500 text-xs font-medium px-3 py-1 rounded-full">
-                          Inactive
-                        </span>
-                      )}
+                    <td style={{ padding: '13px 20px' }}>
+                      <Pill label={ay.is_active ? 'Active' : 'Inactive'} bg={ay.is_active ? '#f0fdf4' : '#f3f4f6'} color={ay.is_active ? '#16a34a' : '#6b7280'} />
                     </td>
-                    <td className="px-6 py-4">
+                    <td style={{ padding: '13px 20px' }}>
                       <Link
                         href={`/dashboard/academic-years/${ay.id}`}
-                        className="text-gray-600 hover:text-gray-900 underline text-xs"
+                        style={{ fontSize: '12px', color: '#6b7280', textDecoration: 'none' }}
+                        className="hover:text-gray-700 transition-colors"
                       >
                         Manage
                       </Link>

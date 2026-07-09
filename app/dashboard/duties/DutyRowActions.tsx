@@ -17,12 +17,15 @@ export default function DutyRowActions({
   isAssignee = false,
   status = '',
   isReviewed = false,
+  viewHref,
 }: {
   dutyId: string
   canManage: boolean
   isAssignee?: boolean
   status?: string
   isReviewed?: boolean
+  /** Override the View link target (hub rows point at ?duty= slide-over URLs). */
+  viewHref?: string
 }) {
   const router = useRouter()
   const supabase = createClient()
@@ -98,7 +101,7 @@ export default function DutyRowActions({
     <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
       {quickAction}
       <Link
-        href={`/dashboard/duties/${dutyId}`}
+        href={viewHref ?? `/dashboard/duties/${dutyId}`}
         style={{ fontSize: '12px', color: '#6b7280', textDecoration: 'none' }}
         className="hover:text-gray-700 transition-colors"
       >

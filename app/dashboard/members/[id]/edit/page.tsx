@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
-import type { Profile } from '@/types/database'
+import { requireProfile } from '@/lib/auth'
 import EditMemberForm from './EditMemberForm'
 
 export default async function EditMemberPage({
@@ -11,13 +11,9 @@ export default async function EditMemberPage({
   const { id } = await params
   const supabase = await createClient()
 
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) redirect('/login')
-
   // Only consultants may edit members.
-  const { data: viewer } = await supabase
-    .from('profiles').select('system_role').eq('id', user.id).single() as { data: Profile | null }
-  if (!viewer || viewer.system_role !== 'consultant') redirect('/dashboard')
+  const { profile: viewer } = await requireProfile()
+  if (viewer.system_role !== 'consultant') redirect('/dashboard')
 
   const { data: member } = await supabase
     .from('profiles')
