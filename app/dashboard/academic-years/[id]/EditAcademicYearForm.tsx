@@ -60,9 +60,9 @@ export default function EditAcademicYearForm({ academicYear }: { academicYear: A
   }
 
   return (
-    <div className="mt-6 bg-white rounded-xl shadow-sm p-4 sm:p-6">
-      <div className="flex items-center justify-between mb-1">
-        <h2 className="text-sm font-medium text-gray-700">Edit Details</h2>
+    <div className="dash-card">
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+        <p className="section-label">Edit Details</p>
         <button
           onClick={() => {
             setIsOpen(!isOpen)
@@ -75,65 +75,50 @@ export default function EditAcademicYearForm({ academicYear }: { academicYear: A
               setEndDate(academicYear.end_date)
             }
           }}
-          className="text-xs text-gray-400 hover:text-gray-600 underline transition"
+          className="btn-secondary"
+          style={{ fontSize: '12px', padding: '4px 12px' }}
         >
           {isOpen ? 'Cancel' : 'Edit'}
         </button>
       </div>
-      <p className="text-gray-400 text-xs mb-4">
+      <p style={{ fontSize: '12.5px', color: '#6b7280', margin: '0 0 14px' }}>
         Correct the label or dates if they were entered incorrectly.
       </p>
 
-      {!isOpen ? (
-        <p className="text-xs text-gray-400 italic">Click "Edit" to modify this academic year.</p>
-      ) : (
-        <div className="space-y-4">
+      {isOpen && (
+        <div className="panel-reveal" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Label <span className="text-red-500">*</span>
+            <label className="obra-label">
+              Label <span style={{ color: '#CC0000' }}>*</span>
             </label>
             <input
               type="text"
               value={label}
               onChange={(e) => setLabel(e.target.value)}
               placeholder="A.Y. 2026-2027"
-              className="w-full border border-gray-300 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-400"
+              className="obra-input"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Start Date <span className="text-red-500">*</span>
+            <label className="obra-label">
+              Start Date <span style={{ color: '#CC0000' }}>*</span>
             </label>
-            <input
-              type="date"
-              value={startDate}
-              onChange={(e) => setStartDate(e.target.value)}
-              className="w-full border border-gray-300 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-400"
-            />
+            <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="obra-input" />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              End Date <span className="text-red-500">*</span>
+            <label className="obra-label">
+              End Date <span style={{ color: '#CC0000' }}>*</span>
             </label>
-            <input
-              type="date"
-              value={endDate}
-              onChange={(e) => setEndDate(e.target.value)}
-              className="w-full border border-gray-300 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-400"
-            />
+            <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="obra-input" />
           </div>
 
-          {error && <p className="text-red-500 text-sm">{error}</p>}
-          {success && <p className="text-green-600 text-sm">✓ Academic year updated successfully.</p>}
+          {error && <p style={{ color: '#dc2626', fontSize: '13px', margin: 0 }}>{error}</p>}
+          {success && <p style={{ color: '#16a34a', fontSize: '13px', margin: 0 }}>✓ Academic year updated successfully.</p>}
 
-          <div className="flex gap-3 pt-1">
-            <button
-              onClick={handleUpdate}
-              disabled={loading}
-              className="bg-gray-900 text-white px-6 py-2 rounded-lg text-sm hover:bg-gray-700 transition disabled:opacity-50"
-            >
+          <div style={{ display: 'flex', gap: 10, paddingTop: 2 }}>
+            <button onClick={handleUpdate} disabled={loading} className="btn-primary">
               {loading ? 'Saving...' : 'Save Changes'}
             </button>
             <button
@@ -145,7 +130,7 @@ export default function EditAcademicYearForm({ academicYear }: { academicYear: A
                 setError('')
                 setSuccess(false)
               }}
-              className="px-6 py-2 rounded-lg text-sm border border-gray-300 text-gray-600 hover:bg-gray-50 transition"
+              className="btn-secondary"
             >
               Cancel
             </button>

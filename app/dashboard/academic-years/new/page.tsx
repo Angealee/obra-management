@@ -59,79 +59,56 @@ export default function NewAcademicYearPage() {
   }
 
   return (
-    <div className="max-w-lg">
+    <div style={{ maxWidth: 560 }}>
       {/* Header */}
-      <div className="mb-8">
+      <div style={{ marginBottom: 24 }}>
         <Link
           href="/dashboard/academic-years"
-          className="text-gray-400 hover:text-gray-600 text-sm mb-2 inline-block"
+          style={{ fontSize: '13px', color: '#6b7280', textDecoration: 'none', display: 'inline-block', marginBottom: 8 }}
         >
           ← Back to Academic Years
         </Link>
-        <h1 className="text-2xl font-bold text-gray-800">Add Academic Year</h1>
-        <p className="text-gray-500 text-sm mt-1">
-          Create a new academic year. You can activate it after creation.
-        </p>
+        <h1 className="page-title">Add Academic Year</h1>
+        <p className="page-subtitle">Create a new academic year. You can activate it after creation.</p>
       </div>
 
       {/* Form */}
-      <div className="bg-white rounded-xl shadow-sm p-4 sm:p-6 space-y-5">
+      <div className="dash-card" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Label <span className="text-red-500">*</span>
+          <label className="obra-label">
+            Label <span style={{ color: '#CC0000' }}>*</span>
           </label>
           <input
             type="text"
             value={label}
             onChange={(e) => setLabel(e.target.value)}
             placeholder="A.Y. 2026-2027"
-            className="w-full border border-gray-300 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-400"
+            className="obra-input"
           />
-          <p className="text-gray-400 text-xs mt-1">
-            Use the format: A.Y. 2026-2027
-          </p>
+          <p style={{ fontSize: '12px', color: '#6b7280', margin: '6px 0 0' }}>Use the format: A.Y. 2026-2027</p>
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Start Date <span className="text-red-500">*</span>
+          <label className="obra-label">
+            Start Date <span style={{ color: '#CC0000' }}>*</span>
           </label>
-          <input
-            type="date"
-            value={startDate}
-            onChange={(e) => setStartDate(e.target.value)}
-            className="w-full border border-gray-300 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-400"
-          />
+          <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="obra-input" />
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            End Date <span className="text-red-500">*</span>
+          <label className="obra-label">
+            End Date <span style={{ color: '#CC0000' }}>*</span>
           </label>
-          <input
-            type="date"
-            value={endDate}
-            onChange={(e) => setEndDate(e.target.value)}
-            className="w-full border border-gray-300 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-400"
-          />
+          <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="obra-input" />
         </div>
 
-        {error && (
-          <p className="text-red-500 text-sm">{error}</p>
-        )}
+        {error && <p style={{ color: '#dc2626', fontSize: '13px', margin: 0 }}>{error}</p>}
 
-        <div className="flex gap-3 pt-2">
-          <button
-            onClick={handleSubmit}
-            disabled={loading}
-            className="bg-gray-900 text-white px-6 py-2 rounded-lg text-sm hover:bg-gray-700 transition disabled:opacity-50"
-          >
+        <div style={{ display: 'flex', gap: 10, paddingTop: 2 }}>
+          <button onClick={handleSubmit} disabled={loading} className="btn-primary">
             {loading ? 'Saving...' : 'Save Academic Year'}
           </button>
-          <Link
-            href="/dashboard/academic-years"
-            className="px-6 py-2 rounded-lg text-sm border border-gray-300 text-gray-600 hover:bg-gray-50 transition"
-          >
+          <Link href="/dashboard/academic-years" className="btn-secondary">
             Cancel
           </Link>
         </div>
