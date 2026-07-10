@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import type { ObraEvent } from '@/types/database'
 import MemberMultiSelect, { type MemberWithSkills } from '@/components/MemberMultiSelect'
+import BackLink from '@/components/BackLink'
 
 // Standalone event-agnostic Assign Duty form (dashboard quick action + hub
 // header). Assigning for a specific event is also available inline on the
@@ -124,11 +125,9 @@ export default function NewDutyPage() {
   }
 
   return (
-    <div style={{ maxWidth: 640 }}>
+    <div className="page-narrow" style={{ maxWidth: 640 }}>
       <div style={{ marginBottom: 24 }}>
-        <Link href={HUB_DUTIES} style={{ fontSize: '13px', color: '#6b7280', textDecoration: 'none', display: 'inline-block', marginBottom: 8 }}>
-          ← Back to Duties &amp; Events
-        </Link>
+        <BackLink href={HUB_DUTIES}>Back to Duties &amp; Events</BackLink>
         <h1 className="page-title">Assign Duty</h1>
         <p className="page-subtitle">
           Duty title and type are set automatically from each member’s creative role.

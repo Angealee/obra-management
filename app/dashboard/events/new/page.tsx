@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import type { AcademicYear } from '@/types/database'
+import BackLink from '@/components/BackLink'
 
 export default function NewEventPage() {
   const router = useRouter()
@@ -74,11 +75,9 @@ export default function NewEventPage() {
   }
 
   return (
-    <div style={{ maxWidth: 640 }}>
+    <div className="page-narrow" style={{ maxWidth: 640 }}>
       <div style={{ marginBottom: 24 }}>
-        <Link href="/dashboard/events" style={{ fontSize: '13px', color: '#6b7280', textDecoration: 'none', display: 'inline-block', marginBottom: 8 }}>
-          ← Back to Duties &amp; Events
-        </Link>
+        <BackLink href="/dashboard/events">Back to Duties &amp; Events</BackLink>
         <h1 className="page-title">Add Event</h1>
         <p className="page-subtitle">Create a new event for Obra to cover.</p>
       </div>

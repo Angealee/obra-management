@@ -1,10 +1,10 @@
 import { redirect } from 'next/navigation'
-import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { requireProfile } from '@/lib/auth'
 import SetActiveButton from './SetActiveButton'
 import type { AcademicYear } from '@/types/database'
 import { Pill } from '@/components/ui/StatusBadge'
+import BackLink from '@/components/BackLink'
 import DeleteAcademicYearButton from './DeleteAcademicYearButton'
 import EditAcademicYearForm from './EditAcademicYearForm'
 
@@ -37,14 +37,9 @@ export default async function AcademicYearDetailPage({
   ]
 
   return (
-    <div style={{ maxWidth: 560 }}>
+    <div className="page-narrow" style={{ maxWidth: 560 }}>
       <div style={{ marginBottom: 24 }}>
-        <Link
-          href="/dashboard/academic-years"
-          style={{ fontSize: '13px', color: '#6b7280', textDecoration: 'none', display: 'inline-block', marginBottom: 8 }}
-        >
-          ← Back to Academic Years
-        </Link>
+        <BackLink href="/dashboard/academic-years">Back to Academic Years</BackLink>
         <h1 className="page-title">{academicYear.label}</h1>
         <p className="page-subtitle">Academic year details</p>
       </div>

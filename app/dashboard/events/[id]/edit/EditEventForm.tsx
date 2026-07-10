@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
+import BackLink from '@/components/BackLink'
 
 export default function EditEventForm({ event }: { event: any }) {
   const router = useRouter()
@@ -58,11 +59,9 @@ export default function EditEventForm({ event }: { event: any }) {
   }
 
   return (
-    <div style={{ maxWidth: 640 }}>
+    <div className="page-narrow" style={{ maxWidth: 640 }}>
       <div style={{ marginBottom: 24 }}>
-        <Link href={`/dashboard/events/${event.id}`} style={{ fontSize: '13px', color: '#6b7280', textDecoration: 'none', display: 'inline-block', marginBottom: 8 }}>
-          ← Back to Event
-        </Link>
+        <BackLink href={`/dashboard/events/${event.id}`}>Back to Event</BackLink>
         <h1 className="page-title">Edit Event</h1>
         <p className="page-subtitle">Update the details for this event.</p>
       </div>

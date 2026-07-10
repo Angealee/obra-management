@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
+import BackLink from '@/components/BackLink'
 
 export default function NewAcademicYearPage() {
   const router = useRouter()
@@ -59,15 +60,10 @@ export default function NewAcademicYearPage() {
   }
 
   return (
-    <div style={{ maxWidth: 560 }}>
+    <div className="page-narrow" style={{ maxWidth: 560 }}>
       {/* Header */}
       <div style={{ marginBottom: 24 }}>
-        <Link
-          href="/dashboard/academic-years"
-          style={{ fontSize: '13px', color: '#6b7280', textDecoration: 'none', display: 'inline-block', marginBottom: 8 }}
-        >
-          ← Back to Academic Years
-        </Link>
+        <BackLink href="/dashboard/academic-years">Back to Academic Years</BackLink>
         <h1 className="page-title">Add Academic Year</h1>
         <p className="page-subtitle">Create a new academic year. You can activate it after creation.</p>
       </div>

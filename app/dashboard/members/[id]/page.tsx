@@ -9,6 +9,7 @@ import ArchiveMemberButton from './ArchiveMemberButton'
 import MemberYearsPanel from './MemberYearsPanel'
 import { memberRoleLabel, dutyTypeLabel } from '@/lib/memberRole'
 import { dutyDisplayStatus, DUTY_DISPLAY_LABELS, DUTY_DISPLAY_STYLE } from '@/lib/dutyStatus'
+import BackLink from '@/components/BackLink'
 
 export default async function MemberDetailPage({
   params,
@@ -121,13 +122,9 @@ export default async function MemberDetailPage({
   const initials = member.full_name.split(' ').map((n: string) => n[0]).slice(0, 2).join('').toUpperCase()
 
   return (
-    <div style={{ maxWidth: '780px' }}>
+    <div className="page-narrow" style={{ maxWidth: '780px' }}>
       {/* Back */}
-      <Link href="/dashboard/members"
-        style={{ fontSize: '13px', color: '#6b7280', textDecoration: 'none', display: 'inline-block', marginBottom: '20px' }}
-        className="hover:text-gray-600 transition-colors">
-        ← Back to Members
-      </Link>
+      <BackLink href="/dashboard/members">Back to Members</BackLink>
 
       {/* Header card */}
       <div className="p-4 sm:p-6" style={{ background: '#fff', border: '1px solid rgba(0,0,0,0.07)', borderRadius: '12px', marginBottom: '14px' }}>

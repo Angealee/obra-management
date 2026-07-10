@@ -148,8 +148,8 @@ export function MemberDesktopRow({ member }: { member: Member }) {
             </p>
             <p style={{
               fontFamily: 'DM Mono, monospace',
-              fontSize: 11,
-              color: '#bbb',
+              fontSize: 12,
+              color: '#6b7280',
               margin: 0,
             }}>
               {member.student_number ?? '—'}

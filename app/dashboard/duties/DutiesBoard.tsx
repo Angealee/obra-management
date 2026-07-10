@@ -14,6 +14,9 @@ import DutyRowActions from './DutyRowActions'
 // admin "All Duties" tab of the Duties & Events hub (/dashboard/events?tab=duties),
 // so the two surfaces can never drift apart. Hosts fetch via
 // fetchDutiesBoardData and control link targets through pagerHrefFor/dutyHrefFor.
+//
+// Column order (admins): Assigned To → Duty → Event → Status → Priority → actions.
+// The assignee (who) is the first thing a head scans, so it leads and is bold.
 
 // Valid-format UUID that matches no row — used so "no year selected" yields an
 // empty result instead of an unscoped query.
@@ -36,9 +39,38 @@ const priorityStyle: Record<string, [string, string]> = {
   urgent: ['#fff1f2', '#CC0000'],
 }
 
+function PriorityPill({ priority }: { priority: string }) {
+  const [bg, color] = priorityStyle[priority] ?? priorityStyle.normal
+  return (
+    <span style={{ fontSize: '11.5px', fontWeight: 600, background: bg, color, padding: '3px 10px', borderRadius: 99, textTransform: 'capitalize', whiteSpace: 'nowrap' }}>
+      {priority}
+    </span>
+  )
+}
+
 function StatusCell({ display, mark }: { display: DutyDisplayStatus; mark: string | null }) {
   if (mark) return <WorkloadBadge mark={mark} />
   return <DutyStatusBadge display={display} />
+}
+
+// Initials avatar for the assignee — makes the "who" scannable at a glance.
+function Who({ name }: { name: string }) {
+  const initials = name.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase() || '—'
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
+      <div style={{
+        width: 30, height: 30, borderRadius: '50%', flexShrink: 0,
+        background: '#111', color: '#fff',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        fontSize: 11.5, fontWeight: 700,
+      }}>
+        {initials}
+      </div>
+      <span style={{ fontSize: '13.5px', fontWeight: 600, color: '#111', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+        {name}
+      </span>
+    </div>
+  )
 }
 
 // Small pill spelling out due-date pressure ("Overdue by 2 days", "Due today").
@@ -134,6 +166,19 @@ export async function fetchDutiesBoardData(
   }
 }
 
+function EventCell({ duty }: { duty: any }) {
+  return (
+    <>
+      <p style={{ color: '#333', fontSize: '13px', margin: 0 }}>{duty.events?.title ?? '—'}</p>
+      {duty.events?.event_date && (
+        <p style={{ fontSize: '11.5px', color: '#6b7280', marginTop: '2px' }}>
+          {new Date(duty.events.event_date).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' })}
+        </p>
+      )}
+    </>
+  )
+}
+
 export default function DutiesBoard({
   data,
   isHead,
@@ -178,6 +223,12 @@ export default function DutiesBoard({
     )
   }
 
+  // Header columns follow the requested order; "Assigned To" only for admins.
+  const headers = [
+    isHead ? 'Assigned To' : null,
+    'Duty', 'Event', 'Status', 'Priority', '',
+  ].filter(Boolean) as string[]
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
       {(Object.entries(groups) as [DutyDisplayStatus, any[]][]).map(([groupStatus, groupDuties]) => {
@@ -192,7 +243,7 @@ export default function DutiesBoard({
               <span style={{ color: '#ccc' }}>({sectionTotal})</span>
             </p>
 
-            {/* Mobile: stacked cards */}
+            {/* Mobile: stacked cards — assignee name leads for admins */}
             <div className="md:hidden" style={{
               background: '#fff',
               border: '1px solid rgba(0,0,0,0.06)',
@@ -202,41 +253,37 @@ export default function DutiesBoard({
             }}>
               {groupDuties.map((duty: any, i: number) => {
                 const mark = markMap[`${duty.assigned_to}_${duty.event_id}`] ?? null
-                const [pbg, ptc] = priorityStyle[duty.priority] ?? ['#f3f4f6', '#6b7280']
-
                 return (
-                  <div key={duty.id} style={{ padding: '13px 16px', borderTop: i > 0 ? '1px solid rgba(0,0,0,0.04)' : 'none' }}>
-                    <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '8px' }}>
-                      <div style={{ minWidth: 0 }}>
-                        <p style={{ fontWeight: 500, color: '#111', lineHeight: 1.3, fontSize: '13.5px' }}>{duty.title}</p>
-                        <p style={{ fontSize: '11.5px', color: '#6b7280', marginTop: '3px', display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-                          {dutyTypeLabel(duty.duty_type)}
-                          <UrgencyChip duty={duty} today={today} />
-                        </p>
-                      </div>
-                      <span style={{ fontSize: '11px', fontWeight: 600, background: pbg, color: ptc, padding: '3px 9px', borderRadius: '99px', textTransform: 'capitalize', flexShrink: 0 }}>
-                        {duty.priority}
-                      </span>
+                  <div key={duty.id} style={{ padding: '14px 16px', borderTop: i > 0 ? '1px solid rgba(0,0,0,0.04)' : 'none' }}>
+                    {/* WHO — prioritized for admins */}
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                      {isHead
+                        ? <Who name={duty.assignee?.full_name ?? '—'} />
+                        : <p style={{ fontSize: '14px', fontWeight: 600, color: '#111', margin: 0, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{duty.title}</p>}
+                      <StatusCell display={dutyDisplayStatus(duty)} mark={mark} />
                     </div>
 
-                    <p style={{ color: '#6b7280', fontSize: '12.5px', marginTop: '8px' }}>
+                    {/* Duty (secondary for admins, since the name already led) */}
+                    {isHead && (
+                      <p style={{ fontSize: '13px', fontWeight: 500, color: '#111', margin: '9px 0 0', lineHeight: 1.35 }}>{duty.title}</p>
+                    )}
+                    <p style={{ fontSize: '11.5px', color: '#6b7280', margin: '3px 0 0', display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                      {dutyTypeLabel(duty.duty_type)}
+                      <UrgencyChip duty={duty} today={today} />
+                    </p>
+
+                    <p style={{ color: '#6b7280', fontSize: '12.5px', marginTop: '7px' }}>
                       {duty.events?.title ?? '—'}
                       {duty.events?.event_date && (
-                        <span style={{ color: '#bbb' }}>
+                        <span style={{ color: '#9ca3af' }}>
                           {' · '}
                           {new Date(duty.events.event_date).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' })}
                         </span>
                       )}
                     </p>
 
-                    {isHead && (
-                      <p style={{ color: '#6b7280', fontSize: '12.5px', marginTop: '2px' }}>
-                        Assigned to <span style={{ color: '#555', fontWeight: 500 }}>{duty.assignee?.full_name ?? '—'}</span>
-                      </p>
-                    )}
-
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '10px' }}>
-                      <StatusCell display={dutyDisplayStatus(duty)} mark={mark} />
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '12px', gap: 8 }}>
+                      <PriorityPill priority={duty.priority} />
                       <DutyRowActions
                         dutyId={duty.id}
                         canManage={isHead}
@@ -251,7 +298,7 @@ export default function DutiesBoard({
               })}
             </div>
 
-            {/* Desktop: Table */}
+            {/* Desktop: Table — Assigned To · Duty · Event · Status · Priority · actions */}
             <div className="hidden md:block" style={{
               background: '#fff',
               border: '1px solid rgba(0,0,0,0.06)',
@@ -262,15 +309,8 @@ export default function DutiesBoard({
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13.5px' }}>
                 <thead>
                   <tr style={{ borderBottom: '1px solid rgba(0,0,0,0.06)' }}>
-                    {[
-                      'Duty',
-                      'Event',
-                      isHead ? 'Assigned To' : null,
-                      'Priority',
-                      'Status',
-                      '',
-                    ].filter(Boolean).map((col, i) => (
-                      <th key={i} style={{ textAlign: 'left', padding: '11px 20px', fontSize: '12px', fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', color: '#6b7280' }}>
+                    {headers.map((col, i) => (
+                      <th key={i} style={{ textAlign: i === headers.length - 1 ? 'right' : 'left', padding: '11px 20px', fontSize: '12px', fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', color: '#6b7280' }}>
                         {col}
                       </th>
                     ))}
@@ -279,17 +319,22 @@ export default function DutiesBoard({
                 <tbody>
                   {groupDuties.map((duty: any, i: number) => {
                     const mark = markMap[`${duty.assigned_to}_${duty.event_id}`] ?? null
-                    const [pbg, ptc] = priorityStyle[duty.priority] ?? ['#f3f4f6', '#6b7280']
-
                     return (
                       <tr
                         key={duty.id}
                         style={{ borderTop: i > 0 ? '1px solid rgba(0,0,0,0.04)' : 'none' }}
                         className="hover:bg-gray-50/60 transition-colors"
                       >
+                        {/* Assigned To — heads only, leads the row */}
+                        {isHead && (
+                          <td style={{ padding: '14px 20px', maxWidth: 220 }}>
+                            <Who name={duty.assignee?.full_name ?? '—'} />
+                          </td>
+                        )}
+
                         {/* Duty */}
-                        <td style={{ padding: '13px 20px', maxWidth: '260px' }}>
-                          <p style={{ fontWeight: 500, color: '#111', lineHeight: 1.3 }}>{duty.title}</p>
+                        <td style={{ padding: '14px 20px', maxWidth: '240px' }}>
+                          <p style={{ fontWeight: 500, color: '#111', lineHeight: 1.3, margin: 0 }}>{duty.title}</p>
                           <p style={{ fontSize: '11.5px', color: '#6b7280', marginTop: '3px', display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
                             {dutyTypeLabel(duty.duty_type)}
                             <UrgencyChip duty={duty} today={today} />
@@ -297,36 +342,22 @@ export default function DutiesBoard({
                         </td>
 
                         {/* Event */}
-                        <td style={{ padding: '13px 20px' }}>
-                          <p style={{ color: '#555', fontSize: '13px' }}>{duty.events?.title ?? '—'}</p>
-                          {duty.events?.event_date && (
-                            <p style={{ fontSize: '11.5px', color: '#bbb', marginTop: '2px' }}>
-                              {new Date(duty.events.event_date).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' })}
-                            </p>
-                          )}
+                        <td style={{ padding: '14px 20px' }}>
+                          <EventCell duty={duty} />
                         </td>
 
-                        {/* Assigned To — heads only */}
-                        {isHead && (
-                          <td style={{ padding: '13px 20px', color: '#555', fontSize: '13px' }}>
-                            {duty.assignee?.full_name ?? '—'}
-                          </td>
-                        )}
-
-                        {/* Priority */}
-                        <td style={{ padding: '13px 20px' }}>
-                          <span style={{ fontSize: '11px', fontWeight: 600, background: pbg, color: ptc, padding: '3px 9px', borderRadius: '99px', textTransform: 'capitalize' }}>
-                            {duty.priority}
-                          </span>
-                        </td>
-
-                        {/* Status — shows workload mark if set, otherwise duty status */}
-                        <td style={{ padding: '13px 20px' }}>
+                        {/* Status */}
+                        <td style={{ padding: '14px 20px' }}>
                           <StatusCell display={dutyDisplayStatus(duty)} mark={mark} />
                         </td>
 
+                        {/* Priority */}
+                        <td style={{ padding: '14px 20px' }}>
+                          <PriorityPill priority={duty.priority} />
+                        </td>
+
                         {/* Actions */}
-                        <td style={{ padding: '13px 20px', whiteSpace: 'nowrap' }}>
+                        <td style={{ padding: '14px 20px', whiteSpace: 'nowrap' }}>
                           <DutyRowActions
                             dutyId={duty.id}
                             canManage={isHead}
