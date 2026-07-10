@@ -53,6 +53,20 @@ function StatusCell({ display, mark }: { display: DutyDisplayStatus; mark: strin
   return <DutyStatusBadge display={display} />
 }
 
+// Left-edge triage rail: overdue reads red, then color by display status.
+// Rendered as an inset box-shadow so it never shifts the cell's layout.
+function railColor(duty: any, display: DutyDisplayStatus, today: Date): string {
+  const days = duty.due_date ? daysFromToday(duty.due_date, today) : null
+  if (display !== 'reviewed' && days !== null && days < 0) return '#CC0000' // overdue
+  switch (display) {
+    case 'in_progress':     return '#3b82f6'
+    case 'awaiting_review': return '#ca8a04'
+    case 'reviewed':        return '#16a34a'
+    default:                return '#d1d5db' // pending
+  }
+}
+const rail = (color: string) => `inset 4px 0 0 0 ${color}`
+
 // Initials avatar for the assignee — makes the "who" scannable at a glance.
 function Who({ name }: { name: string }) {
   const initials = name.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase() || '—'
@@ -238,7 +252,14 @@ export default function DutiesBoard({
         if (sectionTotal === 0) return null
         return (
           <div key={groupStatus}>
-            <p style={{ fontSize: '10.5px', fontWeight: 600, letterSpacing: '0.07em', textTransform: 'uppercase', color: '#6b7280', marginBottom: '10px' }}>
+            <p style={{
+              // Park below the sticky year bar (var set in the dashboard layout;
+              // 0 for members, who have no bar).
+              position: 'sticky', top: 'var(--obra-topbar-h, 0px)', zIndex: 5,
+              background: '#F7F7F5', padding: '6px 2px', margin: '0 0 8px',
+              fontSize: '10.5px', fontWeight: 600, letterSpacing: '0.07em',
+              textTransform: 'uppercase', color: '#6b7280',
+            }}>
               {groupTitles[groupStatus]}{' '}
               <span style={{ color: '#ccc' }}>({sectionTotal})</span>
             </p>
@@ -253,8 +274,9 @@ export default function DutiesBoard({
             }}>
               {groupDuties.map((duty: any, i: number) => {
                 const mark = markMap[`${duty.assigned_to}_${duty.event_id}`] ?? null
+                const display = dutyDisplayStatus(duty)
                 return (
-                  <div key={duty.id} style={{ padding: '14px 16px', borderTop: i > 0 ? '1px solid rgba(0,0,0,0.04)' : 'none' }}>
+                  <div key={duty.id} style={{ padding: '14px 16px 14px 18px', borderTop: i > 0 ? '1px solid rgba(0,0,0,0.04)' : 'none', boxShadow: rail(railColor(duty, display, today)) }}>
                     {/* WHO — prioritized for admins */}
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
                       {isHead
@@ -319,21 +341,23 @@ export default function DutiesBoard({
                 <tbody>
                   {groupDuties.map((duty: any, i: number) => {
                     const mark = markMap[`${duty.assigned_to}_${duty.event_id}`] ?? null
+                    const display = dutyDisplayStatus(duty)
+                    const railBox = rail(railColor(duty, display, today))
                     return (
                       <tr
                         key={duty.id}
                         style={{ borderTop: i > 0 ? '1px solid rgba(0,0,0,0.04)' : 'none' }}
                         className="hover:bg-gray-50/60 transition-colors"
                       >
-                        {/* Assigned To — heads only, leads the row */}
+                        {/* Assigned To — heads only, leads the row (carries the status rail) */}
                         {isHead && (
-                          <td style={{ padding: '14px 20px', maxWidth: 220 }}>
+                          <td style={{ padding: '14px 20px', maxWidth: 220, boxShadow: railBox }}>
                             <Who name={duty.assignee?.full_name ?? '—'} />
                           </td>
                         )}
 
                         {/* Duty */}
-                        <td style={{ padding: '14px 20px', maxWidth: '240px' }}>
+                        <td style={{ padding: '14px 20px', maxWidth: '240px', boxShadow: isHead ? undefined : railBox }}>
                           <p style={{ fontWeight: 500, color: '#111', lineHeight: 1.3, margin: 0 }}>{duty.title}</p>
                           <p style={{ fontSize: '11.5px', color: '#6b7280', marginTop: '3px', display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
                             {dutyTypeLabel(duty.duty_type)}

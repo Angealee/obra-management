@@ -3,6 +3,7 @@
 import { useMemo, useState } from 'react'
 import type { Profile } from '@/types/database'
 import { MEMBER_ROLE_OPTIONS } from '@/lib/memberRole'
+import Avatar from '@/components/ui/Avatar'
 
 // Grouped member multi-select (Creative Heads / Members) with per-member
 // disable ("Already assigned") and a role filter (photographer, graphic
@@ -75,16 +76,8 @@ function MemberCard({
         )}
       </div>
 
-      {/* Avatar initial */}
-      <div style={{
-        width: 34, height: 34, borderRadius: '50%', flexShrink: 0,
-        background: selected ? '#111' : '#F2F2F0',
-        color: selected ? '#fff' : '#555',
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        fontSize: 13, fontWeight: 700,
-      }}>
-        {member.full_name.charAt(0).toUpperCase()}
-      </div>
+      {/* Avatar — real profile photo when available, initials otherwise */}
+      <Avatar name={member.full_name} src={(member as any).avatar_url ?? null} size={34} />
 
       {/* Info */}
       <div style={{ flex: 1, minWidth: 0 }}>
@@ -169,16 +162,23 @@ export default function MemberMultiSelect({
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       {/* Role filter — assign by creative position */}
       {availableRoles.length > 0 && (
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-          <RoleChip label="All" active={roleFilter === 'all'} onClick={() => setRoleFilter('all')} />
-          {availableRoles.map(r => (
-            <RoleChip
-              key={r.value}
-              label={r.label}
-              active={roleFilter === r.value}
-              onClick={() => setRoleFilter(r.value)}
-            />
-          ))}
+        <div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+            <RoleChip label="All" active={roleFilter === 'all'} onClick={() => setRoleFilter('all')} />
+            {availableRoles.map(r => (
+              <RoleChip
+                key={r.value}
+                label={r.label}
+                active={roleFilter === r.value}
+                onClick={() => setRoleFilter(r.value)}
+              />
+            ))}
+          </div>
+          {roleFilter !== 'all' && (
+            <p style={{ fontSize: '12px', color: '#6b7280', margin: '8px 0 0' }}>
+              Showing {filtered.length} of {members.length} members
+            </p>
+          )}
         </div>
       )}
 

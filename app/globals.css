@@ -128,6 +128,29 @@ body {
 .duty-action-danger { color: #CC0000; border-color: rgba(204,0,0,0.22); }
 .duty-action-danger:hover { color: #fff; background: #CC0000; border-color: #CC0000; }
 
+/* ── Keyboard focus rings (accessibility parity for the new controls) ── */
+.duty-action-btn:focus-visible,
+.back-link:focus-visible,
+.filter-chip:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(59,130,246,0.35);
+}
+.duty-action-danger:focus-visible {
+  box-shadow: 0 0 0 3px rgba(204,0,0,0.30);
+}
+
+/* ── Workload matrix: "assign here" hint on empty cells (admins) ── */
+.cell-plus {
+  color: #3b82f6;
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1;
+  opacity: 0;
+  transition: opacity 0.13s ease;
+  pointer-events: none;
+}
+.matrix-empty-cell:hover .cell-plus { opacity: 0.75; }
+
 .sidebar {
   transition: width 0.28s cubic-bezier(0.16, 1, 0.3, 1);
   overflow: hidden;
