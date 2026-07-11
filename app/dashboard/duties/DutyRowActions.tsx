@@ -3,14 +3,13 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { Check, Play } from 'lucide-react'
+import { Check, Play, Eye, Trash2 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 
-// Row-level actions on the duties list.
-//   • Assignees get one-tap status advancement (Start → Done) right on the
-//     row — the most common action in the app no longer requires opening the
-//     detail page. The detail page remains for checklists/remarks.
-//   • Managers keep View / Remove (with inline confirm).
+// Row-level actions on the duties board. Designed as real touch targets
+// (bordered buttons, generous padding) so they don't misfire on mobile.
+//   • Assignees get one-tap status advancement (Start → Done).
+//   • Everyone gets View; managers also get Remove (inline confirm).
 export default function DutyRowActions({
   dutyId,
   canManage,
@@ -53,43 +52,43 @@ export default function DutyRowActions({
         onClick={() => advance(status === 'pending' ? 'in_progress' : 'completed')}
         disabled={busy}
         style={{
-          display: 'inline-flex',
-          alignItems: 'center',
-          gap: 5,
-          fontSize: '11.5px',
-          fontWeight: 600,
-          padding: '4px 12px',
-          borderRadius: '7px',
-          border: 'none',
+          display: 'inline-flex', alignItems: 'center', gap: 5,
+          fontSize: '12.5px', fontWeight: 600,
+          padding: '8px 14px', borderRadius: 9, border: 'none',
           cursor: busy ? 'wait' : 'pointer',
           background: status === 'pending' ? '#eff6ff' : '#f0fdf4',
           color: status === 'pending' ? '#1d4ed8' : '#15803d',
-          opacity: busy ? 0.6 : 1,
-          whiteSpace: 'nowrap',
+          opacity: busy ? 0.6 : 1, whiteSpace: 'nowrap',
         }}
       >
         {busy
           ? '…'
           : status === 'pending'
-            ? (<><Play size={11} strokeWidth={2.5} /> Start</>)
-            : (<><Check size={12} strokeWidth={2.5} /> Done</>)}
+            ? (<><Play size={13} strokeWidth={2.5} /> Start</>)
+            : (<><Check size={14} strokeWidth={2.5} /> Done</>)}
       </button>
     ) : null
 
   if (confirming) {
     return (
-      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-        <span style={{ fontSize: '11.5px', color: '#CC0000', fontWeight: 500 }}>Remove?</span>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <span style={{ fontSize: '12.5px', color: '#CC0000', fontWeight: 500 }}>Remove?</span>
         <button
           onClick={handleDelete}
           disabled={busy}
-          style={{ fontSize: '11.5px', color: '#CC0000', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 600, padding: 0 }}
+          style={{
+            fontSize: '12.5px', fontWeight: 600, color: '#fff', background: '#CC0000',
+            border: 'none', borderRadius: 8, padding: '7px 14px', cursor: 'pointer',
+          }}
         >
           {busy ? '...' : 'Yes'}
         </button>
         <button
           onClick={() => setConfirming(false)}
-          style={{ fontSize: '11.5px', color: '#6b7280', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+          style={{
+            fontSize: '12.5px', fontWeight: 500, color: '#555', background: '#fff',
+            border: '1px solid rgba(0,0,0,0.12)', borderRadius: 8, padding: '7px 14px', cursor: 'pointer',
+          }}
         >
           No
         </button>
@@ -98,22 +97,23 @@ export default function DutyRowActions({
   }
 
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+    <div style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'flex-end' }}>
       {quickAction}
       <Link
         href={viewHref ?? `/dashboard/duties/${dutyId}`}
-        style={{ fontSize: '12px', color: '#6b7280', textDecoration: 'none' }}
-        className="hover:text-gray-700 transition-colors"
+        className="duty-action-btn"
+        aria-label="View duty"
       >
-        View
+        <Eye size={14} strokeWidth={2} />
+        <span>View</span>
       </Link>
       {canManage && (
         <button
           onClick={() => setConfirming(true)}
-          style={{ fontSize: '12px', color: '#6b7280', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
-          className="hover:text-red-500 transition-colors"
+          className="duty-action-btn duty-action-danger"
+          aria-label="Remove duty"
         >
-          Remove
+          <Trash2 size={14} strokeWidth={2} />
         </button>
       )}
     </div>

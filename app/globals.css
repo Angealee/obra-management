@@ -73,13 +73,83 @@ body {
 }
 
 @keyframes pageEnter {
-  from { opacity: 0; transform: translateY(7px); }
-  to   { opacity: 1; transform: translateY(0); }
+  from { opacity: 0; transform: translateY(10px) scale(0.994); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
 }
 
 .page-enter {
-  animation: pageEnter 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation: pageEnter 0.42s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
+
+/* ── Designed back link — a real touchable target, not faint text ── */
+.back-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 14px 8px 11px;
+  border-radius: 9px;
+  border: 1px solid rgba(0,0,0,0.10);
+  background: #fff;
+  color: #444;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  text-decoration: none;
+  margin-bottom: 18px;
+  transition: border-color 0.15s ease, color 0.15s ease, background 0.15s ease, transform 0.1s ease;
+}
+.back-link:hover { border-color: rgba(0,0,0,0.2); color: #111; background: #FAFAF9; }
+.back-link:active { transform: scale(0.98); }
+.back-link svg { transition: transform 0.15s ease; }
+.back-link:hover svg { transform: translateX(-2px); }
+
+/* Constrained pages sit centered in the content band, not hugging the left. */
+.page-narrow { margin-left: auto; margin-right: auto; }
+
+/* ── Duty row action buttons — bordered, touch-sized ── */
+.duty-action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 12px;
+  border-radius: 8px;
+  border: 1px solid rgba(0,0,0,0.12);
+  background: #fff;
+  color: #555;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 12.5px;
+  font-weight: 500;
+  text-decoration: none;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: border-color 0.13s ease, color 0.13s ease, background 0.13s ease;
+}
+.duty-action-btn:hover { border-color: rgba(0,0,0,0.22); color: #111; background: #FAFAF9; }
+.duty-action-danger { color: #CC0000; border-color: rgba(204,0,0,0.22); }
+.duty-action-danger:hover { color: #fff; background: #CC0000; border-color: #CC0000; }
+
+/* ── Keyboard focus rings (accessibility parity for the new controls) ── */
+.duty-action-btn:focus-visible,
+.back-link:focus-visible,
+.filter-chip:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(59,130,246,0.35);
+}
+.duty-action-danger:focus-visible {
+  box-shadow: 0 0 0 3px rgba(204,0,0,0.30);
+}
+
+/* ── Workload matrix: "assign here" hint on empty cells (admins) ── */
+.cell-plus {
+  color: #3b82f6;
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1;
+  opacity: 0;
+  transition: opacity 0.13s ease;
+  pointer-events: none;
+}
+.matrix-empty-cell:hover .cell-plus { opacity: 0.75; }
 
 .sidebar {
   transition: width 0.28s cubic-bezier(0.16, 1, 0.3, 1);

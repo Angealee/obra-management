@@ -74,8 +74,11 @@ export default function WorkloadCell({
   return (
     <button
       onClick={canEdit ? onClick : undefined}
-      className={`matrix-cell-btn ${canEdit ? 'hover:border-[#3b82f6] hover:bg-[#eff6ff]' : ''}`}
+      title={canEdit ? 'Click to record an outcome' : undefined}
+      className={`matrix-cell-btn matrix-empty-cell ${canEdit ? 'hover:border-[#3b82f6] hover:bg-[#eff6ff]' : ''}`}
       style={{ ...base, background: '#fff', border: '1.5px dashed rgba(0,0,0,0.18)' }}
-    />
+    >
+      {canEdit && <span className="cell-plus" aria-hidden="true">+</span>}
+    </button>
   )
 }

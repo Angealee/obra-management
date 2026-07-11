@@ -1,9 +1,13 @@
 'use client'
 
+import { useMemo, useState } from 'react'
 import type { Profile } from '@/types/database'
+import { MEMBER_ROLE_OPTIONS } from '@/lib/memberRole'
+import Avatar from '@/components/ui/Avatar'
 
 // Grouped member multi-select (Creative Heads / Members) with per-member
-// disable ("Already assigned"). Shared by the standalone Assign Duty form
+// disable ("Already assigned") and a role filter (photographer, graphic
+// designer, …). Shared by the standalone Assign Duty form
 // (/dashboard/duties/new) and the inline AssignDutiesPanel on event detail.
 
 export type MemberWithSkills = Profile & {
@@ -72,16 +76,8 @@ function MemberCard({
         )}
       </div>
 
-      {/* Avatar initial */}
-      <div style={{
-        width: 34, height: 34, borderRadius: '50%', flexShrink: 0,
-        background: selected ? '#111' : '#F2F2F0',
-        color: selected ? '#fff' : '#555',
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        fontSize: 13, fontWeight: 700,
-      }}>
-        {member.full_name.charAt(0).toUpperCase()}
-      </div>
+      {/* Avatar — real profile photo when available, initials otherwise */}
+      <Avatar name={member.full_name} src={(member as any).avatar_url ?? null} size={34} />
 
       {/* Info */}
       <div style={{ flex: 1, minWidth: 0 }}>
@@ -124,8 +120,21 @@ export default function MemberMultiSelect({
   disabledIds: Set<string>
   onToggle: (id: string) => void
 }) {
-  const heads = members.filter(m => m.system_role === 'creative_head')
-  const regular = members.filter(m => m.system_role === 'member')
+  const [roleFilter, setRoleFilter] = useState<string>('all')
+
+  // Only offer role chips for positions actually present among these members.
+  const availableRoles = useMemo(() => {
+    const present = new Set(members.map(m => (m as any).member_role).filter(Boolean))
+    return MEMBER_ROLE_OPTIONS.filter(o => present.has(o.value))
+  }, [members])
+
+  const filtered = useMemo(() => {
+    if (roleFilter === 'all') return members
+    return members.filter(m => (m as any).member_role === roleFilter)
+  }, [members, roleFilter])
+
+  const heads = filtered.filter(m => m.system_role === 'creative_head')
+  const regular = filtered.filter(m => m.system_role === 'member')
 
   if (members.length === 0) {
     return <p style={{ fontSize: '13px', color: '#6b7280', margin: 0 }}>No active members found.</p>
@@ -151,8 +160,60 @@ export default function MemberMultiSelect({
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-      {group('Creative Heads', heads)}
-      {group('Members', regular)}
+      {/* Role filter — assign by creative position */}
+      {availableRoles.length > 0 && (
+        <div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+            <RoleChip label="All" active={roleFilter === 'all'} onClick={() => setRoleFilter('all')} />
+            {availableRoles.map(r => (
+              <RoleChip
+                key={r.value}
+                label={r.label}
+                active={roleFilter === r.value}
+                onClick={() => setRoleFilter(r.value)}
+              />
+            ))}
+          </div>
+          {roleFilter !== 'all' && (
+            <p style={{ fontSize: '12px', color: '#6b7280', margin: '8px 0 0' }}>
+              Showing {filtered.length} of {members.length} members
+            </p>
+          )}
+        </div>
+      )}
+
+      {filtered.length === 0 ? (
+        <p style={{ fontSize: '13px', color: '#6b7280', margin: 0 }}>No members with this role.</p>
+      ) : (
+        <>
+          {group('Creative Heads', heads)}
+          {group('Members', regular)}
+        </>
+      )}
     </div>
+  )
+}
+
+function RoleChip({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      style={{
+        fontFamily: "'DM Sans', sans-serif",
+        fontSize: 12.5,
+        fontWeight: 600,
+        padding: '6px 13px',
+        borderRadius: 999,
+        cursor: 'pointer',
+        whiteSpace: 'nowrap',
+        transition: 'background 0.13s ease, color 0.13s ease, border-color 0.13s ease',
+        border: active ? '1px solid #111' : '1px solid rgba(0,0,0,0.12)',
+        background: active ? '#111' : '#fff',
+        color: active ? '#fff' : '#555',
+      }}
+    >
+      {label}
+    </button>
   )
 }

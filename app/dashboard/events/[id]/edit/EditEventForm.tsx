@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
+import BackLink from '@/components/BackLink'
 
 export default function EditEventForm({ event }: { event: any }) {
   const router = useRouter()
@@ -58,96 +59,78 @@ export default function EditEventForm({ event }: { event: any }) {
   }
 
   return (
-    <div className="max-w-2xl">
-      <div className="mb-8">
-        <Link href={`/dashboard/events/${event.id}`} className="text-gray-400 hover:text-gray-600 text-sm mb-2 inline-block">
-          ← Back to Event
-        </Link>
-        <h1 className="text-2xl font-bold text-gray-800">Edit Event</h1>
-        <p className="text-gray-500 text-sm mt-1">Update the details for this event.</p>
+    <div className="page-narrow" style={{ maxWidth: 640 }}>
+      <div style={{ marginBottom: 24 }}>
+        <BackLink href={`/dashboard/events/${event.id}`}>Back to Event</BackLink>
+        <h1 className="page-title">Edit Event</h1>
+        <p className="page-subtitle">Update the details for this event.</p>
       </div>
 
-      <div className="space-y-6">
-        <div className="bg-white rounded-xl shadow-sm p-6 space-y-4">
-          <h2 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">Event Details</h2>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+        <div className="dash-card" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <p className="section-label">Event Details</p>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Event Title <span className="text-red-500">*</span>
+            <label className="obra-label">
+              Event Title <span style={{ color: '#CC0000' }}>*</span>
             </label>
             <input
               type="text"
               value={title}
               onChange={e => setTitle(e.target.value)}
               placeholder="CCS Freshmen Orientation 2026"
-              className="w-full border border-gray-300 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-400"
+              className="obra-input"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+            <label className="obra-label">Description</label>
             <textarea
               value={description}
               onChange={e => setDescription(e.target.value)}
               placeholder="Brief description of the event..."
               rows={3}
-              className="w-full border border-gray-300 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-400 resize-none"
+              className="obra-input"
+              style={{ resize: 'none' }}
             />
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Date <span className="text-red-500">*</span>
+              <label className="obra-label">
+                Date <span style={{ color: '#CC0000' }}>*</span>
               </label>
-              <input
-                type="date"
-                value={eventDate}
-                onChange={e => setEventDate(e.target.value)}
-                className="w-full border border-gray-300 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-400"
-              />
+              <input type="date" value={eventDate} onChange={e => setEventDate(e.target.value)} className="obra-input" />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Time</label>
-              <input
-                type="time"
-                value={eventTime}
-                onChange={e => setEventTime(e.target.value)}
-                className="w-full border border-gray-300 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-400"
-              />
+              <label className="obra-label">Time</label>
+              <input type="time" value={eventTime} onChange={e => setEventTime(e.target.value)} className="obra-input" />
             </div>
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Location</label>
+            <label className="obra-label">Location</label>
             <input
               type="text"
               value={location}
               onChange={e => setLocation(e.target.value)}
               placeholder="MPH, 4th Floor, OLF Building"
-              className="w-full border border-gray-300 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-400"
+              className="obra-input"
             />
           </div>
         </div>
 
         {error && (
-          <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-3">
-            <p className="text-red-600 text-sm">{error}</p>
+          <div style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 8, padding: '10px 14px' }}>
+            <p style={{ color: '#dc2626', fontSize: '13px', margin: 0 }}>{error}</p>
           </div>
         )}
 
-        <div className="flex gap-3">
-          <button
-            onClick={handleSave}
-            disabled={loading}
-            className="bg-gray-900 text-white px-6 py-2 rounded-lg text-sm hover:bg-gray-700 transition disabled:opacity-50"
-          >
+        <div style={{ display: 'flex', gap: 10 }}>
+          <button onClick={handleSave} disabled={loading} className="btn-primary">
             {loading ? 'Saving...' : 'Save Changes'}
           </button>
-          <Link
-            href={`/dashboard/events/${event.id}`}
-            className="px-6 py-2 rounded-lg text-sm border border-gray-300 text-gray-600 hover:bg-gray-50 transition"
-          >
+          <Link href={`/dashboard/events/${event.id}`} className="btn-secondary">
             Cancel
           </Link>
         </div>

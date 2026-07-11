@@ -11,6 +11,7 @@ import { DutyStatusBadge, EventStatusBadge } from '@/components/ui/StatusBadge'
 import WorkloadBadge from '@/components/WorkLoadBadge'
 import DutyDetailBody, { fetchDutyDetail } from '../../duties/[id]/DutyDetailBody'
 import SlideOver from '@/components/SlideOver'
+import BackLink from '@/components/BackLink'
 
 const priorityStyle: Record<string, [string, string]> = {
   low:    ['#f9fafb', '#9ca3af'],
@@ -92,15 +93,10 @@ export default async function EventDetailPage({
   ]
 
   return (
-    <div style={{ maxWidth: 640 }}>
+    <div className="page-narrow" style={{ maxWidth: 640 }}>
       {/* Header */}
       <div style={{ marginBottom: 28 }}>
-        <Link
-          href="/dashboard/events"
-          style={{ fontSize: '13px', color: '#6b7280', textDecoration: 'none', display: 'inline-block', marginBottom: 8 }}
-        >
-          ← Back to Duties &amp; Events
-        </Link>
+        <BackLink href="/dashboard/events">Back to Duties &amp; Events</BackLink>
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16 }}>
           <h1 style={{ fontSize: '24px', fontWeight: 700, letterSpacing: '-0.4px', color: '#111', lineHeight: 1.15, margin: 0 }}>
             {event.title}

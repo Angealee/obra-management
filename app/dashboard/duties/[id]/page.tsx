@@ -1,9 +1,9 @@
 import { redirect } from 'next/navigation'
-import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { requireProfile } from '@/lib/auth'
 import { dutyDisplayStatus } from '@/lib/dutyStatus'
 import { DutyStatusBadge } from '@/components/ui/StatusBadge'
+import BackLink from '@/components/BackLink'
 import DutyDetailBody, { fetchDutyDetail } from './DutyDetailBody'
 
 const priorityStyle: Record<string, [string, string]> = {
@@ -39,16 +39,11 @@ export default async function DutyDetailPage({
   const [pbg, ptc] = priorityStyle[duty.priority] ?? priorityStyle.normal
 
   return (
-    <div style={{ maxWidth: 640 }}>
+    <div className="page-narrow" style={{ maxWidth: 640 }}>
 
       {/* Header */}
       <div style={{ marginBottom: 28 }}>
-        <Link
-          href={backHref}
-          style={{ fontSize: '13px', color: '#6b7280', textDecoration: 'none', display: 'inline-block', marginBottom: 8 }}
-        >
-          {isHead ? '← Back to Duties & Events' : '← Back to My Duties'}
-        </Link>
+        <BackLink href={backHref}>{isHead ? 'Back to Duties & Events' : 'Back to My Duties'}</BackLink>
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
           <h1 style={{ fontSize: '24px', fontWeight: 700, letterSpacing: '-0.4px', color: '#111', lineHeight: 1.15, margin: 0 }}>
             {duty.title}
